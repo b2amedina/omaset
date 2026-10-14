@@ -50,10 +50,13 @@ function M.encode(value)
       for i = 1, #value do
         parts[#parts + 1] = M.encode(value[i])
       end
-    else
-      for k, v in pairs(value) do
-        parts[#parts + 1] = M.encode(tostring(k)) .. ":" .. M.encode(v)
+      if #parts == 0 then
+        return "[]"
       end
+      return "[" .. table.concat(parts, ",") .. "]"
+    end
+    for k, v in pairs(value) do
+      parts[#parts + 1] = M.encode(tostring(k)) .. ":" .. M.encode(v)
     end
     if #parts == 0 then
       return "{}"
