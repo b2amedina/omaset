@@ -1,0 +1,27 @@
+#!/usr/bin/env luajit
+
+-- omaset CLI entry point.
+
+local function dirname(p)
+  local d = p:match("^(.*)/")
+  return d or "."
+end
+
+local script = arg[0]
+if not script:match("^/") then
+  local p = io.popen("pwd")
+  local cwd = p and p:read("*l")
+  if p then p:close() end
+  script = (cwd or ".") .. "/" .. script
+end
+
+local root = dirname(dirname(script))
+
+package.path = root .. "/lib/?.lua;" .. root .. "/lib/?/init.lua;" .. package.path
+
+local omaset = require("omaset")
+omaset.bootstrap({
+  root = root,
+  user_settings_dir = (os.getenv("HOME") or "") .. "/.config/omaset/settings",
+})
+omaset.main(arg)
