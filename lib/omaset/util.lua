@@ -31,6 +31,41 @@ function M.write_file(path, content)
   return true
 end
 
+function M.shell_quote(s)
+  return "'" .. tostring(s):gsub("'", "'\\''") .. "'"
+end
+
+-- Run a command, capturing combined stdout+stderr and the exit code.
+function M.run_capture(cmd)
+  local p = io.popen(cmd .. " 2>&1")
+  if not p then
+    return nil, nil, "cannot run: " .. cmd
+  end
+  local out = p:read("*a")
+  local ok, why, code = p:close()
+  local exit_code
+  if ok then
+    exit_code = 0
+  elseif why == "exit" then
+    exit_code = code
+  else
+    exit_code = 1
+  end
+  return out, exit_code
+end
+
+local cmd_exists_cache = {}
+
+function M.cmd_exists(name)
+  if cmd_exists_cache[name] ~= nil then
+    return cmd_exists_cache[name]
+  end
+  local out = M.run_capture("command -v " .. name .. " 2>/dev/null")
+  local found = out ~= nil and out:gsub("%s+", "") ~= ""
+  cmd_exists_cache[name] = found
+  return found
+end
+
 -- Deep-merge src into dst (tables recurse, everything else overwrites).
 function M.deep_merge(dst, src)
   for k, v in pairs(src) do

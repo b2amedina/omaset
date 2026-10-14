@@ -10,6 +10,7 @@ local M = {}
 
 M.backends = {
   ["hypr-lua"] = require("omaset.backends.hypr_lua"),
+  ["shell-json"] = require("omaset.backends.shell_json"),
 }
 
 local root = nil

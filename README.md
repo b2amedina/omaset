@@ -31,9 +31,10 @@ lib/omaset/
   discovery.lua         loads share/settings/*.lua (and ~/.config/omaset/settings/)
   types.lua             int/float/bool/enum coercion + range checks
   json.lua              minimal JSON encoder
-  util.lua              deep merge/get/set + Lua serializer
+  util.lua              deep merge/get/set, serializer, shell helpers
   backends/hypr_lua.lua reads/writes Hyprland Lua config (looknfeel.lua etc.)
-share/settings/         built-in panels (appearance, layout, animations)
+  backends/shell_json.lua reads/writes ~/.config/omarchy/shell.json via jq
+share/settings/         built-in panels (appearance, layout, animations, power)
 ```
 
 ### The `hypr-lua` backend
@@ -44,6 +45,18 @@ share/settings/         built-in panels (appearance, layout, animations)
 - **Write** maintains a single `-- omaset:begin` / `-- omaset:end` block at the
   end of the user file. Only keys changed through omaset live there; the rest
   of your file is never touched. A `.omaset.bak` snapshot is kept on first edit.
+- **Validate** after every write with `hyprctl reload` + `hyprctl configerrors`;
+  on errors the previous content is restored. Set `OMASET_NO_APPLY=1` to skip
+  this (tests, headless).
+
+### The `shell-json` backend
+
+- Edits `~/.config/omarchy/shell.json` with `jq`, using the same
+  normalize-and-commit approach as Omarchy's own `omarchy-shell-config`, so the
+  file keeps its `version`/`bar`/`plugins` shape.
+- **Read** merges defaults (`$OMARCHY_PATH/config/omarchy/shell.json`) with the
+  user file; **write** is atomic (temp + `mv`) and hot-reloads the running
+  shell. Requires `jq` (present on Omarchy).
 
 ### Extending with Lua
 
@@ -68,8 +81,7 @@ built-in id to override it.
 
 ## Next steps
 
-- `hyprctl configerrors` validation after write, with revert-on-failure.
-- More backends: `shell.json` (idle/lock), `hyprsunset`, `omarchy` CLI.
+- More backends: `hyprsunset` (night light), `omarchy` CLI passthrough.
 - Window-indicator settings (full-screen / full-tiled border rules).
 - A "changed from defaults" view and a backup picker.
 - The Quickshell keyboard-first frontend (consumes `schema`/`get`/`set`).
