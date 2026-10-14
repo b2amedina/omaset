@@ -127,6 +127,60 @@ local function replace_or_append(content, block)
   return content:sub(1, start - 1) .. block .. content:sub(line_end + 1)
 end
 
+-- Run a command, capturing combined stdout+stderr and its exit code.
+local function run_capture(cmd)
+  local p = io.popen(cmd .. " 2>&1")
+  if not p then
+    return nil, nil, "cannot run: " .. cmd
+  end
+  local out = p:read("*a")
+  local ok, why, code = p:close()
+  local exit_code
+  if ok then
+    exit_code = 0
+  elseif why == "exit" then
+    exit_code = code
+  else
+    exit_code = 1
+  end
+  return out, exit_code
+end
+
+local function apply_enabled()
+  local v = os.getenv("OMASET_NO_APPLY")
+  return not (v == "1" or v == "true" or v == "yes" or v == "on")
+end
+
+local hyprctl_present = nil
+
+local function has_hyprctl()
+  if hyprctl_present == nil then
+    local out = run_capture("command -v hyprctl 2>/dev/null")
+    hyprctl_present = out ~= nil and out:gsub("%s+", "") ~= ""
+  end
+  return hyprctl_present
+end
+
+-- Reload Hyprland, validate, and revert the file if the config has errors.
+-- Returns true on success, or nil plus an error message (after reverting).
+local function apply_and_validate(user_file, prev_content)
+  if not has_hyprctl() then
+    return true
+  end
+
+  run_capture("hyprctl reload")
+
+  local out, code = run_capture("hyprctl configerrors")
+  local err_text = out:gsub("^%s+", ""):gsub("%s+$", "")
+  if err_text == "" and code == 0 then
+    return true
+  end
+
+  util.write_file(user_file, prev_content)
+  run_capture("hyprctl reload")
+  return nil, "config errors after write (change reverted):\n" .. err_text
+end
+
 function M.write(setting, value)
   local user_file = M.user_file(setting)
   local content = util.read_file(user_file) or ""
@@ -144,6 +198,13 @@ function M.write(setting, value)
   local ok, err = util.write_file(user_file, new_content)
   if not ok then
     return nil, err
+  end
+
+  if apply_enabled() then
+    local aok, aerr = apply_and_validate(user_file, content)
+    if not aok then
+      return nil, aerr
+    end
   end
   return true
 end
