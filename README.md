@@ -26,6 +26,11 @@ bin/omaset --version
 No installation needed — it runs in place with `luajit` (and `jq` for the
 `shell-json` backend).
 
+## Protocol
+
+The JSON output of `schema`/`get`/`set`/`reset`/`changed`/`search` is a
+versioned contract — see [docs/protocol.md](docs/protocol.md).
+
 ## Tests
 
 ```

@@ -97,7 +97,7 @@ function M.reset_value(setting)
 end
 
 function M.schema()
-  local out = { panels = {} }
+  local out = { schema_version = 1, panels = {} }
   for _, p in ipairs(dsl.panels) do
     local panel = { id = p.id, title = p.title, settings = {} }
     for _, s in ipairs(p.settings) do
