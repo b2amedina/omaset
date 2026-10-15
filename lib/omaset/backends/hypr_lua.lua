@@ -9,6 +9,7 @@
 --        omaset live in that block; everything else in the file is untouched.
 
 local util = require("omaset.util")
+local registry = require("omaset.backends")
 
 local M = {}
 
@@ -218,5 +219,7 @@ function M.reset(setting)
 
   return commit(user_file, content, new_content)
 end
+
+registry.register("hypr-lua", M)
 
 return M

@@ -54,6 +54,21 @@ function M.run_capture(cmd)
   return out, exit_code
 end
 
+-- List *.lua files in a directory, sorted by path. Returns {} on error.
+function M.list_lua_files(dir)
+  local cmd = "find " .. M.shell_quote(dir) .. " -maxdepth 1 -name '*.lua' -type f 2>/dev/null | sort"
+  local p = io.popen(cmd)
+  if not p then
+    return {}
+  end
+  local files = {}
+  for line in p:lines() do
+    files[#files + 1] = line
+  end
+  p:close()
+  return files
+end
+
 local cmd_exists_cache = {}
 
 function M.cmd_exists(name)

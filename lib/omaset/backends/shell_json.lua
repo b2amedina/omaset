@@ -6,6 +6,7 @@
 
 local util = require("omaset.util")
 local types = require("omaset.types")
+local registry = require("omaset.backends")
 
 local M = {}
 
@@ -126,5 +127,7 @@ end
 function M.reset(setting)
   return commit(NORMALIZE .. "\n  | del(." .. setting.path .. ")")
 end
+
+registry.register("shell-json", M)
 
 return M

@@ -5,20 +5,27 @@ local json = require("omaset.json")
 local types = require("omaset.types")
 local dsl = require("omaset.dsl")
 local discovery = require("omaset.discovery")
+local backends = require("omaset.backends")
 
 local M = {}
 
-M.backends = {
-  ["hypr-lua"] = require("omaset.backends.hypr_lua"),
-  ["shell-json"] = require("omaset.backends.shell_json"),
-}
-
 local root = nil
 local user_settings_dir = nil
+local user_backends_dir = nil
 
 function M.bootstrap(opts)
   root = opts.root
   user_settings_dir = opts.user_settings_dir
+  user_backends_dir = opts.user_backends_dir
+end
+
+function M.load_backends()
+  for _, err in ipairs(backends.load_dir(root .. "/lib/omaset/backends")) do
+    io.stderr:write("omaset: " .. err .. "\n")
+  end
+  for _, err in ipairs(backends.load_dir(user_backends_dir)) do
+    io.stderr:write("omaset: " .. err .. "\n")
+  end
 end
 
 function M.settings_dirs()
@@ -30,6 +37,7 @@ function M.settings_dirs()
 end
 
 function M.load()
+  M.load_backends()
   dsl.panels = {}
   local errors = discovery.load_dirs(M.settings_dirs())
   for _, err in ipairs(errors) do
@@ -49,7 +57,7 @@ function M.find_setting(id)
 end
 
 function M.backend_for(setting)
-  local backend = M.backends[setting.backend]
+  local backend = backends.get(setting.backend)
   if not backend then
     return nil, "unknown backend '" .. tostring(setting.backend) .. "'"
   end

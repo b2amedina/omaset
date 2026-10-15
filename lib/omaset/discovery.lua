@@ -1,26 +1,9 @@
 -- Discover and evaluate settings files (the extension point).
 
 local dsl = require("omaset.dsl")
+local util = require("omaset.util")
 
 local M = {}
-
-local function shell_quote(s)
-  return "'" .. tostring(s):gsub("'", "'\\''") .. "'"
-end
-
-local function list_lua_files(dir)
-  local cmd = "find " .. shell_quote(dir) .. " -maxdepth 1 -name '*.lua' -type f 2>/dev/null | sort"
-  local p = io.popen(cmd)
-  if not p then
-    return {}
-  end
-  local files = {}
-  for line in p:lines() do
-    files[#files + 1] = line
-  end
-  p:close()
-  return files
-end
 
 -- Evaluate a single settings file into the current DSL registry.
 function M.load_file(path)
@@ -49,7 +32,7 @@ function M.load_dirs(dirs)
   local errors = {}
   for _, dir in ipairs(dirs) do
     if dir then
-      for _, file in ipairs(list_lua_files(dir)) do
+      for _, file in ipairs(util.list_lua_files(dir)) do
         local ok, err = M.load_file(file)
         if not ok then
           errors[#errors + 1] = err
