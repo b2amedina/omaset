@@ -282,6 +282,7 @@ Usage:
   omaset reset <id> [--plain]       restore a setting to default
   omaset changed [--json]           settings that differ from defaults
   omaset search <query> [--json]    find settings by id or label
+  omaset help <id>                  show one setting's full spec
   omaset --version                  print the version
 ]]
   text = text:gsub("^%s+", "")
@@ -296,10 +297,69 @@ local COMMAND_HELP = {
   reset = "omaset reset <id> [--plain]\n  Restore a setting to its Omarchy default.",
   changed = "omaset changed [--json]\n  List settings whose value differs from the default.",
   search = "omaset search <query> [--json]\n  Find settings by id or label substring.",
+  help = "omaset help <id>\n  Show one setting's full spec (type, options, value, default).",
 }
 
-local function command_help(cmd)
+local function value_hint(setting)
+  local t = setting.type or "string"
+  if t == "enum" and setting.options then
+    return "<" .. table.concat(setting.options, "|") .. ">"
+  elseif t == "int" or t == "float" then
+    if setting.min ~= nil and setting.max ~= nil then
+      return "<" .. tostring(setting.min) .. ".." .. tostring(setting.max) .. ">"
+    end
+    return t == "int" and "<int>" or "<float>"
+  elseif t == "bool" then
+    return "<true|false>"
+  end
+  return "<value>"
+end
+
+local function setting_help(setting)
+  local lines = {}
+  lines[#lines + 1] = setting.id .. " — " .. setting.label
+
+  local t = setting.type or "string"
+  local type_line = "  type:    " .. t
+  if (t == "int" or t == "float") and (setting.min ~= nil or setting.max ~= nil) then
+    type_line = type_line .. " (" .. tostring(setting.min or "-inf") .. ".." .. tostring(setting.max or "inf") .. ")"
+  end
+  lines[#lines + 1] = type_line
+
+  if setting.options then
+    lines[#lines + 1] = "  options: " .. table.concat(setting.options, ", ")
+  end
+
+  lines[#lines + 1] = "  value:   " .. tostring(M.read_value(setting))
+  lines[#lines + 1] = "  default: " .. tostring(M.read_default(setting))
+  return table.concat(lines, "\n")
+end
+
+local function command_help(cmd, setting)
+  if setting then
+    if cmd == "get" then
+      return setting_help(setting)
+    elseif cmd == "set" then
+      return "omaset set " .. setting.id .. " " .. value_hint(setting) .. "\n  " .. setting.label
+    elseif cmd == "reset" then
+      return "omaset reset " .. setting.id .. "\n  " .. setting.label
+    end
+  end
   return COMMAND_HELP[cmd] or ("No help for '" .. tostring(cmd) .. "'.\n\n" .. usage_text())
+end
+
+local function cmd_help(pos)
+  M.load()
+  local id = pos[1]
+  if not id then
+    print(usage_text())
+    return
+  end
+  local s = M.find_setting(id)
+  if not s then
+    die("unknown setting: " .. id)
+  end
+  print(setting_help(s))
 end
 
 local function split_args(args)
@@ -326,7 +386,7 @@ function M.main(arg)
     print("omaset " .. M.VERSION)
     return
   end
-  if cmd == "--help" or cmd == "-h" or cmd == "help" then
+  if cmd == "--help" or cmd == "-h" then
     print(usage_text())
     return
   end
@@ -335,6 +395,14 @@ function M.main(arg)
   local flags, pos = split_args(args)
 
   if flags["--help"] or flags["-h"] then
+    if cmd == "get" or cmd == "set" or cmd == "reset" then
+      M.load()
+      local s = M.find_setting(pos[1])
+      if s then
+        print(command_help(cmd, s))
+        return
+      end
+    end
     print(command_help(cmd))
     return
   end
@@ -353,6 +421,8 @@ function M.main(arg)
     cmd_changed(flags)
   elseif cmd == "search" then
     cmd_search(flags, pos)
+  elseif cmd == "help" then
+    cmd_help(pos)
   else
     io.stderr:write("omaset: unknown command: " .. tostring(cmd) .. "\n\n" .. usage_text() .. "\n")
     os.exit(1)

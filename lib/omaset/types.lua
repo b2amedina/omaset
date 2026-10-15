@@ -39,6 +39,9 @@ function M.coerce(str, setting)
       end
     end
     if not ok then
+      if setting.options then
+        return nil, "'" .. tostring(str) .. "' is not a valid option (choose from: " .. table.concat(setting.options, ", ") .. ")"
+      end
       return nil, "'" .. tostring(str) .. "' is not a valid option"
     end
     return str
