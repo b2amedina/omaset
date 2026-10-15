@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "idle": {
+    "screensaver": 90,
+    "lock": 120
+  },
+  "bar": {
+    "position": "top",
+    "layout": {
+      "left": [],
+      "center": [],
+      "right": []
+    }
+  },
+  "plugins": []
+}

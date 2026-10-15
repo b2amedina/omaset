@@ -55,8 +55,13 @@ function M.encode(value)
       end
       return "[" .. table.concat(parts, ",") .. "]"
     end
-    for k, v in pairs(value) do
-      parts[#parts + 1] = M.encode(tostring(k)) .. ":" .. M.encode(v)
+    local keys = {}
+    for k in pairs(value) do
+      keys[#keys + 1] = k
+    end
+    table.sort(keys, function(a, b) return tostring(a) < tostring(b) end)
+    for _, k in ipairs(keys) do
+      parts[#parts + 1] = M.encode(tostring(k)) .. ":" .. M.encode(value[k])
     end
     if #parts == 0 then
       return "{}"

@@ -291,7 +291,7 @@ local function split_args(args)
   local flags = {}
   local pos = {}
   for _, a in ipairs(args) do
-    if a:sub(1, 1) == "-" then
+    if a:sub(1, 1) == "-" and tonumber(a) == nil then
       flags[a] = true
     else
       pos[#pos + 1] = a

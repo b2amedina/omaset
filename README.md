@@ -13,13 +13,29 @@ same command, which is why the CLI speaks JSON.
 ## Usage
 
 ```
-bin/omaset list            # panels + settings with current values
-bin/omaset schema          # full schema as JSON (what the GUI will render)
-bin/omaset get <id>        # one setting's value as JSON
-bin/omaset set <id> <val>  # write a value; applies via Hyprland's auto-reload
+bin/omaset list [--json]              # panels + settings with current values
+bin/omaset schema                     # full schema as JSON (what a UI renders)
+bin/omaset get <id> [--plain]         # read one setting
+bin/omaset set <id> <val> [--plain]   # write a value; validates + applies
+bin/omaset reset <id> [--plain]       # restore a setting to its default
+bin/omaset changed [--json]           # settings that differ from defaults
+bin/omaset search <query> [--json]    # find settings by id or label
+bin/omaset --version
 ```
 
-No installation needed — it runs in place with `luajit`.
+No installation needed — it runs in place with `luajit` (and `jq` for the
+`shell-json` backend).
+
+## Tests
+
+```
+tests/run.sh
+```
+
+Black-box tests that drive `bin/omaset` against fixture configs (via
+`OMARCHY_PATH`, `OMASET_HYPR_DIR`, `OMASET_SHELL_CONFIG`, `OMASET_NO_APPLY`),
+so they never touch the real system. They assert on the public CLI only — safe
+to run while refactoring internals.
 
 ## How it works
 
