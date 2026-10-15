@@ -90,6 +90,36 @@ function M.deep_get(t, dotted)
   return cur
 end
 
+-- Remove a value by dotted key, pruning empty intermediate tables.
+function M.deep_unset(t, dotted)
+  local parts = {}
+  for part in string.gmatch(dotted, "[^.]+") do
+    parts[#parts + 1] = part
+  end
+  local stack = {}
+  local cur = t
+  for i = 1, #parts - 1 do
+    if type(cur[parts[i]]) ~= "table" then
+      return t
+    end
+    stack[#stack + 1] = { table = cur, key = parts[i] }
+    cur = cur[parts[i]]
+  end
+  if type(cur) == "table" then
+    cur[parts[#parts]] = nil
+  end
+  for i = #stack, 1, -1 do
+    local entry = stack[i]
+    local child = entry.table[entry.key]
+    if child == nil or next(child) == nil then
+      entry.table[entry.key] = nil
+    else
+      break
+    end
+  end
+  return t
+end
+
 -- Set a value by dotted key, creating intermediate tables as needed.
 function M.deep_set(t, dotted, value)
   local parts = {}

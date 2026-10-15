@@ -59,6 +59,10 @@ function M.read(setting)
   return read_path(default_file(), setting.path, setting)
 end
 
+function M.read_default(setting)
+  return read_path(default_file(), setting.path, setting)
+end
+
 local function apply_enabled()
   local v = os.getenv("OMASET_NO_APPLY")
   return not (v == "1" or v == "true" or v == "yes" or v == "on")
@@ -74,7 +78,9 @@ local function reload_shell()
   end
 end
 
-function M.write(setting, value)
+-- Run a jq program (with optional leading args) against the effective source
+-- file and atomically commit the result to the user config.
+local function commit(program, extra_args)
   local user_file = M.user_file()
   local src_file
   if util.file_exists(user_file) and util.read_file(user_file) ~= "" then
@@ -87,20 +93,10 @@ function M.write(setting, value)
     util.write_file(user_file .. ".omaset.bak", util.read_file(user_file))
   end
 
-  local t = setting.type or "string"
-  local valarg
-  if t == "int" or t == "float" or t == "bool" then
-    valarg = "--argjson v " .. tostring(value)
-  else
-    valarg = "--arg v " .. util.shell_quote(tostring(value))
-  end
-
-  local program = NORMALIZE .. "\n  | ." .. setting.path .. " = $v"
   local tmp = user_file .. ".tmp"
-
   util.run_capture("mkdir -p " .. util.shell_quote(user_file:match("^(.*)/") or "."))
 
-  local cmd = "jq -S -e " .. valarg .. " " .. util.shell_quote(program)
+  local cmd = "jq -S -e " .. (extra_args or "") .. " " .. util.shell_quote(program)
     .. " " .. util.shell_quote(src_file)
     .. " > " .. util.shell_quote(tmp)
     .. " && mv " .. util.shell_quote(tmp) .. " " .. util.shell_quote(user_file)
@@ -114,6 +110,21 @@ function M.write(setting, value)
     reload_shell()
   end
   return true
+end
+
+function M.write(setting, value)
+  local t = setting.type or "string"
+  local valarg
+  if t == "int" or t == "float" or t == "bool" then
+    valarg = "--argjson v " .. tostring(value)
+  else
+    valarg = "--arg v " .. util.shell_quote(tostring(value))
+  end
+  return commit(NORMALIZE .. "\n  | ." .. setting.path .. " = $v", valarg)
+end
+
+function M.reset(setting)
+  return commit(NORMALIZE .. "\n  | del(." .. setting.path .. ")")
 end
 
 return M

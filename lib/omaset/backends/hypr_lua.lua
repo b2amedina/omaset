@@ -76,6 +76,11 @@ function M.read(setting)
   return util.deep_get(cfg, setting.path)
 end
 
+function M.read_default(setting)
+  local cfg = eval_config({ default_hypr_dir() .. "/" .. setting.file .. ".lua" })
+  return util.deep_get(cfg, setting.path)
+end
+
 -- Parse the existing managed block (if any) into a nested table.
 local function parse_managed_block(content)
   local managed = {}
@@ -127,6 +132,22 @@ local function replace_or_append(content, block)
   return content:sub(1, start - 1) .. block .. content:sub(line_end + 1)
 end
 
+local function remove_block(content)
+  local start = content:find(BEGIN_MARK, 1, true)
+  if not start then
+    return content
+  end
+  local finish = content:find(END_MARK, start, true)
+  if not finish then
+    return content
+  end
+  local line_end = content:find("\n", finish, true)
+  if not line_end then
+    line_end = #content
+  end
+  return content:sub(1, start - 1) .. content:sub(line_end + 1)
+end
+
 local function apply_enabled()
   local v = os.getenv("OMASET_NO_APPLY")
   return not (v == "1" or v == "true" or v == "yes" or v == "on")
@@ -152,18 +173,9 @@ local function apply_and_validate(user_file, prev_content)
   return nil, "config errors after write (change reverted):\n" .. err_text
 end
 
-function M.write(setting, value)
-  local user_file = M.user_file(setting)
-  local content = util.read_file(user_file) or ""
-
-  local managed = parse_managed_block(content)
-  util.deep_set(managed, setting.path, value)
-
-  local block = build_block(managed)
-  local new_content = replace_or_append(content, block)
-
+local function commit(user_file, prev_content, new_content)
   if util.read_file(user_file .. ".omaset.bak") == nil then
-    util.write_file(user_file .. ".omaset.bak", content)
+    util.write_file(user_file .. ".omaset.bak", prev_content)
   end
 
   local ok, err = util.write_file(user_file, new_content)
@@ -172,12 +184,39 @@ function M.write(setting, value)
   end
 
   if apply_enabled() then
-    local aok, aerr = apply_and_validate(user_file, content)
+    local aok, aerr = apply_and_validate(user_file, prev_content)
     if not aok then
       return nil, aerr
     end
   end
   return true
+end
+
+function M.write(setting, value)
+  local user_file = M.user_file(setting)
+  local content = util.read_file(user_file) or ""
+
+  local managed = parse_managed_block(content)
+  util.deep_set(managed, setting.path, value)
+
+  return commit(user_file, content, replace_or_append(content, build_block(managed)))
+end
+
+function M.reset(setting)
+  local user_file = M.user_file(setting)
+  local content = util.read_file(user_file) or ""
+
+  local managed = parse_managed_block(content)
+  util.deep_unset(managed, setting.path)
+
+  local new_content
+  if next(managed) == nil then
+    new_content = remove_block(content)
+  else
+    new_content = replace_or_append(content, build_block(managed))
+  end
+
+  return commit(user_file, content, new_content)
 end
 
 return M
