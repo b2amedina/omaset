@@ -20,8 +20,13 @@ bin/omaset set <id> <val> [--plain]   # write a value; validates + applies
 bin/omaset reset <id> [--plain]       # restore a setting to its default
 bin/omaset changed [--json]           # settings that differ from defaults
 bin/omaset search <query> [--json]    # find settings by id or label
+bin/omaset help <id>                  # one setting's type/options/default/current
 bin/omaset --version
 ```
+
+To see what values a setting accepts, use `omaset help <id>` (lists `options`
+for enums, `min..max` for numbers) or `omaset set <id> --help`, which shows the
+`<a|b|c>` form. An invalid enum value lists the valid options in the error.
 
 No installation needed — it runs in place with `luajit` (and `jq` for the
 `shell-json` backend).
@@ -104,7 +109,7 @@ built-in id to override it.
 
 ## Next steps
 
-- More backends: `hyprsunset` (night light), `omarchy` CLI passthrough.
+- `hyprsunset` backend (night light schedule profiles).
 - Window-indicator settings (full-screen / full-tiled border rules).
-- A "changed from defaults" view and a backup picker.
+- A backup picker / restore view.
 - The Quickshell keyboard-first frontend (consumes `schema`/`get`/`set`).
