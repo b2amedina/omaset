@@ -9,6 +9,13 @@ local backends = require("omaset.backends")
 
 local M = {}
 
+local function jnull(v)
+  if v == nil then
+    return json.null
+  end
+  return v
+end
+
 local root = nil
 local user_settings_dir = nil
 local user_backends_dir = nil
@@ -107,7 +114,7 @@ function M.schema()
           entry[k] = v
         end
       end
-      entry.value = M.read_value(s)
+      entry.value = jnull(M.read_value(s))
       panel.settings[#panel.settings + 1] = entry
     end
     out.panels[#out.panels + 1] = panel
@@ -166,7 +173,7 @@ local function cmd_get(flags, pos)
   if flags["--plain"] then
     print(tostring(value))
   else
-    print(json.encode({ id = s.id, value = value }))
+    print(json.encode({ id = s.id, value = jnull(value) }))
   end
 end
 
@@ -222,7 +229,7 @@ local function collect_changed()
       local cur = M.read_value(s)
       local def = M.read_default(s)
       if value_changed(cur, def) then
-        out[#out + 1] = { id = s.id, panel = p.id, label = s.label, value = cur, default = def }
+        out[#out + 1] = { id = s.id, panel = p.id, label = s.label, value = jnull(cur), default = jnull(def) }
       end
     end
   end
@@ -250,7 +257,7 @@ local function cmd_search(flags, pos)
       local hit = (q == "") or s.id:lower():find(q, 1, true)
         or s.label:lower():find(q, 1, true)
       if hit then
-        out[#out + 1] = { id = s.id, panel = p.id, label = s.label, value = M.read_value(s) }
+        out[#out + 1] = { id = s.id, panel = p.id, label = s.label, value = jnull(M.read_value(s)) }
       end
     end
   end

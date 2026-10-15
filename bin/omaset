@@ -22,7 +22,8 @@ package.path = root .. "/lib/?.lua;" .. root .. "/lib/?/init.lua;" .. package.pa
 local omaset = require("omaset")
 omaset.bootstrap({
   root = root,
-  user_settings_dir = (os.getenv("HOME") or "") .. "/.config/omaset/settings",
+  user_settings_dir = os.getenv("OMASET_SETTINGS_DIR")
+    or (os.getenv("HOME") or "") .. "/.config/omaset/settings",
   user_backends_dir = os.getenv("OMASET_BACKENDS_DIR")
     or (os.getenv("HOME") or "") .. "/.config/omaset/backends",
 })

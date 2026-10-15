@@ -53,9 +53,11 @@ lib/omaset/
   types.lua             int/float/bool/enum coercion + range checks
   json.lua              minimal JSON encoder
   util.lua              deep merge/get/set, serializer, shell helpers
-  backends/hypr_lua.lua reads/writes Hyprland Lua config (looknfeel.lua etc.)
-  backends/shell_json.lua reads/writes ~/.config/omarchy/shell.json via jq
-share/settings/         built-in panels (appearance, layout, animations, power)
+  backends/             pluggable backends (self-register via load_dir)
+    hypr_lua.lua         reads/writes Hyprland Lua config (looknfeel.lua etc.)
+    shell_json.lua       reads/writes ~/.config/omarchy/shell.json via jq
+    omarchy.lua          delegates to an existing omarchy command
+share/settings/         built-in panels (appearance, layout, animations, power, display)
 ```
 
 ### The `hypr-lua` backend

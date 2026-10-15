@@ -2,6 +2,9 @@
 
 local M = {}
 
+-- Sentinel that encodes as JSON null (Lua tables cannot hold a nil-valued key).
+M.null = {}
+
 local function escape(s)
   return s:gsub('[%c\\"]', function(c)
     if c == "\n" then return "\\n" end
@@ -33,7 +36,7 @@ end
 
 function M.encode(value)
   local t = type(value)
-  if value == nil then
+  if value == nil or value == M.null then
     return "null"
   elseif t == "boolean" then
     return value and "true" or "false"

@@ -13,7 +13,9 @@ export OMARCHY_PATH="$FIXTURES"
 export OMASET_NO_APPLY=1
 export OMASET_HYPR_DIR="$TESTDIR/hypr"
 export OMASET_SHELL_CONFIG="$TESTDIR/shell.json"
-mkdir -p "$OMASET_HYPR_DIR"
+export OMASET_SETTINGS_DIR="$TESTDIR/settings"
+export OMASET_BACKENDS_DIR="$TESTDIR/backends"
+mkdir -p "$OMASET_HYPR_DIR" "$OMASET_SETTINGS_DIR" "$OMASET_BACKENDS_DIR"
 
 # Run omaset, stdout to the caller.
 run() {

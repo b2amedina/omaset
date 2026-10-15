@@ -86,3 +86,7 @@ Built-in backends:
 - `hypr-lua` — Hyprland Lua config (`~/.config/hypr/*.lua`); fields `file`
   (config basename) and `path` (dotted key).
 - `shell-json` — `~/.config/omarchy/shell.json`; field `path` (dotted key).
+- `omarchy` — delegates to an existing `omarchy` command (so hooks fire). Fields
+  `command` (run on set; `{value}` is substituted for `mode = "value"`), `status`
+  (command whose stdout is the current value), `mode` (`"value"` or `"toggle"`),
+  and optional `reset`. `read` returns `null` when there is no `status` command.
