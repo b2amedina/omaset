@@ -82,6 +82,38 @@ Settings whose current value differs from the Omarchy default.
 Lists the keys of a keyed setting (e.g. open workspace numbers), one per line.
 `--json` returns `{ "id", "keys": [...] }`.
 
+### `history [--json] [N]`
+
+```
+{ "history": [ { "ts", "op", "id", "key"|"sub", "old", "default", "new", "backend" }, ... ] }
+```
+
+Every change omaset has made, oldest first. `op` is `"set"` or `"reset"`;
+`old`/`new` are the effective values before/after (`null` = unset/default);
+`default` is the Omarchy default at the time. `N` limits the output to the most
+recent entries.
+
+### `undo [--all] [--plain]`
+
+```
+{ "id": "...", "ok": true }          # single; gains "key"/"sub" for keyed/grouped settings
+```
+
+Undoes the most recent change by re-applying the recorded `old` value (or
+`reset` when the setting was previously untouched). `--all` replays the whole
+journal in reverse and returns `{ "ok": true, "undone": <count> }`.
+
+### `rollback [--json]`
+
+```
+{ "rollback": true, "restored": <n> }
+```
+
+Restores every `<file>.omaset.bak` snapshot, returning each config file omaset
+has written to the state it had before omaset first touched it, and clears the
+journal. Backends without a snapshot (e.g. the `omarchy` passthrough and
+`workspace-layout`) are no-ops.
+
 ### `list [--json]`
 
 Human text by default; `--json` is identical to `schema`.

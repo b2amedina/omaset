@@ -6,6 +6,7 @@ local types = require("omaset.types")
 local dsl = require("omaset.dsl")
 local discovery = require("omaset.discovery")
 local backends = require("omaset.backends")
+local journal = require("omaset.journal")
 
 local M = {}
 
@@ -177,7 +178,7 @@ function M.schema()
   return out
 end
 
-M.VERSION = "0.1.0"
+M.VERSION = "0.2.0"
 
 local function die(msg)
   io.stderr:write("omaset: " .. msg .. "\n")
@@ -283,6 +284,19 @@ local function cmd_get(flags, pos)
   print(json.encode(out))
 end
 
+local function record_change(op, s, key, old, def, new)
+  local entry = { ts = os.time(), op = op, id = s.id, backend = s.backend }
+  if s.keyed then
+    entry.key = key
+  elseif grouped(s) then
+    entry.sub = key
+  end
+  entry.old = jnull(old)
+  entry.default = jnull(def)
+  entry.new = jnull(new)
+  journal.record(entry)
+end
+
 local function cmd_set(flags, pos)
   M.load()
   local s = M.find_setting(pos[1])
@@ -309,10 +323,13 @@ local function cmd_set(flags, pos)
   if not ok then
     die(rerr)
   end
+  local old = M.read_value(s, key)
+  local def = M.read_default(s, key)
   local wok, werr = M.write_value(s, key, value)
   if not wok then
     die(werr)
   end
+  record_change("set", s, key, old, def, value)
   if flags["--plain"] then
     print("ok")
     return
@@ -340,9 +357,14 @@ local function cmd_reset(flags, pos)
     local keys = M.keys_all(s) or {}
     local count = 0
     for _, k in ipairs(keys) do
+      local old = M.read_value(s, k)
+      local def = M.read_default(s, k)
       local rok, rerr = M.reset_value(s, k)
       if rok then
         count = count + 1
+        if old ~= def then
+          record_change("reset", s, k, old, def, nil)
+        end
       else
         io.stderr:write("omaset: " .. rerr .. "\n")
       end
@@ -356,9 +378,14 @@ local function cmd_reset(flags, pos)
   end
 
   local key, _ = resolve_args(s, pos)
+  local old = M.read_value(s, key)
+  local def = M.read_default(s, key)
   local rok, rerr = M.reset_value(s, key)
   if not rok then
     die(rerr)
+  end
+  if old ~= def then
+    record_change("reset", s, key, old, def, nil)
   end
   if flags["--plain"] then
     print("ok")
@@ -500,6 +527,130 @@ local function cmd_ui(pos)
   end
 end
 
+local function entry_label(entry)
+  if entry.key then
+    return entry.id .. ":" .. entry.key
+  elseif entry.sub then
+    return entry.id .. "." .. entry.sub
+  end
+  return entry.id
+end
+
+local function show_value(v)
+  if v == nil or v == json.null then
+    return "(default)"
+  end
+  return tostring(v)
+end
+
+local function cmd_history(flags, pos)
+  local entries = journal.read_all()
+  local limit = tonumber(pos[1])
+  if limit and limit < #entries then
+    local recent = {}
+    for i = #entries - limit + 1, #entries do
+      recent[#recent + 1] = entries[i]
+    end
+    entries = recent
+  end
+  if flags["--json"] then
+    print(json.encode({ history = json.array(entries) }))
+    return
+  end
+  for _, e in ipairs(entries) do
+    local ts = os.date("%Y-%m-%d %H:%M", e.ts)
+    print(string.format("%-16s %-6s %-28s %s -> %s", ts, e.op,
+      entry_label(e), show_value(e.old), show_value(e.new)))
+  end
+end
+
+local function apply_undo(entry)
+  local s = M.find_setting(entry.id)
+  if not s then
+    return nil, "unknown setting in journal: " .. tostring(entry.id)
+  end
+  local key = entry.key or entry.sub
+  local old = (entry.old == json.null) and nil or entry.old
+  local def = (entry.default == json.null) and nil or entry.default
+  if entry.op == "set" then
+    if old == def then
+      return M.reset_value(s, key)
+    end
+    return M.write_value(s, key, old)
+  elseif entry.op == "reset" then
+    if old == def then
+      return true
+    end
+    return M.write_value(s, key, old)
+  end
+  return nil, "unknown journal op: " .. tostring(entry.op)
+end
+
+local function cmd_undo(flags, pos)
+  M.load()
+  local entries = journal.read_all()
+  if #entries == 0 then
+    if flags["--plain"] then
+      print("ok")
+    else
+      print(json.encode({ ok = true, undone = 0 }))
+    end
+    return
+  end
+
+  if flags["--all"] then
+    local undone = 0
+    for i = #entries, 1, -1 do
+      local ok, err = apply_undo(entries[i])
+      if ok then
+        undone = undone + 1
+      else
+        io.stderr:write("omaset: undo " .. tostring(entries[i].id) .. ": " .. tostring(err) .. "\n")
+      end
+    end
+    journal.clear()
+    if flags["--plain"] then
+      print("ok")
+    else
+      print(json.encode({ ok = true, undone = undone }))
+    end
+    return
+  end
+
+  local entry = entries[#entries]
+  local ok, err = apply_undo(entry)
+  if not ok then
+    die(err)
+  end
+  journal.remove_last()
+  if flags["--plain"] then
+    print("ok")
+  else
+    local out = { id = entry.id, ok = true }
+    if entry.key then out.key = entry.key end
+    if entry.sub then out.sub = entry.sub end
+    print(json.encode(out))
+  end
+end
+
+local function cmd_rollback(flags)
+  M.load()
+  local total = 0
+  for _, name in ipairs(backends.names()) do
+    local b = backends.get(name)
+    if b.restore then
+      local n = b.restore()
+      total = total + (n or 0)
+    end
+  end
+  journal.clear()
+  if flags["--json"] then
+    print(json.encode({ rollback = true, restored = total }))
+  else
+    print("rollback: restored " .. total .. " file(s)")
+  end
+end
+
 local function usage_text()
   local text = [[
 omaset — Omarchy settings engine with a keyboard-first UI
@@ -517,6 +668,10 @@ Usage:
   omaset search <query> [--json]    find settings by id or label
   omaset help <id>                  show one setting's full spec
   omaset keys <id> [--json]         list keys of a keyed setting
+
+  omaset history [--json] [N]       recent changes omaset has made
+  omaset undo [--all] [--plain]     undo the last change (or all of them)
+  omaset rollback [--json]          restore pre-omaset config snapshots
 
 Every command accepts --help (or -h) for command-specific help:
   omaset set --help                 # general help for a command
@@ -539,6 +694,9 @@ local COMMAND_HELP = {
   help = "omaset help <id>\n  Show one setting's full spec (type, options, value, default).",
   keys = "omaset keys <id> [--json]\n  List the keys of a keyed setting (e.g. workspace numbers).",
   ui = "omaset ui [open|close|toggle]\n  Open the keyboard settings window (toggle by default). Requires the Omarchy shell plugin to be installed.",
+  history = "omaset history [--json] [N]\n  List recent changes omaset has made, oldest first (N limits to the most recent).",
+  undo = "omaset undo [--all] [--plain]\n  Undo the most recent change, or --all to revert every change in reverse order.",
+  rollback = "omaset rollback [--json]\n  Restore the pre-omaset .bak snapshots of the config files omaset has written.",
 }
 
 local function value_hint(setting)
@@ -714,6 +872,12 @@ function M.main(arg)
     cmd_keys(flags, pos)
   elseif cmd == "ui" then
     cmd_ui(pos)
+  elseif cmd == "history" then
+    cmd_history(flags, pos)
+  elseif cmd == "undo" then
+    cmd_undo(flags, pos)
+  elseif cmd == "rollback" then
+    cmd_rollback(flags)
   else
     io.stderr:write("omaset: unknown command: " .. tostring(cmd) .. "\n\n" .. usage_text() .. "\n")
     os.exit(1)

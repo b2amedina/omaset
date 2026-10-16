@@ -220,6 +220,25 @@ function M.reset(setting, key)
   return commit(user_file, content, new_content)
 end
 
+-- Restore every <file>.omaset.bak snapshot in the user hypr dir back over its
+-- target, then reload Hyprland. This is the panic-button restore: it puts each
+-- file back to the byte state it had before omaset first wrote to it.
+function M.restore()
+  local dir = user_hypr_dir()
+  local restored = 0
+  for _, bak in ipairs(util.list_files(dir, "*.omaset.bak")) do
+    local target = bak:gsub("%.omaset%.bak$", "")
+    local content = util.read_file(bak)
+    if content ~= nil and util.write_file(target, content) then
+      restored = restored + 1
+    end
+  end
+  if restored > 0 and apply_enabled() and util.cmd_exists("hyprctl") then
+    util.run_capture("hyprctl reload")
+  end
+  return restored
+end
+
 registry.register("hypr-lua", M)
 
 return M

@@ -10,6 +10,11 @@ local registry = require("omaset.backends")
 
 local M = {}
 
+-- Sentinel stored in the .bak when the user had no shell.json before omaset's
+-- first write (so rollback deletes the omaset-created file instead of writing
+-- an invalid empty JSON document).
+local NO_FILE = "omaset-no-original-file"
+
 -- Mirrors omarchy-shell-config's NORMALIZE jq program.
 local NORMALIZE = [[
   def object_or_empty: if type == "object" then . else {} end;
@@ -90,8 +95,12 @@ local function commit(program, extra_args)
     src_file = default_file()
   end
 
-  if util.file_exists(user_file) and util.read_file(user_file .. ".omaset.bak") == nil then
-    util.write_file(user_file .. ".omaset.bak", util.read_file(user_file))
+  if util.read_file(user_file .. ".omaset.bak") == nil then
+    if util.file_exists(user_file) then
+      util.write_file(user_file .. ".omaset.bak", util.read_file(user_file))
+    else
+      util.write_file(user_file .. ".omaset.bak", NO_FILE)
+    end
   end
 
   local tmp = user_file .. ".tmp"
@@ -126,6 +135,26 @@ end
 
 function M.reset(setting, key)
   return commit(NORMALIZE .. "\n  | del(." .. setting.path .. ")")
+end
+
+-- Restore the pre-omaset shell.json snapshot (if any) and reload the shell.
+-- If omaset created the file from scratch (no original), delete it so the
+-- Omarchy default applies again.
+function M.restore()
+  local user_file = M.user_file()
+  local content = util.read_file(user_file .. ".omaset.bak")
+  if content == nil then
+    return 0
+  end
+  if content == NO_FILE then
+    os.remove(user_file)
+  else
+    util.write_file(user_file, content)
+  end
+  if apply_enabled() then
+    reload_shell()
+  end
+  return 1
 end
 
 registry.register("shell-json", M)

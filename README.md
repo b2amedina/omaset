@@ -25,6 +25,9 @@ bin/omaset search <query> [--json]    # find settings by id or label
 bin/omaset help <id>                  # one setting's type/options/default/current
 bin/omaset keys <id>                  # list keys of a keyed setting (workspaces)
 bin/omaset ui [open|close|toggle]     # open the keyboard settings window (toggle)
+bin/omaset history [--json] [N]       # recent changes omaset has made
+bin/omaset undo [--all] [--plain]     # undo the last change (or all of them)
+bin/omaset rollback [--json]          # restore pre-omaset config snapshots
 bin/omaset --version
 ```
 
@@ -49,6 +52,24 @@ always reflects the same settings the CLI does. See
 
 The JSON output of `schema`/`get`/`set`/`reset`/`changed`/`search` is the
 machine-readable contract — see [docs/protocol.md](docs/protocol.md).
+
+## Safety, undo & rollback
+
+omaset never parses-and-rewrites your files. It only writes into a marked
+`-- omaset:begin/end` block (Lua config) or via Omarchy's own `jq` pipeline
+(`shell.json`), keeps a one-time `<file>.omaset.bak` snapshot before its first
+write, and re-validates each write (`hyprctl configerrors`) with an automatic
+revert on failure.
+
+- `omaset history` lists every change omaset has made, oldest first, from an
+  append-only journal at `~/.local/state/omaset/journal.jsonl`.
+- `omaset undo` undoes the most recent change; `undo --all` replays the journal
+  in reverse. Undo restores the recorded previous value, and falls back to
+  `reset` when the setting was previously untouched (so "back to default" keeps
+  following the Omarchy default rather than pinning a value).
+- `omaset rollback` is the panic button: it restores every `<file>.omaset.bak`
+  snapshot, returning each config file to the state it had before omaset first
+  wrote to it. It does not depend on the journal.
 
 ## Reset & changed semantics
 
@@ -90,7 +111,8 @@ lib/omaset/
   dsl.lua               panel()/setting() declarative DSL
   discovery.lua         loads share/settings/*.lua (and ~/.config/omaset/settings/)
   types.lua             int/float/bool/enum coercion + range checks
-  json.lua              minimal JSON encoder
+  json.lua              minimal JSON encoder + decoder (journal round-trip)
+  journal.lua           append-only change log for history/undo
   util.lua              deep merge/get/set, serializer, shell helpers
   backends/             pluggable backends (self-register via load_dir)
     hypr_lua.lua         reads/writes Hyprland Lua config (looknfeel.lua etc.)

@@ -87,4 +87,157 @@ function M.encode(value)
   return "null"
 end
 
+-- Minimal JSON decoder (used by the change journal). Returns the parsed value,
+-- or nil plus an error message. JSON null decodes to M.null so it round-trips
+-- through M.encode and stays distinguishable from an absent value.
+
+local function utf8_encode(cp)
+  if cp < 0x80 then
+    return string.char(cp)
+  elseif cp < 0x800 then
+    return string.char(0xC0 + math.floor(cp / 0x40), 0x80 + (cp % 0x40))
+  end
+  return string.char(0xE0 + math.floor(cp / 0x1000),
+    0x80 + (math.floor(cp / 0x40) % 0x40), 0x80 + (cp % 0x40))
+end
+
+local function skip_ws(s, i)
+  while s:sub(i, i):match("%s") do
+    i = i + 1
+  end
+  return i
+end
+
+local function parse_string(s, i)
+  i = i + 1
+  local t = {}
+  while true do
+    local c = s:sub(i, i)
+    if c == "" then
+      error("unterminated string")
+    elseif c == '"' then
+      return table.concat(t), i + 1
+    elseif c == "\\" then
+      local e = s:sub(i + 1, i + 1)
+      local map = { ['"'] = '"', ['\\'] = '\\', ['/'] = '/', b = '\b', f = '\f', n = '\n', r = '\r', t = '\t' }
+      if map[e] then
+        t[#t + 1] = map[e]
+        i = i + 2
+      elseif e == "u" then
+        local cp = tonumber(s:sub(i + 2, i + 5), 16)
+        if not cp then
+          error("bad unicode escape")
+        end
+        t[#t + 1] = utf8_encode(cp)
+        i = i + 6
+      else
+        error("bad escape")
+      end
+    else
+      t[#t + 1] = c
+      i = i + 1
+    end
+  end
+end
+
+local function parse_number(s, i)
+  local num = s:sub(i):match("^-?%d+%.?%d*[eE]?[%+%-]?%d*")
+  if not num then
+    error("bad number")
+  end
+  return tonumber(num), i + #num
+end
+
+local parse_value
+
+local function parse_object(s, i)
+  i = i + 1
+  local obj = {}
+  i = skip_ws(s, i)
+  if s:sub(i, i) == "}" then
+    return obj, i + 1
+  end
+  while true do
+    i = skip_ws(s, i)
+    if s:sub(i, i) ~= '"' then
+      error("expected string key")
+    end
+    local k
+    k, i = parse_string(s, i)
+    i = skip_ws(s, i)
+    if s:sub(i, i) ~= ":" then
+      error("expected ':'")
+    end
+    local v
+    v, i = parse_value(s, i + 1)
+    obj[k] = v
+    i = skip_ws(s, i)
+    local c = s:sub(i, i)
+    if c == "," then
+      i = i + 1
+    elseif c == "}" then
+      return obj, i + 1
+    else
+      error("expected ',' or '}'")
+    end
+  end
+end
+
+local function parse_array(s, i)
+  i = i + 1
+  local arr = {}
+  i = skip_ws(s, i)
+  if s:sub(i, i) == "]" then
+    return arr, i + 1
+  end
+  while true do
+    local v
+    v, i = parse_value(s, i)
+    arr[#arr + 1] = v
+    i = skip_ws(s, i)
+    local c = s:sub(i, i)
+    if c == "," then
+      i = i + 1
+    elseif c == "]" then
+      return arr, i + 1
+    else
+      error("expected ',' or ']'")
+    end
+  end
+end
+
+parse_value = function(s, i)
+  i = skip_ws(s, i)
+  local c = s:sub(i, i)
+  if c == '"' then
+    return parse_string(s, i)
+  elseif c == '{' then
+    return parse_object(s, i)
+  elseif c == '[' then
+    return parse_array(s, i)
+  elseif s:sub(i, i + 3) == "true" then
+    return true, i + 4
+  elseif s:sub(i, i + 4) == "false" then
+    return false, i + 5
+  elseif s:sub(i, i + 3) == "null" then
+    return M.null, i + 4
+  end
+  return parse_number(s, i)
+end
+
+function M.decode(str)
+  local ok, res = pcall(function()
+    local v, i = parse_value(str, 1)
+    i = skip_ws(str, i)
+    if i <= #str then
+      error("trailing data")
+    end
+    return v
+  end)
+  if not ok then
+    return nil, res
+  end
+  return res
+end
+
 return M

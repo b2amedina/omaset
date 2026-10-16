@@ -15,6 +15,7 @@ export OMASET_HYPR_DIR="$TESTDIR/hypr"
 export OMASET_SHELL_CONFIG="$TESTDIR/shell.json"
 export OMASET_SETTINGS_DIR="$TESTDIR/settings"
 export OMASET_BACKENDS_DIR="$TESTDIR/backends"
+export OMASET_JOURNAL="$TESTDIR/journal.jsonl"
 mkdir -p "$OMASET_HYPR_DIR" "$OMASET_SETTINGS_DIR" "$OMASET_BACKENDS_DIR"
 
 # Run omaset, stdout to the caller.

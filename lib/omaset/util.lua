@@ -22,12 +22,20 @@ function M.read_file(path)
 end
 
 function M.write_file(path, content)
-  local f = io.open(path, "wb")
+  -- Atomic: write to a temp file in the same directory, then rename over the
+  -- target so a crash mid-write can't leave a torn file.
+  local tmp = path .. ".omaset.tmp"
+  local f = io.open(tmp, "wb")
   if not f then
     return nil, "cannot open " .. path .. " for writing"
   end
   f:write(content)
   f:close()
+  local ok, err = os.rename(tmp, path)
+  if not ok then
+    os.remove(tmp)
+    return nil, "cannot write " .. path .. ": " .. tostring(err)
+  end
   return true
 end
 
@@ -54,9 +62,11 @@ function M.run_capture(cmd)
   return out, exit_code
 end
 
--- List *.lua files in a directory, sorted by path. Returns {} on error.
-function M.list_lua_files(dir)
-  local cmd = "find " .. M.shell_quote(dir) .. " -maxdepth 1 -name '*.lua' -type f 2>/dev/null | sort"
+-- List files in a directory matching a find-style -name pattern (e.g. "*.lua"),
+-- sorted by path. Returns {} on error.
+function M.list_files(dir, pattern)
+  local cmd = "find " .. M.shell_quote(dir) .. " -maxdepth 1 -name "
+    .. M.shell_quote(pattern) .. " -type f 2>/dev/null | sort"
   local p = io.popen(cmd)
   if not p then
     return {}
@@ -67,6 +77,11 @@ function M.list_lua_files(dir)
   end
   p:close()
   return files
+end
+
+-- List *.lua files in a directory, sorted by path. Returns {} on error.
+function M.list_lua_files(dir)
+  return M.list_files(dir, "*.lua")
 end
 
 local cmd_exists_cache = {}
