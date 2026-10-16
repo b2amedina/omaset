@@ -115,7 +115,7 @@ bin/omaset              CLI entry (sets up package.path); `omaset ui` opens the 
 bin/omaset-ui-reload    reload the plugin + reopen (development)
 lib/omaset/
   init.lua              registry + schema + command dispatch
-  dsl.lua               panel()/setting() declarative DSL
+  dsl.lua               panel()/section()/setting() declarative DSL
   discovery.lua         loads share/settings/*.lua (and ~/.config/omaset/settings/)
   types.lua             int/float/bool/enum coercion + range checks
   json.lua              minimal JSON encoder + decoder (journal round-trip)
@@ -128,8 +128,8 @@ lib/omaset/
     omarchy.lua          delegates to an existing omarchy command
     workspace_layout.lua per-workspace layout (keyed by workspace number)
     hyprsunset.lua       night light schedule (hyprsunset.conf)
-share/settings/         built-in panels (appearance, layout, animations, input,
-                        behavior, bar, power, display, windows)
+share/settings/         built-in panels (appearance, layout, input, behavior,
+                        bar, power, display, windows)
 ui/                     the keyboard-first settings window (Quickshell plugin)
 ```
 
@@ -195,8 +195,23 @@ panel("appearance", "Appearance", function()
 end)
 ```
 
-Drop it in `~/.config/omaset/settings/` to add a setting, or redefine a
-built-in id to override it.
+Related settings can be grouped under a presentational header with `section`
+(it only affects ordering/labels in the UI — storage and defaults are
+unchanged):
+
+```lua
+section("Groupbar", function()
+  setting({ id = "groupbar_height", type = "int", label = "Groupbar height",
+    backend = "hypr-lua", file = "looknfeel", path = "group.groupbar.height",
+    min = 0, max = 100 })
+  -- ...
+end)
+```
+
+Within a panel, settings are sorted alphabetically by id, with each section's
+settings kept contiguous (sections ordered by their first member). Drop a file
+in `~/.config/omaset/settings/` to add a setting, or redefine a built-in id to
+override it.
 
 ## Next steps
 
