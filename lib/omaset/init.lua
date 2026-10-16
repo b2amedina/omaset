@@ -416,7 +416,7 @@ local function cmd_changed(flags)
   M.load()
   local changed = collect_changed()
   if flags["--json"] then
-    print(json.encode({ changed = changed }))
+    print(json.encode({ changed = json.array(changed) }))
     return
   end
   for _, r in ipairs(changed) do
@@ -444,7 +444,7 @@ local function cmd_search(flags, pos)
     end
   end
   if flags["--json"] then
-    print(json.encode({ results = out }))
+    print(json.encode({ results = json.array(out) }))
     return
   end
   for _, r in ipairs(out) do
@@ -474,7 +474,7 @@ local function cmd_keys(flags, pos)
     die("setting has no keys: " .. s.id)
   end
   if flags["--json"] then
-    print(json.encode({ id = s.id, keys = keys }))
+    print(json.encode({ id = s.id, keys = json.array(keys) }))
     return
   end
   for _, k in ipairs(keys) do

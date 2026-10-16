@@ -5,6 +5,17 @@ local M = {}
 -- Sentinel that encodes as JSON null (Lua tables cannot hold a nil-valued key).
 M.null = {}
 
+-- Marker so a table that is *meant* to be a JSON array encodes as [] even when
+-- empty. Lua cannot tell an empty array from an empty map, so `is_array` below
+-- only auto-detects non-empty arrays; callers pass their array-typed tables
+-- through M.array() to cover the empty case.
+local array_mt = {}
+array_mt.__is_array = true
+
+function M.array(t)
+  return setmetatable(t or {}, array_mt)
+end
+
 local function escape(s)
   return s:gsub('[%c\\"]', function(c)
     if c == "\n" then return "\\n" end
@@ -19,6 +30,8 @@ local function escape(s)
 end
 
 local function is_array(t)
+  local mt = getmetatable(t)
+  if mt and mt.__is_array then return true end
   local n = 0
   for k in pairs(t) do
     if type(k) ~= "number" or k < 1 or k % 1 ~= 0 then
