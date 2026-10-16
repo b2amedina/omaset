@@ -366,9 +366,9 @@ omaset — keyboard-first Omarchy settings
 Usage:
   omaset list [--json]              list panels and settings with values
   omaset schema                     full schema as JSON
-  omaset get <id> [--plain]         read a setting
-  omaset set <id> <val> [--plain]   write a setting
-  omaset reset <id> [--plain]       restore a setting to default
+  omaset get <id> [<key>] [--plain]   read a setting
+  omaset set <id> [<key>] <val> [--plain]  write a setting
+  omaset reset <id> [<key>] [--plain]  restore a setting to default
   omaset changed [--json]           settings that differ from defaults
   omaset search <query> [--json]    find settings by id or label
   omaset help <id>                  show one setting's full spec
@@ -382,9 +382,9 @@ end
 local COMMAND_HELP = {
   list = "omaset list [--json]\n  List panels and settings with current values.",
   schema = "omaset schema\n  Print the full schema (panels, settings, current values) as JSON.",
-  get = "omaset get <id> [--plain]\n  Read one setting. --plain prints the bare value.",
-  set = "omaset set <id> <val> [--plain]\n  Write a value, applying and validating via the backend.",
-  reset = "omaset reset <id> [--plain]\n  Restore a setting to its Omarchy default.",
+  get = "omaset get <id> [<key>] [--plain]\n  Read one setting. Keyed settings take a key. --plain prints the bare value.",
+  set = "omaset set <id> [<key>] <val> [--plain]\n  Write a value, applying and validating via the backend.",
+  reset = "omaset reset <id> [<key>] [--plain]\n  Restore a setting to its Omarchy default.",
   changed = "omaset changed [--json]\n  List settings whose value differs from the default.",
   search = "omaset search <query> [--json]\n  Find settings by id or label substring.",
   help = "omaset help <id>\n  Show one setting's full spec (type, options, value, default).",
@@ -406,9 +406,21 @@ local function value_hint(setting)
   return "<value>"
 end
 
+local function key_arg(setting)
+  if setting.keyed then
+    return " <" .. (setting.key_label or "key") .. ">"
+  end
+  return ""
+end
+
 local function setting_help(setting)
   local lines = {}
   lines[#lines + 1] = setting.id .. " — " .. setting.label
+
+  local ka = key_arg(setting)
+  lines[#lines + 1] = "  get:     omaset get " .. setting.id .. ka
+  lines[#lines + 1] = "  set:     omaset set " .. setting.id .. ka .. " " .. value_hint(setting)
+  lines[#lines + 1] = "  reset:   omaset reset " .. setting.id .. ka
 
   if setting.keyed then
     lines[#lines + 1] = "  key:     " .. (setting.key_label or "key") .. " (" .. (setting.key_type or "string") .. ")"
@@ -437,15 +449,11 @@ end
 local function command_help(cmd, setting)
   if setting then
     if cmd == "get" then
-      return setting_help(setting)
+      return "omaset get " .. setting.id .. key_arg(setting) .. "\n  " .. setting.label
     elseif cmd == "set" then
-      local hint = value_hint(setting)
-      if setting.keyed then
-        hint = "<" .. (setting.key_label or "key") .. "> " .. hint
-      end
-      return "omaset set " .. setting.id .. " " .. hint .. "\n  " .. setting.label
+      return "omaset set " .. setting.id .. key_arg(setting) .. " " .. value_hint(setting) .. "\n  " .. setting.label
     elseif cmd == "reset" then
-      return "omaset reset " .. setting.id .. "\n  " .. setting.label
+      return "omaset reset " .. setting.id .. key_arg(setting) .. "\n  " .. setting.label
     end
   end
   return COMMAND_HELP[cmd] or ("No help for '" .. tostring(cmd) .. "'.\n\n" .. usage_text())

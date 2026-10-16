@@ -57,4 +57,16 @@ OUT="$(run help workspace_layout)"
 assert_contains "$OUT" "workspace (int)" "help shows key type"
 assert_contains "$OUT" "dwindle, master, scrolling" "help shows options"
 
+# help and get/set/reset --help all indicate the required key.
+OUT="$(run help workspace_layout)"
+assert_contains "$OUT" "get workspace_layout <workspace>" "help shows get usage with key"
+assert_contains "$OUT" "set workspace_layout <workspace> <dwindle|master|scrolling>" "help shows set usage with key"
+
+OUT="$(run get workspace_layout --help)"
+assert_contains "$OUT" "<workspace>" "get --help shows key"
+OUT="$(run set workspace_layout --help)"
+assert_contains "$OUT" "<workspace>" "set --help shows key"
+OUT="$(run reset workspace_layout --help)"
+assert_contains "$OUT" "<workspace>" "reset --help shows key"
+
 echo "ok"
