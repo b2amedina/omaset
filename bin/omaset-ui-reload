@@ -1,0 +1,15 @@
+#!/bin/sh
+# Development helper: reload the omaset UI plugin and reopen it.
+#
+# The plugin is symlinked into ~/.config/omarchy/plugins/, and the shell's
+# file watcher does not follow symlinks, so edits under ui/ are not picked up
+# by `omarchy-shell shell rescanPlugins`. A full shell restart recompiles the
+# plugin QML; this wraps that in one command.
+#
+#   omaset-ui-reload
+#
+# Equivalent to:  omarchy restart shell
+#                 omarchy-shell shell summon b2amedina.omaset '{}'
+
+omarchy restart shell
+exec omarchy-shell shell summon b2amedina.omaset '{}'

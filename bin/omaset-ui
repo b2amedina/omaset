@@ -1,0 +1,13 @@
+#!/bin/sh
+# Open / close the omaset settings window (the Omarchy shell plugin).
+#
+#   omaset-ui              toggle (open if closed, close if open)
+#   omaset-ui open         open (idempotent)
+#   omaset-ui close        close (idempotent)
+
+case "${1:-toggle}" in
+  open)   exec omarchy-shell shell summon b2amedina.omaset '{}' ;;
+  close)  exec omarchy-shell shell hide b2amedina.omaset ;;
+  toggle) exec omarchy-shell shell toggle b2amedina.omaset '{}' ;;
+  *) echo "usage: omaset-ui [open|close|toggle]" >&2; exit 2 ;;
+esac

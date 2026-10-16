@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "b2amedina.omaset",
+  "name": "omaset Settings",
+  "version": "0.1.0",
+  "author": "b2amedina",
+  "license": "MIT",
+  "description": "Keyboard-first settings window for omaset. Browse and edit every omaset-managed setting from a floating window — launch it from the CLI (omarchy-shell shell toggle b2amedina.omaset) or an optional bar icon.",
+  "kinds": ["panel", "bar-widget"],
+  "entryPoints": {
+    "panel": "Panel.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "omaset Settings",
+    "description": "Open the omaset settings window",
+    "category": "System",
+    "allowMultiple": false
+  }
+}
