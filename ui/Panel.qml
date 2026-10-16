@@ -336,14 +336,10 @@ Item {
 
   function moveH(dx) {
     if (searchMode) return
-    if (focusPane === "sidebar") {
-      if (dx > 0) { focusPane = "content"; clampRow() }
-      return
-    }
+    if (focusPane === "sidebar") return
     var row = currentRow()
     if (row && row.kind === "slider") { stepSlider(row, dx); return }
-    if (row && row.kind === "enum") { cycleEnum(row, dx); return }
-    if (dx < 0) { focusPane = "sidebar"; clampSidebar() }
+    if (row && row.kind === "enum") { cycleEnum(row, dx) }
   }
 
   function switchPane(dir) {
@@ -490,7 +486,7 @@ Item {
   // ---- footer ----------------------------------------------------------
   readonly property string footerHints: searchMode
     ? "\u2191\u2193 move · \u23ce open · esc clear"
-    : "j k move · h l pane · \u2423/\u23ce select · x reset · / search · esc close"
+    : "j k move · h l adjust · \u2423/\u23ce select · tab pane · x reset · / search · esc close"
   readonly property string footerContext: searchMode
     ? (searchResults.length > 0 ? searchResults.length + " settings found" : "")
     : (changedCount > 0 ? changedCount + " changed" : "")

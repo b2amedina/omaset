@@ -61,8 +61,8 @@ o.window({ class = "^org.quickshell$", title = "^omaset Settings$" },
 | Key | Action |
 |-----|--------|
 | `j` / `k` | move between settings (or sidebar panels) |
-| `h` / `l` | switch sidebar/content pane; on a slider or segmented control, adjust it |
-| `Tab` | switch pane |
+| `h` / `l` (or `←` / `→`) | adjust the focused slider or cycle a segmented control |
+| `Tab` / `Shift+Tab` | switch sidebar/content pane |
 | `Space` / `Enter` | activate the current row (toggle / select / nudge) |
 | `x` | reset the current setting to its default |
 | `/` | search (`↑`/`↓` move, `Enter` opens, `Esc` clears) |
