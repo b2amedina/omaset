@@ -5,10 +5,17 @@ source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 OUT="$(run --version)"
 assert_eq "$OUT" "omaset 0.1.0" "version string"
 
-# global --help lists commands
+# global --help lists commands and advertises --help availability
 OUT="$(run --help)"
 assert_contains "$OUT" "omaset list" "global help lists list"
 assert_contains "$OUT" "omaset changed" "global help lists changed"
+assert_contains "$OUT" "Every command accepts --help" "global help advertises --help"
+
+# --help works for every command, not just get/set/reset
+for c in list schema changed search keys help; do
+  OUT="$(run "$c" --help)"
+  assert_contains "$OUT" "omaset $c" "$c --help works"
+done
 
 # per-command --help
 OUT="$(run set --help)"

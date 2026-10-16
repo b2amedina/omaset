@@ -373,10 +373,15 @@ Usage:
   omaset search <query> [--json]    find settings by id or label
   omaset help <id>                  show one setting's full spec
   omaset keys <id> [--json]         list keys of a keyed setting
-  omaset --version                  print the version
+
+Every command accepts --help (or -h) for command-specific help:
+  omaset set --help                 # general help for a command
+  omaset set <id> --help            # help for a specific setting
+  omaset --version                  # print the version
 ]]
   text = text:gsub("^%s+", "")
-  return text:gsub("%s+$", "")
+  text = text:gsub("%s+$", "")
+  return text
 end
 
 local COMMAND_HELP = {
