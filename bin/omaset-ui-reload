@@ -7,9 +7,6 @@
 # plugin QML; this wraps that in one command.
 #
 #   omaset-ui-reload
-#
-# Equivalent to:  omarchy restart shell
-#                 omarchy-shell shell summon b2amedina.omaset '{}'
 
 omarchy restart shell
-exec omarchy-shell shell summon b2amedina.omaset '{}'
+exec omaset ui open

@@ -83,8 +83,7 @@ to run while refactoring internals.
 ## How it works
 
 ```
-bin/omaset              CLI entry (sets up package.path)
-bin/omaset-ui           launch the settings window (toggle/open/close)
+bin/omaset              CLI entry (sets up package.path); `omaset ui` opens the window
 bin/omaset-ui-reload    reload the plugin + reopen (development)
 lib/omaset/
   init.lua              registry + schema + command dispatch

@@ -13,13 +13,13 @@ float/tile toggle) docks it back into the tiling layout. The Omarchy shell
 must be running (it always is in a session).
 
 ```sh
-omaset-ui              # toggle open / close
-omaset-ui open         # open
-omaset-ui close        # close
+omaset ui              # toggle open / close
+omaset ui open         # open
+omaset ui close        # close
 omaset-ui-reload       # restart the shell + reopen (development)
 ```
 
-`omaset-ui`/`omaset-ui-reload` are thin wrappers over the shell IPC; the
+`omaset ui`/`omaset-ui-reload` are thin wrappers over the shell IPC; the
 underlying commands are:
 
 ```sh
@@ -35,12 +35,12 @@ layout.
 ## Install
 
 The plugin directory is symlinked into the Omarchy plugins dir, and the
-`omaset` binary plus the launcher helpers are linked onto `PATH`:
+`omaset` binary (which exposes `omaset ui`) plus the dev-reload helper are
+linked onto `PATH`:
 
 ```sh
 ln -s "$PWD/ui" ~/.config/omarchy/plugins/b2amedina.omaset
 ln -s "$PWD/bin/omaset" ~/.local/bin/omaset
-ln -s "$PWD/bin/omaset-ui" ~/.local/bin/omaset-ui
 ln -s "$PWD/bin/omaset-ui-reload" ~/.local/bin/omaset-ui-reload
 ```
 
