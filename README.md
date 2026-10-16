@@ -120,7 +120,9 @@ lib/omaset/
     shell_json.lua       reads/writes ~/.config/omarchy/shell.json via jq
     omarchy.lua          delegates to an existing omarchy command
     workspace_layout.lua per-workspace layout (keyed by workspace number)
-share/settings/         built-in panels (appearance, layout, animations, power, display, windows)
+    hyprsunset.lua       night light schedule (hyprsunset.conf)
+share/settings/         built-in panels (appearance, layout, animations, input,
+                        behavior, bar, power, display, windows)
 ui/                     the keyboard-first settings window (Quickshell plugin)
 ```
 
@@ -157,6 +159,17 @@ ui/                     the keyboard-first settings window (Quickshell plugin)
   user file; **write** is atomic (temp + `mv`) and hot-reloads the running
   shell. Requires `jq` (present on Omarchy).
 
+### The `hyprsunset` backend
+
+- Manages a single omaset-owned night profile (`time` + `temperature`) in a
+  `# -- omaset:begin` / `# -- omaset:end` block inside
+  `~/.config/hypr/hyprsunset.conf`, so the user's own profiles and comments are
+  never touched.
+- Exposes two settings: `schedule` (whether the night profile is active) and
+  `temperature` (its color temperature in Kelvin, default 4000). Writing the
+  temperature creates the profile if it does not exist; resetting the schedule
+  removes the block entirely.
+
 ### Extending with Lua
 
 A setting file is just this:
@@ -180,6 +193,5 @@ built-in id to override it.
 
 ## Next steps
 
-- `hyprsunset` backend (night light schedule profiles).
 - A backup picker / restore view.
 - Live previews (compositor/tiling/fullscreen) in the settings window.

@@ -13,6 +13,7 @@ export OMARCHY_PATH="$FIXTURES"
 export OMASET_NO_APPLY=1
 export OMASET_HYPR_DIR="$TESTDIR/hypr"
 export OMASET_SHELL_CONFIG="$TESTDIR/shell.json"
+export OMASET_HYPRSUNSET_CONFIG="$TESTDIR/hyprsunset.conf"
 export OMASET_SETTINGS_DIR="$TESTDIR/settings"
 export OMASET_BACKENDS_DIR="$TESTDIR/backends"
 export OMASET_JOURNAL="$TESTDIR/journal.jsonl"

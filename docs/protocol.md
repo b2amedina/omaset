@@ -142,3 +142,6 @@ Built-in backends:
   Reads `hyprctl workspaces`, persists rules to
   `~/.local/state/omarchy/workspace-layouts/` (like `omarchy hyprland workspace
   layout toggle`), and applies via `hl.workspace_rule`. Default is `"dwindle"`.
+- `hyprsunset` — night light schedule in `~/.config/hypr/hyprsunset.conf`; field
+  `path` (`"schedule"` or `"temperature"`). Manages one omaset-owned night
+  profile in a `# -- omaset:begin` block.
