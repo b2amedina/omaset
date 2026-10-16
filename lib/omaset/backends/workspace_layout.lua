@@ -75,6 +75,13 @@ function M.reset(setting, key)
   return true
 end
 
+-- Sort workspace-number keys numerically (as strings, so "2" precedes "10").
+local function sort_keys(keys)
+  table.sort(keys, function(a, b)
+    return (tonumber(a) or 0) < (tonumber(b) or 0)
+  end)
+end
+
 function M.keys(setting)
   if not apply_enabled() then
     return {}
@@ -87,6 +94,7 @@ function M.keys(setting)
       keys[#keys + 1] = trimmed
     end
   end
+  sort_keys(keys)
   return keys
 end
 
@@ -103,7 +111,7 @@ function M.keys_all(setting)
       keys[#keys + 1] = base
     end
   end
-  table.sort(keys)
+  sort_keys(keys)
   return keys
 end
 

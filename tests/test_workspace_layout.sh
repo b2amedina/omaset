@@ -12,7 +12,7 @@ trap 'rm -rf "$TESTDIR" "$FAKE" "$ST"' EXIT
 cat > "$FAKE/hyprctl" <<'EOF'
 #!/bin/bash
 if [[ "$1" == "workspaces" && "$2" == "-j" ]]; then
-  echo '[{"id":1,"tiledLayout":"dwindle"},{"id":2,"tiledLayout":"scrolling"},{"id":3,"tiledLayout":"master"}]'
+  echo '[{"id":3,"tiledLayout":"master"},{"id":10,"tiledLayout":"master"},{"id":2,"tiledLayout":"scrolling"},{"id":1,"tiledLayout":"dwindle"}]'
 fi
 exit 0
 EOF
@@ -21,9 +21,9 @@ chmod +x "$FAKE/hyprctl"
 export PATH="$FAKE:$PATH"
 export OMASET_WORKSPACE_LAYOUTS_DIR="$ST"
 
-# keys lists the open workspace ids.
+# keys lists the open workspace ids, numerically sorted (so 10 follows 2, not 1).
 OUT="$(run keys workspace_layout)"
-assert_eq "$OUT" $'1\n2\n3' "keys lists workspace ids"
+assert_eq "$OUT" $'1\n2\n3\n10' "keys lists workspace ids numerically sorted"
 
 # get reads a specific workspace's layout.
 capture_out get workspace_layout 2

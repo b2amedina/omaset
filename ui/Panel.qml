@@ -223,8 +223,7 @@ Item {
       "layout": "\uf009",
       "windows": "\uf0c8",
       "power": "\uf011",
-      "display": "\uf108",
-      "animations": "\uf085"
+      "display": "\uf108"
     }
     return map[id] || "\uf013"
   }
@@ -707,9 +706,11 @@ Item {
                         spacing: Style.space(6)
 
                         PanelSectionHeader {
-                          visible: modelData.kind === "group" || modelData.kind === "keyed"
+                          visible: modelData.kind === "group" || modelData.kind === "keyed" || modelData.kind === "section"
                           width: parent.width
-                          text: (modelData.kind === "group" ? "\uf2d0 " : "\uf24d ") + (modelData.label || "")
+                          text: (modelData.kind === "group" ? "\uf2d0 "
+                               : modelData.kind === "keyed" ? "\uf24d " : "")
+                              + (modelData.label || "")
                           foreground: root.foreground
                           fontFamily: root.fontFamily
                           topPadding: Style.spacing.md + Math.ceil(Style.font.caption * 0.15)

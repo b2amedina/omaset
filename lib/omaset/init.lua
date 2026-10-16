@@ -30,6 +30,34 @@ local function sub_keys(setting)
   return keys
 end
 
+-- Sort a panel's settings: keep settings of the same section contiguous, sort
+-- each section's settings by id, and order the sections (the nil-section
+-- included) by their alphabetically-first member id. Deterministic, so list /
+-- schema / search / changed / the UI all agree.
+local function sort_panel_settings(settings)
+  local groups = {}
+  local order = {}
+  for _, s in ipairs(settings) do
+    local sec = s.section or ""
+    if not groups[sec] then
+      groups[sec] = {}
+      order[#order + 1] = sec
+    end
+    groups[sec][#groups[sec] + 1] = s
+  end
+  for _, list in pairs(groups) do
+    table.sort(list, function(a, b) return a.id < b.id end)
+  end
+  table.sort(order, function(a, b) return groups[a][1].id < groups[b][1].id end)
+  local out = {}
+  for _, sec in ipairs(order) do
+    for _, s in ipairs(groups[sec]) do
+      out[#out + 1] = s
+    end
+  end
+  return out
+end
+
 local root = nil
 local user_settings_dir = nil
 local user_backends_dir = nil
@@ -63,6 +91,9 @@ function M.load()
   local errors = discovery.load_dirs(M.settings_dirs())
   for _, err in ipairs(errors) do
     io.stderr:write("omaset: " .. err .. "\n")
+  end
+  for _, p in ipairs(dsl.panels) do
+    p.settings = sort_panel_settings(p.settings)
   end
   return dsl.panels
 end
@@ -215,7 +246,14 @@ local function cmd_list(flags)
   end
   for _, p in ipairs(dsl.panels) do
     print("# " .. p.title)
+    local last_section = nil
     for _, s in ipairs(p.settings) do
+      if s.section ~= last_section then
+        last_section = s.section
+        if s.section then
+          print("  # " .. s.section)
+        end
+      end
       print(setting_row(s, 1))
     end
   end

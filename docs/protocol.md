@@ -41,6 +41,12 @@ returns the aggregate object; `get <id> <sub>` / `set <id> <sub> <value>` /
 Backend-specific fields (e.g. `path`, `file`, `command`) are passed through
 as-is and are informational to consumers.
 
+A setting may carry an optional `section` string. It is purely presentational:
+settings sharing a section render under one header, and it does not affect how
+a value is stored or how its default is computed. Within a panel, settings are
+listed alphabetically by `id`, with each section's settings kept contiguous
+(sections ordered by their alphabetically-first member).
+
 ### `get <id>`
 
 ```

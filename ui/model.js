@@ -6,6 +6,7 @@
 //
 // Row kinds:
 //   title    panel title header (non-interactive)
+//   section  presentational section header (non-interactive)
 //   group    group setting header (non-interactive)
 //   keyed    keyed setting header (non-interactive)
 //   bool     boolean toggle
@@ -59,9 +60,17 @@ function rowsFor(panel, effective, keyedMap) {
   if (!panel) return rows
   rows.push({ kind: "title", id: panel.id, title: panel.title })
   var settings = panel.settings || []
+  var currentSection = ""
   for (var i = 0; i < settings.length; i++) {
     var s = settings[i]
     if (!s) continue
+
+    var sec = (s.section !== undefined && s.section !== null) ? s.section : ""
+    if (sec !== currentSection) {
+      currentSection = sec
+      if (sec !== "")
+        rows.push({ kind: "section", label: sec })
+    }
 
     if (s.type === "group") {
       rows.push({ kind: "group", id: s.id, label: s.label })
