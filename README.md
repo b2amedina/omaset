@@ -38,6 +38,13 @@ for enums, `min..max` for numbers) or `omaset set <id> --help`, which shows the
 No installation needed — it runs in place with `luajit` (and `jq` for the
 `shell-json` backend).
 
+## Settings window
+
+`omaset ui` opens a keyboard-first settings window (an Omarchy Quickshell
+plugin). It renders `omaset schema` and drives `get`/`set`/`reset`, so it
+always reflects the same settings the CLI does. See
+[ui/README.md](ui/README.md) for install and keybindings.
+
 ## Protocol
 
 The JSON output of `schema`/`get`/`set`/`reset`/`changed`/`search` is the
@@ -77,6 +84,8 @@ to run while refactoring internals.
 
 ```
 bin/omaset              CLI entry (sets up package.path)
+bin/omaset-ui           launch the settings window (toggle/open/close)
+bin/omaset-ui-reload    reload the plugin + reopen (development)
 lib/omaset/
   init.lua              registry + schema + command dispatch
   dsl.lua               panel()/setting() declarative DSL
@@ -91,6 +100,7 @@ lib/omaset/
     omarchy.lua          delegates to an existing omarchy command
     workspace_layout.lua per-workspace layout (keyed by workspace number)
 share/settings/         built-in panels (appearance, layout, animations, power, display, windows)
+ui/                     the keyboard-first settings window (Quickshell plugin)
 ```
 
 ### The `hypr-lua` backend
