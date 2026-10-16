@@ -52,7 +52,7 @@ local function read_path(file, path, setting)
   return value
 end
 
-function M.read(setting)
+function M.read(setting, key)
   local user_val = read_path(M.user_file(), setting.path, setting)
   if user_val ~= nil then
     return user_val
@@ -60,7 +60,7 @@ function M.read(setting)
   return read_path(default_file(), setting.path, setting)
 end
 
-function M.read_default(setting)
+function M.read_default(setting, key)
   return read_path(default_file(), setting.path, setting)
 end
 
@@ -113,7 +113,7 @@ local function commit(program, extra_args)
   return true
 end
 
-function M.write(setting, value)
+function M.write(setting, key, value)
   local t = setting.type or "string"
   local valarg
   if t == "int" or t == "float" or t == "bool" then
@@ -124,7 +124,7 @@ function M.write(setting, value)
   return commit(NORMALIZE .. "\n  | ." .. setting.path .. " = $v", valarg)
 end
 
-function M.reset(setting)
+function M.reset(setting, key)
   return commit(NORMALIZE .. "\n  | del(." .. setting.path .. ")")
 end
 

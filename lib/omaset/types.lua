@@ -49,6 +49,25 @@ function M.coerce(str, setting)
   return nil, "unknown type '" .. tostring(t) .. "'"
 end
 
+-- Validate a keyed setting's key argument.
+function M.validate_key(setting, key)
+  local label = setting.key_label or "key"
+  if key == nil or key == "" then
+    return false, "requires a " .. label
+  end
+  local kt = setting.key_type or "string"
+  if kt == "int" then
+    if not tostring(key):match("^%d+$") then
+      return false, "expected an integer " .. label .. ", got '" .. tostring(key) .. "'"
+    end
+  elseif kt == "string" then
+    if tostring(key):find("[%s'\"`$;&|<>(){}%[%]]") then
+      return false, label .. " contains invalid characters"
+    end
+  end
+  return true
+end
+
 -- Validate a coerced value against min/max.
 function M.check_range(value, setting)
   if type(value) ~= "number" then

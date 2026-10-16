@@ -26,7 +26,7 @@ local function run_cmd(cmd)
   return out, code
 end
 
-function M.read(setting)
+function M.read(setting, key)
   if not apply_enabled() or not setting.status then
     return nil
   end
@@ -38,7 +38,7 @@ function M.read(setting)
   return types.coerce(text, setting)
 end
 
-function M.read_default(setting)
+function M.read_default(setting, key)
   return nil
 end
 
@@ -46,7 +46,7 @@ local function substitute(command, value)
   return (command:gsub("{value}", tostring(value)))
 end
 
-function M.write(setting, value)
+function M.write(setting, key, value)
   if not apply_enabled() then
     return true
   end
@@ -74,7 +74,7 @@ function M.write(setting, value)
   return true
 end
 
-function M.reset(setting)
+function M.reset(setting, key)
   if not apply_enabled() then
     return true
   end

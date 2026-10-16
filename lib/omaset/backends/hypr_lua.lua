@@ -68,7 +68,7 @@ function M.user_file(setting)
   return user_hypr_dir() .. "/" .. setting.file .. ".lua"
 end
 
-function M.read(setting)
+function M.read(setting, key)
   local files = {
     default_hypr_dir() .. "/" .. setting.file .. ".lua",
     M.user_file(setting),
@@ -77,7 +77,7 @@ function M.read(setting)
   return util.deep_get(cfg, setting.path)
 end
 
-function M.read_default(setting)
+function M.read_default(setting, key)
   local cfg = eval_config({ default_hypr_dir() .. "/" .. setting.file .. ".lua" })
   return util.deep_get(cfg, setting.path)
 end
@@ -193,7 +193,7 @@ local function commit(user_file, prev_content, new_content)
   return true
 end
 
-function M.write(setting, value)
+function M.write(setting, key, value)
   local user_file = M.user_file(setting)
   local content = util.read_file(user_file) or ""
 
@@ -203,7 +203,7 @@ function M.write(setting, value)
   return commit(user_file, content, replace_or_append(content, build_block(managed)))
 end
 
-function M.reset(setting)
+function M.reset(setting, key)
   local user_file = M.user_file(setting)
   local content = util.read_file(user_file) or ""
 

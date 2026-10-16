@@ -71,36 +71,44 @@ function M.backend_for(setting)
   return backend
 end
 
-function M.read_value(setting)
+function M.read_value(setting, key)
   local backend, err = M.backend_for(setting)
   if not backend then
     return nil, err
   end
-  return backend.read(setting)
+  return backend.read(setting, key)
 end
 
-function M.write_value(setting, value)
+function M.write_value(setting, key, value)
   local backend, err = M.backend_for(setting)
   if not backend then
     return nil, err
   end
-  return backend.write(setting, value)
+  return backend.write(setting, key, value)
 end
 
-function M.read_default(setting)
+function M.read_default(setting, key)
   local backend, err = M.backend_for(setting)
   if not backend then
     return nil, err
   end
-  return backend.read_default(setting)
+  return backend.read_default(setting, key)
 end
 
-function M.reset_value(setting)
+function M.reset_value(setting, key)
   local backend, err = M.backend_for(setting)
   if not backend then
     return nil, err
   end
-  return backend.reset(setting)
+  return backend.reset(setting, key)
+end
+
+function M.keys(setting)
+  local backend = M.backend_for(setting)
+  if not backend or not backend.keys then
+    return nil
+  end
+  return backend.keys(setting)
 end
 
 function M.schema()
@@ -114,7 +122,11 @@ function M.schema()
           entry[k] = v
         end
       end
-      entry.value = jnull(M.read_value(s))
+      if s.keyed then
+        entry.value = json.null
+      else
+        entry.value = jnull(M.read_value(s))
+      end
       panel.settings[#panel.settings + 1] = entry
     end
     out.panels[#out.panels + 1] = panel
@@ -140,8 +152,12 @@ local function value_changed(cur, def)
 end
 
 local function setting_row(s, indent)
+  local pad = string.rep("  ", indent or 0)
+  if s.keyed then
+    return pad .. string.format("%-24s (keyed: %s)", s.id, s.key_label or "key")
+  end
   local v = M.read_value(s)
-  return string.rep("  ", indent or 0) .. string.format("%-24s %s", s.id, tostring(v))
+  return pad .. string.format("%-24s %s", s.id, tostring(v))
 end
 
 local function cmd_list(flags)
@@ -163,18 +179,38 @@ local function cmd_schema()
   print(json.encode(M.schema()))
 end
 
+local function resolve_args(s, pos)
+  -- Returns (key, value_str) for a setting, handling keyed settings where the
+  -- first positional after the id is the key.
+  if s.keyed then
+    local key = pos[2]
+    local ok, kerr = types.validate_key(s, key)
+    if not ok then
+      die(kerr)
+    end
+    return key, pos[3]
+  end
+  return nil, pos[2]
+end
+
 local function cmd_get(flags, pos)
   M.load()
   local s = M.find_setting(pos[1])
   if not s then
     die("unknown setting: " .. tostring(pos[1]))
   end
-  local value = M.read_value(s)
+  local key, _ = resolve_args(s, pos)
+  local value = M.read_value(s, key)
   if flags["--plain"] then
     print(tostring(value))
-  else
-    print(json.encode({ id = s.id, value = jnull(value) }))
+    return
   end
+  local out = { id = s.id }
+  if key ~= nil then
+    out.key = key
+  end
+  out.value = jnull(value)
+  print(json.encode(out))
 end
 
 local function cmd_set(flags, pos)
@@ -183,10 +219,11 @@ local function cmd_set(flags, pos)
   if not s then
     die("unknown setting: " .. tostring(pos[1]))
   end
-  if pos[2] == nil then
+  local key, value_str = resolve_args(s, pos)
+  if value_str == nil then
     die("missing value for setting: " .. s.id)
   end
-  local value, err = types.coerce(pos[2], s)
+  local value, err = types.coerce(value_str, s)
   if value == nil then
     die(err)
   end
@@ -194,15 +231,21 @@ local function cmd_set(flags, pos)
   if not ok then
     die(rerr)
   end
-  local wok, werr = M.write_value(s, value)
+  local wok, werr = M.write_value(s, key, value)
   if not wok then
     die(werr)
   end
   if flags["--plain"] then
     print("ok")
-  else
-    print(json.encode({ id = s.id, value = value, ok = true }))
+    return
   end
+  local out = { id = s.id }
+  if key ~= nil then
+    out.key = key
+  end
+  out.value = value
+  out.ok = true
+  print(json.encode(out))
 end
 
 local function cmd_reset(flags, pos)
@@ -211,29 +254,52 @@ local function cmd_reset(flags, pos)
   if not s then
     die("unknown setting: " .. tostring(pos[1]))
   end
-  local rok, rerr = M.reset_value(s)
+  local key, _ = resolve_args(s, pos)
+  local rok, rerr = M.reset_value(s, key)
   if not rok then
     die(rerr)
   end
   if flags["--plain"] then
     print("ok")
-  else
-    print(json.encode({ id = s.id, ok = true }))
+    return
   end
+  local out = { id = s.id }
+  if key ~= nil then
+    out.key = key
+  end
+  out.ok = true
+  print(json.encode(out))
 end
 
 local function collect_changed()
   local out = {}
   for _, p in ipairs(dsl.panels) do
     for _, s in ipairs(p.settings) do
-      local cur = M.read_value(s)
-      local def = M.read_default(s)
-      if value_changed(cur, def) then
-        out[#out + 1] = { id = s.id, panel = p.id, label = s.label, value = jnull(cur), default = jnull(def) }
+      if s.keyed then
+        for _, k in ipairs(M.keys(s) or {}) do
+          local cur = M.read_value(s, k)
+          local def = M.read_default(s, k)
+          if value_changed(cur, def) then
+            out[#out + 1] = { id = s.id, key = k, panel = p.id, label = s.label, value = jnull(cur), default = jnull(def) }
+          end
+        end
+      else
+        local cur = M.read_value(s)
+        local def = M.read_default(s)
+        if value_changed(cur, def) then
+          out[#out + 1] = { id = s.id, panel = p.id, label = s.label, value = jnull(cur), default = jnull(def) }
+        end
       end
     end
   end
   return out
+end
+
+local function display_id(r)
+  if r.key then
+    return r.id .. ":" .. r.key
+  end
+  return r.id
 end
 
 local function cmd_changed(flags)
@@ -244,7 +310,7 @@ local function cmd_changed(flags)
     return
   end
   for _, r in ipairs(changed) do
-    print(string.format("%-24s %s -> %s (default)", r.id, tostring(r.value), tostring(r.default)))
+    print(string.format("%-24s %s -> %s (default)", display_id(r), tostring(r.value), tostring(r.default)))
   end
 end
 
@@ -257,7 +323,8 @@ local function cmd_search(flags, pos)
       local hit = (q == "") or s.id:lower():find(q, 1, true)
         or s.label:lower():find(q, 1, true)
       if hit then
-        out[#out + 1] = { id = s.id, panel = p.id, label = s.label, value = jnull(M.read_value(s)) }
+        local v = s.keyed and nil or M.read_value(s)
+        out[#out + 1] = { id = s.id, panel = p.id, label = s.label, value = jnull(v) }
       end
     end
   end
@@ -267,6 +334,28 @@ local function cmd_search(flags, pos)
   end
   for _, r in ipairs(out) do
     print(string.format("%-24s %-8s %s", r.id, tostring(r.value), r.label))
+  end
+end
+
+local function cmd_keys(flags, pos)
+  M.load()
+  local s = M.find_setting(pos[1])
+  if not s then
+    die("unknown setting: " .. tostring(pos[1]))
+  end
+  if not s.keyed then
+    die("setting is not keyed: " .. s.id)
+  end
+  local keys = M.keys(s)
+  if keys == nil then
+    die("setting has no keys: " .. s.id)
+  end
+  if flags["--json"] then
+    print(json.encode({ id = s.id, keys = keys }))
+    return
+  end
+  for _, k in ipairs(keys) do
+    print(k)
   end
 end
 
@@ -283,6 +372,7 @@ Usage:
   omaset changed [--json]           settings that differ from defaults
   omaset search <query> [--json]    find settings by id or label
   omaset help <id>                  show one setting's full spec
+  omaset keys <id> [--json]         list keys of a keyed setting
   omaset --version                  print the version
 ]]
   text = text:gsub("^%s+", "")
@@ -298,6 +388,7 @@ local COMMAND_HELP = {
   changed = "omaset changed [--json]\n  List settings whose value differs from the default.",
   search = "omaset search <query> [--json]\n  Find settings by id or label substring.",
   help = "omaset help <id>\n  Show one setting's full spec (type, options, value, default).",
+  keys = "omaset keys <id> [--json]\n  List the keys of a keyed setting (e.g. workspace numbers).",
 }
 
 local function value_hint(setting)
@@ -319,6 +410,10 @@ local function setting_help(setting)
   local lines = {}
   lines[#lines + 1] = setting.id .. " — " .. setting.label
 
+  if setting.keyed then
+    lines[#lines + 1] = "  key:     " .. (setting.key_label or "key") .. " (" .. (setting.key_type or "string") .. ")"
+  end
+
   local t = setting.type or "string"
   local type_line = "  type:    " .. t
   if (t == "int" or t == "float") and (setting.min ~= nil or setting.max ~= nil) then
@@ -330,7 +425,11 @@ local function setting_help(setting)
     lines[#lines + 1] = "  options: " .. table.concat(setting.options, ", ")
   end
 
-  lines[#lines + 1] = "  value:   " .. tostring(M.read_value(setting))
+  if setting.keyed then
+    lines[#lines + 1] = "  value:   (keyed)"
+  else
+    lines[#lines + 1] = "  value:   " .. tostring(M.read_value(setting))
+  end
   lines[#lines + 1] = "  default: " .. tostring(M.read_default(setting))
   return table.concat(lines, "\n")
 end
@@ -340,7 +439,11 @@ local function command_help(cmd, setting)
     if cmd == "get" then
       return setting_help(setting)
     elseif cmd == "set" then
-      return "omaset set " .. setting.id .. " " .. value_hint(setting) .. "\n  " .. setting.label
+      local hint = value_hint(setting)
+      if setting.keyed then
+        hint = "<" .. (setting.key_label or "key") .. "> " .. hint
+      end
+      return "omaset set " .. setting.id .. " " .. hint .. "\n  " .. setting.label
     elseif cmd == "reset" then
       return "omaset reset " .. setting.id .. "\n  " .. setting.label
     end
@@ -423,6 +526,8 @@ function M.main(arg)
     cmd_search(flags, pos)
   elseif cmd == "help" then
     cmd_help(pos)
+  elseif cmd == "keys" then
+    cmd_keys(flags, pos)
   else
     io.stderr:write("omaset: unknown command: " .. tostring(cmd) .. "\n\n" .. usage_text() .. "\n")
     os.exit(1)
