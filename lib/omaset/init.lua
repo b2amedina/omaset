@@ -142,10 +142,10 @@ local function die(msg)
 end
 
 local function value_changed(cur, def)
-  if cur == nil and def == nil then
+  if def == nil then
     return false
   end
-  if cur == nil or def == nil then
+  if cur == nil then
     return true
   end
   return cur ~= def
@@ -280,14 +280,14 @@ local function collect_changed()
           local cur = M.read_value(s, k)
           local def = M.read_default(s, k)
           if value_changed(cur, def) then
-            out[#out + 1] = { id = s.id, key = k, panel = p.id, label = s.label, value = jnull(cur), default = jnull(def) }
+            out[#out + 1] = { id = s.id, key = k, panel = p.id, label = s.label, value = cur, default = def }
           end
         end
       else
         local cur = M.read_value(s)
         local def = M.read_default(s)
         if value_changed(cur, def) then
-          out[#out + 1] = { id = s.id, panel = p.id, label = s.label, value = jnull(cur), default = jnull(def) }
+          out[#out + 1] = { id = s.id, panel = p.id, label = s.label, value = cur, default = def }
         end
       end
     end
