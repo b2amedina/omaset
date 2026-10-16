@@ -14,9 +14,9 @@ capture set gaps_in abc
 assert_exit "$CODE" 1 "non-int rejected"
 
 # enum: invalid rejected, valid accepted
-capture set layout bogus
+capture set default_layout bogus
 assert_exit "$CODE" 1 "bad enum rejected"
-capture set layout scrolling
+capture set default_layout scrolling
 assert_exit "$CODE" 0 "valid enum accepted"
 
 # bool: valid accepted, invalid rejected

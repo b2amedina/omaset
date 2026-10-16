@@ -1,8 +1,8 @@
 panel("layout", "Tiling Layout", function()
   setting({
-    id = "layout",
+    id = "default_layout",
     type = "enum",
-    label = "Tiling layout",
+    label = "Default layout (new workspaces)",
     backend = "hypr-lua",
     file = "looknfeel",
     path = "general.layout",
