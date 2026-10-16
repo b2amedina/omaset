@@ -53,6 +53,13 @@ always reflects the same settings the CLI does. See
 The JSON output of `schema`/`get`/`set`/`reset`/`changed`/`search` is the
 machine-readable contract — see [docs/protocol.md](docs/protocol.md).
 
+## For agents
+
+omaset is built so an AI agent can drive Omarchy's settings through one JSON
+interface instead of editing dotfiles by hand. See
+[docs/agents.md](docs/agents.md) for the commands, a worked example, and the
+safety model.
+
 ## Safety, undo & rollback
 
 omaset never parses-and-rewrites your files. It only writes into a marked
