@@ -19,9 +19,16 @@ BorderSurface {
   readonly property bool hasCursor: panel ? (panel.focusPane === "content" && panel.selectedRow === rowIndex) : false
   readonly property bool hot: hasCursor || hover.hovered
 
+  readonly property var cursorSpec: Border.controlSpec("hover-cursor", fg, accent)
+  readonly property var idleSpec: ({
+    color: "transparent",
+    widths: cursorSpec.widths,
+    gradient: { colors: [], angle: 0, enabled: false },
+  })
+
   radius: Style.cornerRadius
   color: Style.controlFill(false, hot, fg, accent)
-  borderSpec: hot ? Border.controlSpec("hover-cursor", fg, accent) : Border.none()
+  borderSpec: hot ? cursorSpec : idleSpec
   implicitHeight: Math.max(44, content.implicitHeight + Style.spacing.controlGap * 2)
 
   Row {
