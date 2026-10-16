@@ -1,5 +1,16 @@
 panel("layout", "Tiling Layout", function()
   setting({
+    id = "workspace_layout",
+    type = "enum",
+    label = "Workspace layout",
+    backend = "workspace-layout",
+    keyed = true,
+    key_label = "workspace",
+    key_type = "int",
+    options = { "dwindle", "master", "scrolling" },
+  })
+
+  setting({
     id = "default_layout",
     type = "enum",
     label = "Default layout (new workspaces)",
