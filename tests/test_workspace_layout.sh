@@ -65,6 +65,11 @@ OUT="$(run help workspace_layout)"
 assert_contains "$OUT" "workspace (int)" "help shows key type"
 assert_contains "$OUT" "dwindle, master, scrolling" "help shows options"
 
+# search renders keyed settings without leaking the internal null sentinel.
+OUT="$(run search workspace)"
+assert_contains "$OUT" "(keyed)" "search marks keyed settings"
+assert_not_contains "$OUT" "table:" "search does not leak sentinel"
+
 # help and get/set/reset --help all indicate the required key.
 OUT="$(run help workspace_layout)"
 assert_contains "$OUT" "get workspace_layout <workspace>" "help shows get usage with key"

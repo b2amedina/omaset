@@ -360,8 +360,11 @@ local function cmd_search(flags, pos)
       local hit = (q == "") or s.id:lower():find(q, 1, true)
         or s.label:lower():find(q, 1, true)
       if hit then
-        local v = s.keyed and nil or M.read_value(s)
-        out[#out + 1] = { id = s.id, panel = p.id, label = s.label, value = jnull(v) }
+        if s.keyed then
+          out[#out + 1] = { id = s.id, panel = p.id, label = s.label, keyed = true, value = json.null }
+        else
+          out[#out + 1] = { id = s.id, panel = p.id, label = s.label, value = jnull(M.read_value(s)) }
+        end
       end
     end
   end
@@ -370,7 +373,8 @@ local function cmd_search(flags, pos)
     return
   end
   for _, r in ipairs(out) do
-    print(string.format("%-24s %-8s %s", r.id, tostring(r.value), r.label))
+    local val = r.keyed and "(keyed)" or tostring(r.value)
+    print(string.format("%-24s %-8s %s", r.id, val, r.label))
   end
 end
 
