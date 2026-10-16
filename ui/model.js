@@ -33,9 +33,11 @@ function valueOf(effective, id, sub, key, fallback) {
 function fieldRow(id, sub, key, label, type, spec, effective) {
   if (type === "bool")
     return { kind: "bool", id: id, sub: sub, label: label,
+             description: spec.description,
              value: valueOf(effective, id, sub, key, spec.default) }
   if (type === "enum")
     return { kind: "enum", id: id, sub: sub, label: label,
+             description: spec.description,
              options: spec.options || [], segmented: true,
              value: valueOf(effective, id, sub, key, spec.default) }
   var min = spec.min !== undefined ? spec.min : 0
@@ -44,6 +46,7 @@ function fieldRow(id, sub, key, label, type, spec, effective) {
   return {
     kind: "slider",
     id: id, sub: sub, label: label, type: type,
+    description: spec.description,
     value: valueOf(effective, id, sub, key, spec.default),
     min: min, max: max,
     integer: type === "int",
@@ -84,9 +87,11 @@ function rowsFor(panel, effective, keyedMap) {
     }
 
     if (s.type === "bool") {
-      rows.push({ kind: "bool", id: s.id, label: s.label, value: s.value })
+      rows.push({ kind: "bool", id: s.id, label: s.label,
+                  description: s.description, value: s.value })
     } else if (s.type === "enum") {
       rows.push({ kind: "enum", id: s.id, label: s.label,
+                  description: s.description,
                   options: s.options || [], segmented: true, value: s.value })
     } else if (s.type === "int" || s.type === "float") {
       var min = s.min !== undefined ? s.min : 0
@@ -95,6 +100,7 @@ function rowsFor(panel, effective, keyedMap) {
       rows.push({
         kind: "slider",
         id: s.id, label: s.label, type: s.type, value: s.value,
+        description: s.description,
         min: min, max: max,
         integer: s.type === "int",
         step: s.type === "int" ? (range > 200 ? 5 : 1) : 0.01

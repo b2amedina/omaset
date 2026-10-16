@@ -724,6 +724,9 @@ end
 local function setting_help(setting)
   local lines = {}
   lines[#lines + 1] = setting.id .. " — " .. setting.label
+  if setting.description then
+    lines[#lines + 1] = "  " .. setting.description
+  end
 
   if grouped(setting) then
     lines[#lines + 1] = "  get:     omaset get " .. setting.id .. " [<sub>]"

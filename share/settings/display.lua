@@ -3,6 +3,7 @@ panel("display", "Display", function()
     id = "nightlight",
     type = "bool",
     label = "Night light",
+    description = "Tint the screen warmer in the evening.",
     backend = "omarchy",
     mode = "toggle",
     command = "omarchy toggle nightlight",

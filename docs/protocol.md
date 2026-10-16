@@ -13,8 +13,9 @@ emits valid, deterministic JSON (object keys are sorted).
 ```
 
 A `setting` object always has `id`, `type`, `label`, `backend`, and `value`
-(the current effective value, `null` if unset). Backend- and type-specific
-fields are additive:
+(the current effective value, `null` if unset), plus a human-readable
+`description` when one is declared. Backend- and type-specific fields are
+additive:
 
 | type    | extra fields             |
 |---------|--------------------------|

@@ -183,4 +183,3 @@ built-in id to override it.
 - `hyprsunset` backend (night light schedule profiles).
 - A backup picker / restore view.
 - Live previews (compositor/tiling/fullscreen) in the settings window.
-- Per-setting descriptions in the schema, surfaced under each row.
