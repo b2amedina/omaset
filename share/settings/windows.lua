@@ -23,4 +23,26 @@ panel("windows", "Windows", function()
       border_size = { type = "int", label = "Border size", default = 2, min = 0, max = 20 },
     },
   })
+
+  setting({
+    id = "window_no_gaps",
+    type = "bool",
+    label = "No window gaps",
+    description = "Remove the gaps between tiled windows.",
+    backend = "omarchy",
+    mode = "toggle",
+    command = "omarchy hyprland toggle window-no-gaps",
+    status = "omarchy hyprland toggle enabled window-no-gaps && echo true || echo false",
+  })
+
+  setting({
+    id = "single_window_square",
+    type = "bool",
+    label = "Single window square",
+    description = "Keep a single tiled window in a square aspect ratio.",
+    backend = "omarchy",
+    mode = "toggle",
+    command = "omarchy hyprland toggle single-window-aspect-ratio",
+    status = "omarchy hyprland toggle enabled single-window-aspect-ratio && echo true || echo false",
+  })
 end)

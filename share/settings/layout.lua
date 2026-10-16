@@ -51,4 +51,14 @@ panel("layout", "Tiling Layout", function()
     path = "master.new_status",
     options = { "master", "slave" },
   })
+
+  setting({
+    id = "preserve_split",
+    type = "bool",
+    label = "Preserve split",
+    description = "Keep the dwindle split direction when a window is removed.",
+    backend = "hypr-lua",
+    file = "looknfeel",
+    path = "dwindle.preserve_split",
+  })
 end)
