@@ -29,11 +29,19 @@ fields are additive:
 | `enum`  | `options` (array)        |
 | `bool`  | —                        |
 | `string`| —                        |
+| `group` | `subsettings` (object)   |
 
 **Keyed settings** take a subject/key argument (e.g. a workspace number). They
 carry `keyed: true`, `key_label`, and `key_type` (`"int"` or `"string"`), and
 their `value` is `null` in the schema. `get`/`set`/`reset` accept an extra
 positional for the key, and their JSON output gains a `"key"` field.
+
+**Grouped settings** have `type: "group"` and a `subsettings` object mapping
+each sub-name to a sub-setting spec (`type`, `label`, `default`, plus
+`min`/`max`/`options` as applicable). Their schema `value` is `null`. `get <id>`
+returns the aggregate object; `get <id> <sub>` / `set <id> <sub> <value>` /
+`reset <id> <sub>` address one field, and their JSON uses `sub` (not `key`).
+`reset <id> --all` clears every sub-field.
 
 Backend-specific fields (e.g. `path`, `file`, `command`) are passed through
 as-is and are informational to consumers.
@@ -95,6 +103,9 @@ Built-in backends:
 
 - `hypr-lua` — Hyprland Lua config (`~/.config/hypr/*.lua`); fields `file`
   (config basename) and `path` (dotted key).
+- `hypr-window` — Hyprland window rules via `o.window()`; fields `file` (config
+  basename, default `hyprland`) and `match` (window-rule match table). Used for
+  grouped settings; each sub-setting is a field of the emitted rule.
 - `shell-json` — `~/.config/omarchy/shell.json`; field `path` (dotted key).
 - `omarchy` — delegates to an existing `omarchy` command (so hooks fire). Fields
   `command` (run on set; `{value}` is substituted for `mode = "value"`), `status`

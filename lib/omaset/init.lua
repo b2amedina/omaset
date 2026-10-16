@@ -16,6 +16,19 @@ local function jnull(v)
   return v
 end
 
+local function grouped(setting)
+  return setting.subsettings ~= nil
+end
+
+local function sub_keys(setting)
+  local keys = {}
+  for k in pairs(setting.subsettings) do
+    keys[#keys + 1] = k
+  end
+  table.sort(keys)
+  return keys
+end
+
 local root = nil
 local user_settings_dir = nil
 local user_backends_dir = nil
@@ -88,6 +101,13 @@ function M.write_value(setting, key, value)
 end
 
 function M.read_default(setting, key)
+  if grouped(setting) then
+    local sub = key and setting.subsettings[key]
+    if sub then
+      return sub.default
+    end
+    return nil
+  end
   local backend, err = M.backend_for(setting)
   if not backend then
     return nil, err
@@ -104,6 +124,9 @@ function M.reset_value(setting, key)
 end
 
 function M.keys(setting)
+  if grouped(setting) then
+    return sub_keys(setting)
+  end
   local backend = M.backend_for(setting)
   if not backend or not backend.keys then
     return nil
@@ -112,6 +135,9 @@ function M.keys(setting)
 end
 
 function M.keys_all(setting)
+  if grouped(setting) then
+    return sub_keys(setting)
+  end
   local backend = M.backend_for(setting)
   if not backend then
     return nil
@@ -136,8 +162,11 @@ function M.schema()
           entry[k] = v
         end
       end
-      if s.keyed then
+      if s.keyed or grouped(s) then
         entry.value = json.null
+        if grouped(s) then
+          entry.grouped = true
+        end
       else
         entry.value = jnull(M.read_value(s))
       end
@@ -170,6 +199,9 @@ local function setting_row(s, indent)
   if s.keyed then
     return pad .. string.format("%-24s (keyed: %s)", s.id, s.key_label or "key")
   end
+  if grouped(s) then
+    return pad .. string.format("%-24s (group: %s)", s.id, table.concat(sub_keys(s), ", "))
+  end
   local v = M.read_value(s)
   return pad .. string.format("%-24s %s", s.id, tostring(v))
 end
@@ -194,13 +226,25 @@ local function cmd_schema()
 end
 
 local function resolve_args(s, pos)
-  -- Returns (key, value_str) for a setting, handling keyed settings where the
-  -- first positional after the id is the key.
+  -- Returns (key, value_str) for a setting, handling keyed settings (first
+  -- positional after the id is the key) and grouped settings (first positional
+  -- after the id is a sub-setting name).
   if s.keyed then
     local key = pos[2]
     local ok, kerr = types.validate_key(s, key)
     if not ok then
       die(kerr)
+    end
+    return key, pos[3]
+  end
+  if grouped(s) then
+    local key = pos[2]
+    if key == nil then
+      return nil, nil
+    end
+    if not s.subsettings[key] then
+      die("unknown sub-setting '" .. key .. "' for " .. s.id
+        .. " (choose from: " .. table.concat(sub_keys(s), ", ") .. ")")
     end
     return key, pos[3]
   end
@@ -214,14 +258,26 @@ local function cmd_get(flags, pos)
     die("unknown setting: " .. tostring(pos[1]))
   end
   local key, _ = resolve_args(s, pos)
-  local value = M.read_value(s, key)
+  local value
+  if grouped(s) and key == nil then
+    value = {}
+    for _, k in ipairs(sub_keys(s)) do
+      value[k] = M.read_value(s, k)
+    end
+  else
+    value = M.read_value(s, key)
+  end
   if flags["--plain"] then
-    print(tostring(value))
+    if grouped(s) and key == nil then
+      print(json.encode(value))
+    else
+      print(tostring(value))
+    end
     return
   end
   local out = { id = s.id }
   if key ~= nil then
-    out.key = key
+    if s.keyed then out.key = key else out.sub = key end
   end
   out.value = jnull(value)
   print(json.encode(out))
@@ -234,14 +290,22 @@ local function cmd_set(flags, pos)
     die("unknown setting: " .. tostring(pos[1]))
   end
   local key, value_str = resolve_args(s, pos)
+  local spec = s
+  if grouped(s) then
+    if key == nil then
+      die("missing sub-setting for setting: " .. s.id
+        .. " (choose from: " .. table.concat(sub_keys(s), ", ") .. ")")
+    end
+    spec = s.subsettings[key]
+  end
   if value_str == nil then
     die("missing value for setting: " .. s.id)
   end
-  local value, err = types.coerce(value_str, s)
+  local value, err = types.coerce(value_str, spec)
   if value == nil then
     die(err)
   end
-  local ok, rerr = types.check_range(value, s)
+  local ok, rerr = types.check_range(value, spec)
   if not ok then
     die(rerr)
   end
@@ -255,7 +319,7 @@ local function cmd_set(flags, pos)
   end
   local out = { id = s.id }
   if key ~= nil then
-    out.key = key
+    if s.keyed then out.key = key else out.sub = key end
   end
   out.value = value
   out.ok = true
@@ -270,7 +334,7 @@ local function cmd_reset(flags, pos)
   end
 
   if flags["--all"] then
-    if not s.keyed then
+    if not (s.keyed or grouped(s)) then
       die("setting is not keyed: " .. s.id)
     end
     local keys = M.keys_all(s) or {}
@@ -302,7 +366,7 @@ local function cmd_reset(flags, pos)
   end
   local out = { id = s.id }
   if key ~= nil then
-    out.key = key
+    if s.keyed then out.key = key else out.sub = key end
   end
   out.ok = true
   print(json.encode(out))
@@ -320,6 +384,14 @@ local function collect_changed()
             out[#out + 1] = { id = s.id, key = k, panel = p.id, label = s.label, value = cur, default = def }
           end
         end
+      elseif grouped(s) then
+        for _, k in ipairs(sub_keys(s)) do
+          local cur = M.read_value(s, k)
+          local def = M.read_default(s, k)
+          if value_changed(cur, def) then
+            out[#out + 1] = { id = s.id, sub = k, panel = p.id, label = s.label, value = cur, default = def }
+          end
+        end
       else
         local cur = M.read_value(s)
         local def = M.read_default(s)
@@ -333,8 +405,9 @@ local function collect_changed()
 end
 
 local function display_id(r)
-  if r.key then
-    return r.id .. ":" .. r.key
+  local k = r.key or r.sub
+  if k then
+    return r.id .. ":" .. k
   end
   return r.id
 end
@@ -362,6 +435,8 @@ local function cmd_search(flags, pos)
       if hit then
         if s.keyed then
           out[#out + 1] = { id = s.id, panel = p.id, label = s.label, keyed = true, value = json.null }
+        elseif grouped(s) then
+          out[#out + 1] = { id = s.id, panel = p.id, label = s.label, grouped = true, value = json.null }
         else
           out[#out + 1] = { id = s.id, panel = p.id, label = s.label, value = jnull(M.read_value(s)) }
         end
@@ -373,7 +448,14 @@ local function cmd_search(flags, pos)
     return
   end
   for _, r in ipairs(out) do
-    local val = r.keyed and "(keyed)" or tostring(r.value)
+    local val
+    if r.keyed then
+      val = "(keyed)"
+    elseif r.grouped then
+      val = "(grouped)"
+    else
+      val = tostring(r.value)
+    end
     print(string.format("%-24s %-8s %s", r.id, val, r.label))
   end
 end
@@ -384,7 +466,7 @@ local function cmd_keys(flags, pos)
   if not s then
     die("unknown setting: " .. tostring(pos[1]))
   end
-  if not s.keyed then
+  if not (s.keyed or grouped(s)) then
     die("setting is not keyed: " .. s.id)
   end
   local keys = M.keys(s)
@@ -402,7 +484,7 @@ end
 
 local function usage_text()
   local text = [[
-omaset — keyboard-first Omarchy settings
+omaset — Omarchy settings engine + command-line interface
 
 Usage:
   omaset list [--json]              list panels and settings with values
@@ -463,6 +545,23 @@ local function setting_help(setting)
   local lines = {}
   lines[#lines + 1] = setting.id .. " — " .. setting.label
 
+  if grouped(setting) then
+    lines[#lines + 1] = "  get:     omaset get " .. setting.id .. " [<sub>]"
+    lines[#lines + 1] = "  set:     omaset set " .. setting.id .. " <sub> <value>"
+    lines[#lines + 1] = "  reset:   omaset reset " .. setting.id .. " <sub> [--all]"
+    lines[#lines + 1] = "  sub-settings:"
+    for _, k in ipairs(sub_keys(setting)) do
+      local sub = setting.subsettings[k]
+      local t = sub.type or "string"
+      local range = ""
+      if (t == "int" or t == "float") and (sub.min ~= nil or sub.max ~= nil) then
+        range = " (" .. tostring(sub.min or "-inf") .. ".." .. tostring(sub.max or "inf") .. ")"
+      end
+      lines[#lines + 1] = "    " .. k .. "  " .. t .. range .. "  default " .. tostring(sub.default)
+    end
+    return table.concat(lines, "\n")
+  end
+
   local ka = key_arg(setting)
   lines[#lines + 1] = "  get:     omaset get " .. setting.id .. ka
   lines[#lines + 1] = "  set:     omaset set " .. setting.id .. ka .. " " .. value_hint(setting)
@@ -494,7 +593,15 @@ end
 
 local function command_help(cmd, setting)
   if setting then
-    if cmd == "get" then
+    if grouped(setting) then
+      if cmd == "get" then
+        return "omaset get " .. setting.id .. " [<sub>]\n  " .. setting.label
+      elseif cmd == "set" then
+        return "omaset set " .. setting.id .. " <sub> <value>\n  " .. setting.label
+      elseif cmd == "reset" then
+        return "omaset reset " .. setting.id .. " <sub> [--all]\n  " .. setting.label
+      end
+    elseif cmd == "get" then
       return "omaset get " .. setting.id .. key_arg(setting) .. "\n  " .. setting.label
     elseif cmd == "set" then
       return "omaset set " .. setting.id .. key_arg(setting) .. " " .. value_hint(setting) .. "\n  " .. setting.label

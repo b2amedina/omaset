@@ -1,14 +1,15 @@
 # omaset
 
-A keyboard-first settings app for Omarchy, focused on what the top-bar panels
-don't already expose — gaps, borders, tiling layout, animations, and window
-indicators.
+An Omarchy settings engine: a versioned, backend-pluggable model of every
+setting plus a JSON protocol that any frontend can drive.
+
+It ships a command-line interface today. A keyboard-first UI is a future
+frontend on the same protocol — which is why every command speaks JSON.
 
 Extensible: every setting and panel is declared in a small Lua DSL, so adding
 or overriding a setting means dropping in a `.lua` file.
 
-**Status:** CLI MVP. A Quickshell (QML) frontend will layer on top of this
-same command, which is why the CLI speaks JSON.
+**Status:** engine + CLI. A keyboard-first frontend will layer on top.
 
 ## Usage
 
@@ -83,10 +84,11 @@ lib/omaset/
   util.lua              deep merge/get/set, serializer, shell helpers
   backends/             pluggable backends (self-register via load_dir)
     hypr_lua.lua         reads/writes Hyprland Lua config (looknfeel.lua etc.)
+    hypr_window.lua      reads/writes o.window() rules (window indicators)
     shell_json.lua       reads/writes ~/.config/omarchy/shell.json via jq
     omarchy.lua          delegates to an existing omarchy command
     workspace_layout.lua per-workspace layout (keyed by workspace number)
-share/settings/         built-in panels (appearance, layout, animations, power, display)
+share/settings/         built-in panels (appearance, layout, animations, power, display, windows)
 ```
 
 ### The `hypr-lua` backend
@@ -100,6 +102,18 @@ share/settings/         built-in panels (appearance, layout, animations, power, 
 - **Validate** after every write with `hyprctl reload` + `hyprctl configerrors`;
   on errors the previous content is restored. Set `OMASET_NO_APPLY=1` to skip
   this (tests, headless).
+
+### The `hypr-window` backend
+
+- Manages `o.window(match, rules)` window rules (Omarchy's own helper) in a
+  `-- omaset:begin` / `-- omaset:end` block inside `~/.config/hypr/hyprland.lua`,
+  with the same write/validate/revert behaviour as `hypr-lua`.
+- Each setting is a **group**: it declares a `match` and named `subsettings`
+  (e.g. `border_size`, `rounding`). Sub-settings sharing a `match` compose into
+  a single rule. `reset <id> <sub>` drops one field; `reset <id> --all` removes
+  the whole rule, so the base `border_size`/`rounding` apply again.
+- Defaults are declared in the DSL (there is no Omarchy stock window rule to
+  read), so `changed` compares against those declared defaults.
 
 ### The `shell-json` backend
 
@@ -134,6 +148,5 @@ built-in id to override it.
 ## Next steps
 
 - `hyprsunset` backend (night light schedule profiles).
-- Window-indicator settings (full-screen / full-tiled border rules).
 - A backup picker / restore view.
-- The Quickshell keyboard-first frontend (consumes `schema`/`get`/`set`).
+- The keyboard-first frontend (TUI/GUI), consuming `schema`/`get`/`set`.
