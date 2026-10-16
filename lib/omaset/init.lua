@@ -481,7 +481,7 @@ local function cmd_search(flags, pos)
     elseif r.grouped then
       val = "(grouped)"
     else
-      val = tostring(r.value)
+      val = (r.value == nil or r.value == json.null) and "(default)" or tostring(r.value)
     end
     print(string.format("%-24s %-8s %s", r.id, val, r.label))
   end

@@ -44,9 +44,11 @@ local function eval_config(file_paths)
     curve = noop,
     animation = noop,
   }, { __index = function() return noop end })
+  local o = setmetatable({}, { __index = function() return noop end })
 
-  local old_hl = _G.hl
+  local old_hl, old_o = _G.hl, _G.o
   _G.hl = hl
+  _G.o = o
   for _, path in ipairs(file_paths) do
     if util.file_exists(path) then
       local chunk, err = loadfile(path)
@@ -61,6 +63,7 @@ local function eval_config(file_paths)
     end
   end
   _G.hl = old_hl
+  _G.o = old_o
   return merged
 end
 
