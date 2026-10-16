@@ -30,6 +30,11 @@ fields are additive:
 | `bool`  | —                        |
 | `string`| —                        |
 
+**Keyed settings** take a subject/key argument (e.g. a workspace number). They
+carry `keyed: true`, `key_label`, and `key_type` (`"int"` or `"string"`), and
+their `value` is `null` in the schema. `get`/`set`/`reset` accept an extra
+positional for the key, and their JSON output gains a `"key"` field.
+
 Backend-specific fields (e.g. `path`, `file`, `command`) are passed through
 as-is and are informational to consumers.
 
@@ -70,6 +75,11 @@ Settings whose current value differs from the Omarchy default.
 { "results": [ { "id", "panel", "label", "value" }, ... ] }
 ```
 
+### `keys <id> [--json]`
+
+Lists the keys of a keyed setting (e.g. open workspace numbers), one per line.
+`--json` returns `{ "id", "keys": [...] }`.
+
 ### `list [--json]`
 
 Human text by default; `--json` is identical to `schema`.
@@ -90,3 +100,7 @@ Built-in backends:
   `command` (run on set; `{value}` is substituted for `mode = "value"`), `status`
   (command whose stdout is the current value), `mode` (`"value"` or `"toggle"`),
   and optional `reset`. `read` returns `null` when there is no `status` command.
+- `workspace-layout` — per-workspace Hyprland layout, keyed by workspace number.
+  Reads `hyprctl workspaces`, persists rules to
+  `~/.local/state/omarchy/workspace-layouts/` (like `omarchy hyprland workspace
+  layout toggle`), and applies via `hl.workspace_rule`. Default is `"dwindle"`.

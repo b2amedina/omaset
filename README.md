@@ -21,8 +21,12 @@ bin/omaset reset <id> [--plain]       # restore a setting to its default
 bin/omaset changed [--json]           # settings that differ from defaults
 bin/omaset search <query> [--json]    # find settings by id or label
 bin/omaset help <id>                  # one setting's type/options/default/current
+bin/omaset keys <id>                  # list keys of a keyed setting (workspaces)
 bin/omaset --version
 ```
+
+Keyed settings take a subject argument, e.g.
+`omaset get workspace_layout 2` / `omaset set workspace_layout 3 scrolling`.
 
 To see what values a setting accepts, use `omaset help <id>` (lists `options`
 for enums, `min..max` for numbers) or `omaset set <id> --help`, which shows the
@@ -62,6 +66,7 @@ lib/omaset/
     hypr_lua.lua         reads/writes Hyprland Lua config (looknfeel.lua etc.)
     shell_json.lua       reads/writes ~/.config/omarchy/shell.json via jq
     omarchy.lua          delegates to an existing omarchy command
+    workspace_layout.lua per-workspace layout (keyed by workspace number)
 share/settings/         built-in panels (appearance, layout, animations, power, display)
 ```
 
