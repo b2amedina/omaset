@@ -1,15 +1,16 @@
 # omaset
 
-An Omarchy settings engine: a versioned, backend-pluggable model of every
-setting plus a JSON protocol that any frontend can drive.
+An Omarchy settings engine: a backend-pluggable model of every setting plus
+a JSON protocol that any frontend can drive.
 
-It ships a command-line interface today. A keyboard-first UI is a future
-frontend on the same protocol — which is why every command speaks JSON.
+It ships a command-line interface and a keyboard-first settings window (an
+Omarchy shell plugin). Run `omaset ui` to open it — or drive every setting
+headlessly through the JSON protocol.
 
 Extensible: every setting and panel is declared in a small Lua DSL, so adding
 or overriding a setting means dropping in a `.lua` file.
 
-**Status:** engine + CLI. A keyboard-first frontend will layer on top.
+**Status:** engine + CLI + keyboard-first UI (`omaset ui`).
 
 ## Usage
 
@@ -23,6 +24,7 @@ bin/omaset changed [--json]           # settings that differ from defaults
 bin/omaset search <query> [--json]    # find settings by id or label
 bin/omaset help <id>                  # one setting's type/options/default/current
 bin/omaset keys <id>                  # list keys of a keyed setting (workspaces)
+bin/omaset ui [open|close|toggle]     # open the keyboard settings window (toggle)
 bin/omaset --version
 ```
 
@@ -38,8 +40,8 @@ No installation needed — it runs in place with `luajit` (and `jq` for the
 
 ## Protocol
 
-The JSON output of `schema`/`get`/`set`/`reset`/`changed`/`search` is a
-versioned contract — see [docs/protocol.md](docs/protocol.md).
+The JSON output of `schema`/`get`/`set`/`reset`/`changed`/`search` is the
+machine-readable contract — see [docs/protocol.md](docs/protocol.md).
 
 ## Reset & changed semantics
 
@@ -149,4 +151,5 @@ built-in id to override it.
 
 - `hyprsunset` backend (night light schedule profiles).
 - A backup picker / restore view.
-- The keyboard-first frontend (TUI/GUI), consuming `schema`/`get`/`set`.
+- Live previews (compositor/tiling/fullscreen) in the settings window.
+- Per-setting descriptions in the schema, surfaced under each row.

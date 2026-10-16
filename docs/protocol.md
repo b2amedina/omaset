@@ -1,21 +1,15 @@
 # omaset protocol
 
 The machine-readable contract between the omaset engine and its consumers
-(the CLI, a future TUI/GUI, or Omarchy's own commands). Every command emits
-valid, deterministic JSON (object keys are sorted).
-
-## Versioning
-
-`schema` carries a top-level `schema_version` integer. It increments when the
-schema shape changes incompatibly. Consumers should key off it, not on
-individual field presence.
+(the CLI, the keyboard-first UI, or Omarchy's own commands). Every command
+emits valid, deterministic JSON (object keys are sorted).
 
 ## Commands
 
 ### `schema`
 
 ```
-{ "schema_version": 1, "panels": [ { "id", "title", "settings": [ ... ] } ] }
+{ "panels": [ { "id", "title", "settings": [ ... ] } ] }
 ```
 
 A `setting` object always has `id`, `type`, `label`, `backend`, and `value`

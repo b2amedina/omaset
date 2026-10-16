@@ -152,7 +152,7 @@ function M.keys_all(setting)
 end
 
 function M.schema()
-  local out = { schema_version = 1, panels = {} }
+  local out = { panels = {} }
   for _, p in ipairs(dsl.panels) do
     local panel = { id = p.id, title = p.title, settings = {} }
     for _, s in ipairs(p.settings) do
@@ -482,11 +482,32 @@ local function cmd_keys(flags, pos)
   end
 end
 
+local function cmd_ui(pos)
+  local action = pos[1] or "toggle"
+  local shell_cmd
+  if action == "open" or action == "summon" then
+    shell_cmd = "omarchy-shell shell summon b2amedina.omaset '{}'"
+  elseif action == "close" or action == "hide" then
+    shell_cmd = "omarchy-shell shell hide b2amedina.omaset"
+  elseif action == "toggle" then
+    shell_cmd = "omarchy-shell shell toggle b2amedina.omaset '{}'"
+  else
+    die("ui: expected open, close, or toggle (got '" .. action .. "')")
+  end
+  local ok = os.execute(shell_cmd)
+  if ok ~= 0 then
+    die("ui: could not reach the Omarchy shell (is it running?)")
+  end
+end
+
 local function usage_text()
   local text = [[
-omaset — Omarchy settings engine + command-line interface
+omaset — Omarchy settings engine with a keyboard-first UI
 
 Usage:
+  omaset ui                         open the settings window (toggle)
+  omaset ui open|close              open or close it explicitly
+
   omaset list [--json]              list panels and settings with values
   omaset schema                     full schema as JSON
   omaset get <id> [<key>] [--plain]   read a setting
@@ -517,6 +538,7 @@ local COMMAND_HELP = {
   search = "omaset search <query> [--json]\n  Find settings by id or label substring.",
   help = "omaset help <id>\n  Show one setting's full spec (type, options, value, default).",
   keys = "omaset keys <id> [--json]\n  List the keys of a keyed setting (e.g. workspace numbers).",
+  ui = "omaset ui [open|close|toggle]\n  Open the keyboard settings window (toggle by default). Requires the Omarchy shell plugin to be installed.",
 }
 
 local function value_hint(setting)
@@ -690,6 +712,8 @@ function M.main(arg)
     cmd_help(pos)
   elseif cmd == "keys" then
     cmd_keys(flags, pos)
+  elseif cmd == "ui" then
+    cmd_ui(pos)
   else
     io.stderr:write("omaset: unknown command: " .. tostring(cmd) .. "\n\n" .. usage_text() .. "\n")
     os.exit(1)

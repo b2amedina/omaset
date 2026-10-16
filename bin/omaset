@@ -15,6 +15,16 @@ if not script:match("^/") then
   script = (cwd or ".") .. "/" .. script
 end
 
+-- Resolve symlinks so the script keeps working when installed via a symlink
+-- (e.g. ~/.local/bin/omaset -> <repo>/bin/omaset); otherwise dirname() above
+-- would derive the wrong root and the `omaset` module would not be found.
+do
+  local p = io.popen("readlink -f -- " .. "'" .. script .. "'")
+  local resolved = p and p:read("*l")
+  if p then p:close() end
+  if resolved and resolved ~= "" then script = resolved end
+end
+
 local root = dirname(dirname(script))
 
 package.path = root .. "/lib/?.lua;" .. root .. "/lib/?/init.lua;" .. package.path
