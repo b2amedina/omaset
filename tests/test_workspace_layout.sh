@@ -44,6 +44,14 @@ assert_not_contains "$OUT" "nightlight" "runtime toggle not in changed"
 run reset workspace_layout 3
 assert_eq "$([ -f "$ST/3.lua" ] && echo present || echo gone)" "gone" "rule removed on reset"
 
+# reset --all clears every persisted rule, including unopened workspaces.
+run set workspace_layout 3 scrolling
+run set workspace_layout 5 scrolling
+assert_eq "$([ -f "$ST/3.lua" ] && echo y || echo n)$([ -f "$ST/5.lua" ] && echo y || echo n)" "yy" "two rules persisted"
+capture_out reset workspace_layout --all
+assert_eq "$OUT" '{"count":2,"id":"workspace_layout","ok":true}' "reset --all resets both"
+assert_eq "$(ls "$ST" 2>/dev/null | wc -l)" "0" "all rules removed"
+
 # key validation.
 capture get workspace_layout
 assert_exit "$CODE" 1 "missing key rejected"

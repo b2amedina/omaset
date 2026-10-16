@@ -111,6 +111,20 @@ function M.keys(setting)
   return backend.keys(setting)
 end
 
+function M.keys_all(setting)
+  local backend = M.backend_for(setting)
+  if not backend then
+    return nil
+  end
+  if backend.keys_all then
+    return backend.keys_all(setting)
+  end
+  if backend.keys then
+    return backend.keys(setting)
+  end
+  return nil
+end
+
 function M.schema()
   local out = { schema_version = 1, panels = {} }
   for _, p in ipairs(dsl.panels) do
@@ -254,6 +268,29 @@ local function cmd_reset(flags, pos)
   if not s then
     die("unknown setting: " .. tostring(pos[1]))
   end
+
+  if flags["--all"] then
+    if not s.keyed then
+      die("setting is not keyed: " .. s.id)
+    end
+    local keys = M.keys_all(s) or {}
+    local count = 0
+    for _, k in ipairs(keys) do
+      local rok, rerr = M.reset_value(s, k)
+      if rok then
+        count = count + 1
+      else
+        io.stderr:write("omaset: " .. rerr .. "\n")
+      end
+    end
+    if flags["--plain"] then
+      print("ok")
+    else
+      print(json.encode({ id = s.id, ok = true, count = count }))
+    end
+    return
+  end
+
   local key, _ = resolve_args(s, pos)
   local rok, rerr = M.reset_value(s, key)
   if not rok then
@@ -368,7 +405,7 @@ Usage:
   omaset schema                     full schema as JSON
   omaset get <id> [<key>] [--plain]   read a setting
   omaset set <id> [<key>] <val> [--plain]  write a setting
-  omaset reset <id> [<key>] [--plain]  restore a setting to default
+  omaset reset <id> [<key>|--all] [--plain]  revert omaset's override
   omaset changed [--json]           settings that differ from defaults
   omaset search <query> [--json]    find settings by id or label
   omaset help <id>                  show one setting's full spec
@@ -389,8 +426,8 @@ local COMMAND_HELP = {
   schema = "omaset schema\n  Print the full schema (panels, settings, current values) as JSON.",
   get = "omaset get <id> [<key>] [--plain]\n  Read one setting. Keyed settings take a key. --plain prints the bare value.",
   set = "omaset set <id> [<key>] <val> [--plain]\n  Write a value, applying and validating via the backend.",
-  reset = "omaset reset <id> [<key>] [--plain]\n  Restore a setting to its Omarchy default.",
-  changed = "omaset changed [--json]\n  List settings whose value differs from the default.",
+  reset = "omaset reset <id> [<key>|--all] [--plain]\n  Revert omaset's override so the Omarchy default applies. Keyed settings take a key, or --all to reset every key.",
+  changed = "omaset changed [--json]\n  List settings whose effective value differs from the Omarchy default.",
   search = "omaset search <query> [--json]\n  Find settings by id or label substring.",
   help = "omaset help <id>\n  Show one setting's full spec (type, options, value, default).",
   keys = "omaset keys <id> [--json]\n  List the keys of a keyed setting (e.g. workspace numbers).",
@@ -458,7 +495,8 @@ local function command_help(cmd, setting)
     elseif cmd == "set" then
       return "omaset set " .. setting.id .. key_arg(setting) .. " " .. value_hint(setting) .. "\n  " .. setting.label
     elseif cmd == "reset" then
-      return "omaset reset " .. setting.id .. key_arg(setting) .. "\n  " .. setting.label
+      local extra = setting.keyed and " [--all]" or ""
+      return "omaset reset " .. setting.id .. key_arg(setting) .. extra .. "\n  " .. setting.label
     end
   end
   return COMMAND_HELP[cmd] or ("No help for '" .. tostring(cmd) .. "'.\n\n" .. usage_text())

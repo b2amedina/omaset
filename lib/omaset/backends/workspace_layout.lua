@@ -90,6 +90,23 @@ function M.keys(setting)
   return keys
 end
 
+-- All persisted keys (state files), including workspaces that are not
+-- currently open. Used by `reset <id> --all`.
+function M.keys_all(setting)
+  if not apply_enabled() then
+    return {}
+  end
+  local keys = {}
+  for _, file in ipairs(util.list_lua_files(layouts_dir())) do
+    local base = file:match("([^/]+)%.lua$")
+    if base then
+      keys[#keys + 1] = base
+    end
+  end
+  table.sort(keys)
+  return keys
+end
+
 registry.register("workspace-layout", M)
 
 return M

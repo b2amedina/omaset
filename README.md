@@ -40,6 +40,25 @@ No installation needed — it runs in place with `luajit` (and `jq` for the
 The JSON output of `schema`/`get`/`set`/`reset`/`changed`/`search` is a
 versioned contract — see [docs/protocol.md](docs/protocol.md).
 
+## Reset & changed semantics
+
+`reset` reverts **omaset's override** — it removes what omaset wrote and lets
+the Omarchy stock default re-emerge. It does not store snapshots: `read_default`
+recomputes the default from Omarchy's shipped config on every call.
+
+- `changed` diffs the *effective* value (as read from your config) against that
+  stock default, so it sees changes made by hand-editing, `omarchy` commands, or
+  hotkeys too.
+- `hypr-lua` writes into a managed `-- omaset:begin/end` block, so `reset` only
+  removes omaset's block. A hand-written `hl.config(...)` override elsewhere in
+  the file is left alone (and would take effect again). To restore *everything*
+  to stock, use `omarchy refresh hyprland`.
+- `workspace-layout` shares storage with `omarchy hyprland workspace layout
+  toggle` (Super+L) — the same `~/.local/state/omarchy/workspace-layouts/*.lua`
+  files — so the two are coherent. `reset workspace_layout <n>` deletes one
+  rule; `reset workspace_layout --all` clears every persisted rule, including
+  workspaces that are not currently open.
+
 ## Tests
 
 ```
