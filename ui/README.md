@@ -76,7 +76,9 @@ Hyprland rule is required.
 | `Esc` | close (or leave search / changed / preferences) |
 
 The footer shows keyboard hints plus a contextual badge — `N changed` when
-settings differ from Omarchy stock, `N settings found` while searching.
+settings differ from Omarchy stock, `N settings found` while searching. The
+Preferences overlay (`p`) shows the omaset engine version as a dimmed caption
+pinned at its bottom.
 
 ## Structure
 

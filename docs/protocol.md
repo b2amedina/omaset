@@ -132,7 +132,7 @@ journal. Backends without a snapshot (e.g. the `omarchy` passthrough and
 ### `preferences [list|get <key>|set <key> <value>|reset <key>]`
 
 ```
-{ "preferences": [ { "key", "type", "label", "description", "value", "default", ... } ] }
+{ "version": "0.1.0", "preferences": [ { "key", "type", "label", "description", "value", "default", ... } ] }
 ```
 
 omaset's **own** UI preferences, stored in `~/.config/omaset/preferences.json`
@@ -141,7 +141,8 @@ settings: they have no backend, they never appear in `schema`/`search`, and
 they are never reported by `changed`.
 
 - `list` (default) — every preference with its current value and default;
-  `--json` returns the array under `preferences`.
+  `--json` returns the array under `preferences`, alongside the `version` of
+  the omaset engine.
 - `get <key>` — `{ "key", "value" }` (or `--plain` bare value).
 - `set <key> <value>` — validates and persists; `{ "key", "value", "ok" }`.
 - `reset <key>` — removes the override so the default applies.

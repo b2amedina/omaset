@@ -148,6 +148,7 @@ Item {
   property int refreshIntervalSec: 2
   property bool launchFloating: true
   property bool interacting: false
+  property string omasetVersion: ""   // engine version, shown under Preferences
 
   ListModel {
     id: prefsModel
@@ -248,6 +249,8 @@ Item {
     exec([omasetBin, "preferences", "--json"], function(text) {
       var o = parseJson(text)
       var list = (o && o.preferences && Array.isArray(o.preferences)) ? o.preferences : []
+      root.omasetVersion = (o && o.version) ? String(o.version)
+        : ((manifest && manifest.version) ? String(manifest.version) : "")
       prefsModel.clear()
       for (var i = 0; i < list.length; i++) {
         var p = list[i]
@@ -1146,9 +1149,37 @@ Item {
                   anchors.topMargin: 0
                   visible: root.prefsMode
 
+                  // Engine version, dimmed like other secondary metadata and
+                  // pinned under the preference rows.
+                  Item {
+                    id: versionBar
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    height: Style.space(22)
+
+                    Rectangle {
+                      anchors.top: parent.top
+                      width: parent.width
+                      height: 1
+                      color: Style.normalBorderColor
+                    }
+
+                    Text {
+                      anchors.left: parent.left
+                      anchors.verticalCenter: parent.verticalCenter
+                      textFormat: Text.PlainText
+                      text: root.omasetVersion !== "" ? "omaset " + root.omasetVersion : ""
+                      color: Qt.darker(root.foreground, 1.5)
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.caption
+                    }
+                  }
+
                   ListView {
                     id: prefsResultsList
                     anchors.fill: parent
+                    anchors.bottomMargin: versionBar.height
                     clip: true
                     spacing: Style.space(8)
                     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }

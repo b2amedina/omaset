@@ -764,7 +764,9 @@ local function cmd_preferences(flags, pos)
   -- default (no sub, or "list")
   local list = preferences.list()
   if flags["--json"] then
-    print(json.encode({ preferences = json.array(list) }))
+    -- The engine version rides along so a frontend can show it without a
+    -- second call (the UI reads this when it opens the Preferences overlay).
+    print(json.encode({ version = M.VERSION, preferences = json.array(list) }))
     return
   end
   for _, s in ipairs(list) do

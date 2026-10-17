@@ -10,11 +10,12 @@ assert_eq "$OUT" '{"key":"refresh_interval_sec","value":2}' "default refresh int
 capture_out preferences get launch_floating
 assert_eq "$OUT" '{"key":"launch_floating","value":true}' "default launch floating"
 
-# list reports both, in schema order.
+# list reports both, in schema order, plus the engine version.
 capture_out preferences --json
 assert_eq "$(echo "$OUT" | jq -r '.preferences | length')" "2" "two preferences"
 assert_eq "$(echo "$OUT" | jq -r '.preferences[0].key')" "refresh_interval_sec" "ordered first"
 assert_eq "$(echo "$OUT" | jq -r '.preferences[0].default')" "2" "default surfaced"
+assert_eq "$(echo "$OUT" | jq -r '.version')" "0.1.0" "engine version surfaced"
 
 # set persists and round-trips.
 capture_out preferences set refresh_interval_sec 5
