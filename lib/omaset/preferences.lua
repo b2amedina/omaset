@@ -102,7 +102,10 @@ function M.list()
     for k, v in pairs(s) do
       entry[k] = v
     end
-    entry.value = (overrides[s.key] ~= nil) and overrides[s.key] or s.default
+    entry.value = overrides[s.key]
+    if entry.value == nil then
+      entry.value = s.default
+    end
     out[#out + 1] = entry
   end
   return out

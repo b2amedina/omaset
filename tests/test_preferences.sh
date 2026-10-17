@@ -27,6 +27,11 @@ capture_out preferences set launch_floating false
 capture_out preferences get launch_floating
 assert_eq "$OUT" '{"key":"launch_floating","value":false}' "set launch floating"
 
+# --json reflects a false boolean override (not the default). This regressed
+# when list() used `cond and value or default`, which collapses false -> default.
+capture_out preferences --json
+assert_eq "$(echo "$OUT" | jq -r '.preferences[] | select(.key=="launch_floating") | .value')" "false" "--json shows false override"
+
 # reset removes the override so the default returns.
 capture_out preferences reset refresh_interval_sec
 assert_eq "$OUT" '{"key":"refresh_interval_sec","ok":true,"value":2}' "reset returns default"

@@ -136,10 +136,13 @@ Item {
   // preferences (omaset's own config — not Omarchy settings, never in changed)
   property bool prefsMode: false
   property int prefsSel: 0
-  property var prefs: []
   property int refreshIntervalSec: 2
   property bool launchFloating: true
   property bool interacting: false
+
+  ListModel {
+    id: prefsModel
+  }
 
   // ---- data loading ----------------------------------------------------
   function loadSchema() {
@@ -236,9 +239,19 @@ Item {
     exec([omasetBin, "preferences", "--json"], function(text) {
       var o = parseJson(text)
       var list = (o && o.preferences && Array.isArray(o.preferences)) ? o.preferences : []
-      root.prefs = list
+      prefsModel.clear()
       for (var i = 0; i < list.length; i++) {
         var p = list[i]
+        prefsModel.append({
+          key: p.key,
+          type: p.type,
+          label: p.label || "",
+          description: p.description || "",
+          value: String(p.value),
+          def: String(p.default),
+          min: (p.min !== undefined) ? p.min : 0,
+          max: (p.max !== undefined) ? p.max : 0,
+        })
         if (p.key === "refresh_interval_sec") root.refreshIntervalSec = Number(p.value)
         else if (p.key === "launch_floating") root.launchFloating = (p.value === true)
       }
@@ -254,25 +267,17 @@ Item {
   function setPreference(key, value) {
     // Optimistic local update so controls respond immediately; the backend
     // round-trip reconciles with the canonical value.
-    var next = []
-    for (var i = 0; i < prefs.length; i++) {
-      if (prefs[i].key === key) {
-        var c = cloneObj(prefs[i]); c.value = value; next.push(c)
-      } else next.push(prefs[i])
+    for (var i = 0; i < prefsModel.count; i++) {
+      if (prefsModel.get(i).key === key) prefsModel.setProperty(i, "value", String(value))
     }
-    root.prefs = next
     applyPrefValue(key, value)
 
     exec([omasetBin, "preferences", "set", key, String(value)], function(text) {
       var o = parseJson(text)
       if (o && o.value !== undefined && o.value !== null) {
-        var next2 = []
-        for (var j = 0; j < root.prefs.length; j++) {
-          if (root.prefs[j].key === key) {
-            var d = cloneObj(root.prefs[j]); d.value = o.value; next2.push(d)
-          } else next2.push(root.prefs[j])
+        for (var j = 0; j < prefsModel.count; j++) {
+          if (prefsModel.get(j).key === key) prefsModel.setProperty(j, "value", String(o.value))
         }
-        root.prefs = next2
         applyPrefValue(key, o.value)
       }
     })
@@ -647,20 +652,20 @@ Item {
   }
 
   function movePrefs(dy) {
-    if (prefs.length === 0) return
-    prefsSel = Math.max(0, Math.min(prefs.length - 1, prefsSel + dy))
+    if (prefsModel.count === 0) return
+    prefsSel = Math.max(0, Math.min(prefsModel.count - 1, prefsSel + dy))
   }
 
   function currentPref() {
-    return (prefsSel >= 0 && prefsSel < prefs.length) ? prefs[prefsSel] : null
+    return (prefsSel >= 0 && prefsSel < prefsModel.count) ? prefsModel.get(prefsSel) : null
   }
 
   function activatePref() {
     var p = currentPref()
     if (!p) return
-    if (p.type === "bool") setPreference(p.key, p.value !== true)
+    if (p.type === "bool") setPreference(p.key, p.value !== "true")
     else if (p.type === "int" || p.type === "float") {
-      var v = (p.value === undefined || p.value === null) ? p.default : p.value
+      var v = (p.value === "") ? p.def : p.value
       setPreference(p.key, Math.round(Number(v) + 1))
     }
   }
@@ -669,7 +674,7 @@ Item {
     var p = currentPref()
     if (!p) return
     if (p.type === "int" || p.type === "float") {
-      var v = (p.value === undefined || p.value === null) ? p.default : p.value
+      var v = (p.value === "") ? p.def : p.value
       var nv = Number(v) + dx
       if (p.min !== undefined && nv < p.min) nv = p.min
       if (p.max !== undefined && nv > p.max) nv = p.max
@@ -1132,116 +1137,128 @@ Item {
                   anchors.topMargin: 0
                   visible: root.prefsMode
 
-                  Column {
+                  ListView {
+                    id: prefsResultsList
                     anchors.fill: parent
+                    clip: true
                     spacing: Style.space(8)
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                    model: prefsModel
+                    delegate: BorderSurface {
+                      id: prefRow
+                      required property int index
+                      required property string key
+                      required property string type
+                      required property string label
+                      required property string description
+                      required property string value
+                      required property string def
+                      required property int min
+                      required property int max
 
-                    Repeater {
-                      model: root.prefs
-                      delegate: BorderSurface {
-                        required property var modelData
-                        required property int index
-                        width: parent.width
-                        height: Style.space(64)
-                        radius: Style.cornerRadius
-                        readonly property bool sel: root.prefsSel === index
-                        color: sel
-                          ? Style.hoverFillFor(root.foreground, root.accent)
-                          : Style.controlFill(false, false, root.foreground, root.accent)
-                        borderSpec: sel ? Border.controlSpec("hover-cursor", root.foreground, root.accent) : Border.none()
+                      width: prefsResultsList.width - Style.space(12)
+                      height: Style.space(64)
+                      radius: Style.cornerRadius
+                      readonly property bool sel: root.prefsSel === index
+                      color: sel
+                        ? Style.hoverFillFor(root.foreground, root.accent)
+                        : Style.controlFill(false, false, root.foreground, root.accent)
+                      borderSpec: sel ? Border.controlSpec("hover-cursor", root.foreground, root.accent) : Border.none()
 
-                        MouseArea {
-                          anchors.fill: parent
-                          onClicked: root.prefsSel = index
-                          onContainsMouseChanged: if (containsMouse) root.prefsSel = index
+                      MouseArea {
+                        anchors.fill: parent
+                        onClicked: root.prefsSel = index
+                        onContainsMouseChanged: if (containsMouse) root.prefsSel = index
+                      }
+
+                      Row {
+                        anchors.fill: parent
+                        anchors.leftMargin: Style.spacing.controlPaddingX
+                        anchors.rightMargin: Style.spacing.controlPaddingX
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: Style.spacing.rowPaddingX
+
+                        Column {
+                          width: parent.width - controlBox.width - parent.spacing
+                          anchors.verticalCenter: parent.verticalCenter
+                          spacing: Style.spacing.xs
+
+                          Text {
+                            textFormat: Text.PlainText
+                            text: prefRow.label || ""
+                            color: root.foreground
+                            font.family: root.fontFamily
+                            font.pixelSize: Style.font.subtitle
+                            font.bold: true
+                            elide: Text.ElideRight
+                            width: parent.width
+                          }
+                          Text {
+                            textFormat: Text.PlainText
+                            text: prefRow.description || ""
+                            visible: prefRow.description !== ""
+                            color: Qt.darker(root.foreground, 1.5)
+                            font.family: root.fontFamily
+                            font.pixelSize: Style.font.caption
+                            wrapMode: Text.WordWrap
+                            width: parent.width
+                          }
                         }
 
-                        Row {
-                          anchors.fill: parent
-                          anchors.leftMargin: Style.spacing.controlPaddingX
-                          anchors.rightMargin: Style.spacing.controlPaddingX
+                        Item {
+                          id: controlBox
+                          width: Style.space(200)
+                          height: Style.space(26)
                           anchors.verticalCenter: parent.verticalCenter
-                          spacing: Style.spacing.rowPaddingX
 
-                          Column {
-                            width: parent.width - controlBox.width - parent.spacing
+                          ToggleSwitch {
+                            visible: prefRow.type === "bool"
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: Style.spacing.xs
-
-                            Text {
-                              textFormat: Text.PlainText
-                              text: modelData.label || ""
-                              color: root.foreground
-                              font.family: root.fontFamily
-                              font.pixelSize: Style.font.subtitle
-                              font.bold: true
-                              elide: Text.ElideRight
-                              width: parent.width
-                            }
-                            Text {
-                              textFormat: Text.PlainText
-                              text: modelData.description || ""
-                              visible: modelData.description !== undefined && modelData.description !== ""
-                              color: Qt.darker(root.foreground, 1.5)
-                              font.family: root.fontFamily
-                              font.pixelSize: Style.font.caption
-                              wrapMode: Text.WordWrap
-                              width: parent.width
+                            anchors.right: parent.right
+                            checked: prefRow.value === "true"
+                            rounded: Style.cornerRadius > 0
+                            onToggled: {
+                              root.prefsSel = index
+                              root.setPreference(prefRow.key, prefRow.value !== "true")
                             }
                           }
 
-                          Item {
-                            id: controlBox
-                            width: Style.space(200)
-                            height: Style.space(26)
+                          PanelSlider {
+                            visible: prefRow.type === "int" || prefRow.type === "float"
+                            anchors.left: parent.left
+                            anchors.right: valueText.left
+                            anchors.rightMargin: Style.spacing.md
                             anchors.verticalCenter: parent.verticalCenter
-
-                            ToggleSwitch {
-                              visible: modelData.type === "bool"
-                              anchors.verticalCenter: parent.verticalCenter
-                              anchors.right: parent.right
-                              checked: modelData.value === true
-                              rounded: Style.cornerRadius > 0
-                              onToggled: { root.prefsSel = index; root.setPreference(modelData.key, modelData.value !== true) }
+                            bar: QtObject {
+                              readonly property color foreground: root.foreground
+                              readonly property color background: root.background
+                              readonly property color urgent: root.accent
+                              readonly property string fontFamily: root.fontFamily
+                              readonly property string position: "top"
+                              readonly property bool vertical: false
+                              readonly property int barSize: 26
                             }
-
-                            PanelSlider {
-                              visible: modelData.type === "int" || modelData.type === "float"
-                              anchors.left: parent.left
-                              anchors.right: valueText.left
-                              anchors.rightMargin: Style.spacing.md
-                              anchors.verticalCenter: parent.verticalCenter
-                              bar: QtObject {
-                                readonly property color foreground: root.foreground
-                                readonly property color background: root.background
-                                readonly property color urgent: root.accent
-                                readonly property string fontFamily: root.fontFamily
-                                readonly property string position: "top"
-                                readonly property bool vertical: false
-                                readonly property int barSize: 26
-                              }
-                              value: modelData.value !== undefined && modelData.value !== null ? modelData.value : modelData.default
-                              minimum: modelData.min !== undefined ? modelData.min : 0
-                              maximum: modelData.max !== undefined ? modelData.max : 100
-                              step: 1
-                              integer: modelData.type === "int"
-                              onReleased: function(v) {
-                                root.prefsSel = index
-                                root.setPreference(modelData.key, modelData.type === "int" ? Math.round(v) : v)
-                              }
+                            value: prefRow.value !== "" ? Number(prefRow.value) : Number(prefRow.def)
+                            minimum: prefRow.min
+                            maximum: prefRow.max
+                            step: 1
+                            integer: prefRow.type === "int"
+                            onReleased: function(v) {
+                              root.prefsSel = index
+                              root.setPreference(prefRow.key, prefRow.type === "int" ? Math.round(v) : v)
                             }
+                          }
 
-                            Text {
-                              id: valueText
-                              visible: modelData.type === "int" || modelData.type === "float"
-                              anchors.right: parent.right
-                              anchors.verticalCenter: parent.verticalCenter
-                              textFormat: Text.PlainText
-                              text: modelData.value !== undefined && modelData.value !== null ? String(modelData.value) : String(modelData.default)
-                              color: root.accent
-                              font.family: root.fontFamily
-                              font.pixelSize: Style.font.body
-                            }
+                          Text {
+                            id: valueText
+                            visible: prefRow.type === "int" || prefRow.type === "float"
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            textFormat: Text.PlainText
+                            text: prefRow.value !== "" ? prefRow.value : prefRow.def
+                            color: root.accent
+                            font.family: root.fontFamily
+                            font.pixelSize: Style.font.body
                           }
                         }
                       }
