@@ -12,7 +12,7 @@ assert_contains "$OUT" "omaset changed" "global help lists changed"
 assert_contains "$OUT" "Every command accepts --help" "global help advertises --help"
 
 # --help works for every command, not just get/set/reset
-for c in list schema changed search keys help ui history undo rollback; do
+for c in list schema changed search keys help ui history undo rollback preferences; do
   OUT="$(run "$c" --help)"
   assert_contains "$OUT" "omaset $c" "$c --help works"
 done

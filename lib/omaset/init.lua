@@ -7,6 +7,7 @@ local dsl = require("omaset.dsl")
 local discovery = require("omaset.discovery")
 local backends = require("omaset.backends")
 local journal = require("omaset.journal")
+local preferences = require("omaset.preferences")
 
 local M = {}
 
@@ -695,6 +696,74 @@ local function cmd_rollback(flags)
   end
 end
 
+local function cmd_preferences(flags, pos)
+  local sub = pos[1]
+
+  if sub == "get" then
+    local key = pos[2]
+    if key == nil then
+      die("preferences get: missing key")
+    end
+    local v, err = preferences.get(key)
+    if v == nil and err then
+      die(err)
+    end
+    if flags["--plain"] then
+      print(tostring(v))
+    else
+      print(json.encode({ key = key, value = v }))
+    end
+    return
+  end
+
+  if sub == "set" then
+    local key = pos[2]
+    if key == nil then
+      die("preferences set: missing key")
+    end
+    if pos[3] == nil then
+      die("preferences set: missing value for " .. key)
+    end
+    local v, err = preferences.set(key, pos[3])
+    if v == nil then
+      die(err)
+    end
+    if flags["--plain"] then
+      print("ok")
+    else
+      print(json.encode({ key = key, value = v, ok = true }))
+    end
+    return
+  end
+
+  if sub == "reset" then
+    local key = pos[2]
+    if key == nil then
+      die("preferences reset: missing key")
+    end
+    local v, err = preferences.reset(key)
+    if v == nil and err then
+      die(err)
+    end
+    if flags["--plain"] then
+      print("ok")
+    else
+      print(json.encode({ key = key, value = v, ok = true }))
+    end
+    return
+  end
+
+  -- default (no sub, or "list")
+  local list = preferences.list()
+  if flags["--json"] then
+    print(json.encode({ preferences = json.array(list) }))
+    return
+  end
+  for _, s in ipairs(list) do
+    print(string.format("%-24s %-8s (default %s)", s.key, tostring(s.value), tostring(s.default)))
+  end
+end
+
 local function usage_text()
   local text = [[
 omaset — Omarchy settings engine with a keyboard-first UI
@@ -716,6 +785,11 @@ Usage:
   omaset history [--json] [N]       recent changes omaset has made
   omaset undo [--all] [--plain]     undo the last change (or all of them)
   omaset rollback [--json]          restore pre-omaset config snapshots
+
+  omaset preferences [--json]       list omaset's own UI preferences
+  omaset preferences get <key> [--plain]     read one preference
+  omaset preferences set <key> <val> [--plain]  write one preference
+  omaset preferences reset <key> [--plain]    reset a preference to default
 
 Every command accepts --help (or -h) for command-specific help:
   omaset set --help                 # general help for a command
@@ -741,6 +815,7 @@ local COMMAND_HELP = {
   history = "omaset history [--json] [N]\n  List recent changes omaset has made, oldest first (N limits to the most recent).",
   undo = "omaset undo [--all] [--plain]\n  Undo the most recent change, or --all to revert every change in reverse order.",
   rollback = "omaset rollback [--json]\n  Restore the pre-omaset .bak snapshots of the config files omaset has written.",
+  preferences = "omaset preferences [list|get <key>|set <key> <val>|reset <key>] [--json|--plain]\n  List or edit omaset's own UI preferences (not Omarchy settings).",
 }
 
 local function value_hint(setting)
@@ -925,6 +1000,8 @@ function M.main(arg)
     cmd_undo(flags, pos)
   elseif cmd == "rollback" then
     cmd_rollback(flags)
+  elseif cmd == "preferences" then
+    cmd_preferences(flags, pos)
   else
     io.stderr:write("omaset: unknown command: " .. tostring(cmd) .. "\n\n" .. usage_text() .. "\n")
     os.exit(1)

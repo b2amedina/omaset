@@ -67,7 +67,8 @@ o.window({ class = "^org.quickshell$", title = "^omaset Settings$" },
 | `x` | reset the current setting to its default |
 | `/` | search (`↑`/`↓` move, `Enter` opens, `Esc` clears) |
 | `c` | open the Changed list (`↑`/`↓` move, `Enter` jumps, `Esc` closes) |
-| `Esc` | close (or leave search / changed) |
+| `p` | open Preferences (`↑`/`↓` move, `Space`/`Enter` toggle, `h`/`l` step, `Esc` closes) |
+| `Esc` | close (or leave search / changed / preferences) |
 
 The footer shows keyboard hints plus a contextual badge — `N changed` when
 settings differ from Omarchy stock, `N settings found` while searching.

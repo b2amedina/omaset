@@ -113,6 +113,13 @@ BorderSurface {
         }
       }
 
+      Connections {
+        target: slider
+        function onDraggingChanged() {
+          if (root.panel) root.panel.interacting = slider.dragging
+        }
+      }
+
       Text {
         id: valueText
         anchors.right: parent.right

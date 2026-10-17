@@ -102,6 +102,29 @@ recomputes the default from Omarchy's shipped config on every call.
   rule; `reset workspace_layout --all` clears every persisted rule, including
   workspaces that are not currently open.
 
+## Preferences
+
+omaset also has a few settings about *itself*, kept separate from the Omarchy
+settings above. They live in `~/.config/omaset/preferences.json`, are managed
+with `omaset preferences`, and are **not** Omarchy settings: they never appear
+in the settings panels, `search`, or `changed`.
+
+- `refresh_interval_sec` — how often the settings window re-reads values while
+  visible (default 2, range 1..60).
+- `launch_floating` — whether the window opens floating (default true). When
+  enabled, omaset floats its own window, so you can remove the hand-written
+  `o.window(... float = true ...)` rule for the omaset window from
+  `~/.config/hypr/hyprland.lua`.
+
+Edit them from the settings window with `p`, or from the CLI:
+
+```
+omaset preferences                            # list
+omaset preferences get refresh_interval_sec   # read one
+omaset preferences set refresh_interval_sec 5 # write one
+omaset preferences reset launch_floating      # back to default
+```
+
 ## Tests
 
 ```

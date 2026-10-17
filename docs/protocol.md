@@ -129,6 +129,23 @@ has written to the state it had before omaset first touched it, and clears the
 journal. Backends without a snapshot (e.g. the `omarchy` passthrough and
 `workspace-layout`) are no-ops.
 
+### `preferences [list|get <key>|set <key> <value>|reset <key>]`
+
+```
+{ "preferences": [ { "key", "type", "label", "description", "value", "default", ... } ] }
+```
+
+omaset's **own** UI preferences, stored in `~/.config/omaset/preferences.json`
+(`OMASET_PREFERENCES` overrides the path). They are deliberately *not* Omarchy
+settings: they have no backend, they never appear in `schema`/`search`, and
+they are never reported by `changed`.
+
+- `list` (default) — every preference with its current value and default;
+  `--json` returns the array under `preferences`.
+- `get <key>` — `{ "key", "value" }` (or `--plain` bare value).
+- `set <key> <value>` — validates and persists; `{ "key", "value", "ok" }`.
+- `reset <key>` — removes the override so the default applies.
+
 ### `list [--json]`
 
 Human text by default; `--json` is identical to `schema`.
