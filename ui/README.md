@@ -6,11 +6,12 @@ adding or removing a setting in Lua needs no QML changes.
 
 ## Launch
 
-The plugin is a **regular floating window** — it is not a terminal app and
-does not open inside a terminal emulator. It starts floating and centered, so
-you can move and resize it with the mouse; `SUPER+T` (Omarchy's default
-float/tile toggle) docks it back into the tiling layout. The Omarchy shell
-must be running (it always is in a session).
+The plugin is a **regular window** — it is not a terminal app and does not
+open inside a terminal emulator. By default it starts floating and centered
+(the `launch_floating` preference), so you can move and resize it with the
+mouse; `SUPER+T` (Omarchy's default float/tile toggle) also docks it back into
+the tiling layout. The Omarchy shell must be running (it always is in a
+session).
 
 ```sh
 omaset ui              # toggle open / close
@@ -48,13 +49,9 @@ The shell rescans the plugins dir on change. `OMASET_BIN` (optional) points
 the panel at a different omaset executable; otherwise it runs `omaset` from
 `PATH`.
 
-The window floats because of a Hyprland rule matching its class + title (add
-this to `~/.config/hypr/hyprland.lua` or an `apps/*.lua` file):
-
-```lua
-o.window({ class = "^org.quickshell$", title = "^omaset Settings$" },
-  { float = true, center = true })
-```
+The window floats because omaset manages a `o.window(... float/center ...)`
+rule for its own window (the `launch_floating` preference); no hand-written
+Hyprland rule is required.
 
 ## Keys
 

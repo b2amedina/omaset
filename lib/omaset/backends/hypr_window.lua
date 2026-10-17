@@ -210,6 +210,52 @@ function M.reset(setting, key)
   return commit(file, content, new_content)
 end
 
+-- The omaset settings window's own float/center rule, driven by the
+-- `launch_floating` preference (not a settings-model setting). Enabling writes
+-- it into the managed block; disabling removes it. The window then floats or
+-- tiles based purely on this rule rather than a hand-written one.
+local OMASET_MATCH = { class = "^org.quickshell$", title = "^omaset Settings$" }
+local OMASET_RULES = { float = true, center = true }
+
+function M.set_omaset_float(enabled)
+  local file = user_file({ file = "hyprland" })
+  local content = util.read_file(file) or ""
+  local rules = parse_rules(content)
+  local match_str = compact_table(OMASET_MATCH)
+  local idx
+  for i, r in ipairs(rules) do
+    if compact_table(r.match) == match_str then
+      idx = i
+      break
+    end
+  end
+  local changed = false
+  if enabled then
+    if idx then
+      if compact_table(rules[idx].rules) ~= compact_table(OMASET_RULES) then
+        rules[idx].rules = OMASET_RULES
+        changed = true
+      end
+    else
+      rules[#rules + 1] = { match = OMASET_MATCH, rules = OMASET_RULES }
+      changed = true
+    end
+  elseif idx then
+    table.remove(rules, idx)
+    changed = true
+  end
+  if not changed then
+    return true
+  end
+  local new_content
+  if #rules == 0 then
+    new_content = remove_block(content)
+  else
+    new_content = replace_or_append(content, build_block(rules))
+  end
+  return commit(file, content, new_content)
+end
+
 registry.register("hypr-window", M)
 
 return M

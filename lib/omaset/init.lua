@@ -764,6 +764,31 @@ local function cmd_preferences(flags, pos)
   end
 end
 
+-- Apply the `launch_floating` preference: write or remove the omaset window's
+-- float/center rule in the managed hypr-window block. Called by the UI when the
+-- window opens and whenever the preference changes.
+local function cmd_ui_float(flags, pos)
+  M.load()
+  local b = backends.get("hypr-window")
+  if not b or not b.set_omaset_float then
+    die("hypr-window backend does not manage the omaset window rule")
+  end
+  local arg = pos[1]
+  local enabled
+  if arg == "on" then
+    enabled = true
+  elseif arg == "off" then
+    enabled = false
+  else
+    die("ui-float: expected on or off (got '" .. tostring(arg or "") .. "')")
+  end
+  local ok, err = b.set_omaset_float(enabled)
+  if not ok then
+    die(err)
+  end
+  print("ok")
+end
+
 local function usage_text()
   local text = [[
 omaset — Omarchy settings engine with a keyboard-first UI
@@ -816,6 +841,7 @@ local COMMAND_HELP = {
   undo = "omaset undo [--all] [--plain]\n  Undo the most recent change, or --all to revert every change in reverse order.",
   rollback = "omaset rollback [--json]\n  Restore the pre-omaset .bak snapshots of the config files omaset has written.",
   preferences = "omaset preferences [list|get <key>|set <key> <val>|reset <key>] [--json|--plain]\n  List or edit omaset's own UI preferences (not Omarchy settings).",
+  ["ui-float"] = "omaset ui-float <on|off>\n  Add or remove the omaset window's float/center rule (driven by the launch_floating preference).",
 }
 
 local function value_hint(setting)
@@ -1002,6 +1028,8 @@ function M.main(arg)
     cmd_rollback(flags)
   elseif cmd == "preferences" then
     cmd_preferences(flags, pos)
+  elseif cmd == "ui-float" then
+    cmd_ui_float(flags, pos)
   else
     io.stderr:write("omaset: unknown command: " .. tostring(cmd) .. "\n\n" .. usage_text() .. "\n")
     os.exit(1)

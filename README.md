@@ -111,10 +111,10 @@ in the settings panels, `search`, or `changed`.
 
 - `refresh_interval_sec` — how often the settings window re-reads values while
   visible (default 2, range 1..60).
-- `launch_floating` — whether the window opens floating (default true). When
-  enabled, omaset floats its own window, so you can remove the hand-written
-  `o.window(... float = true ...)` rule for the omaset window from
-  `~/.config/hypr/hyprland.lua`.
+- `launch_floating` — whether the window opens floating (default true). omaset
+  manages this by adding/removing a `o.window(... float/center ...)` rule for
+  its own window in the managed block of `~/.config/hypr/hyprland.lua`, so no
+  hand-written rule is needed. Takes effect on the next open.
 
 Edit them from the settings window with `p`, or from the CLI:
 

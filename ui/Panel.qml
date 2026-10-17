@@ -275,12 +275,11 @@ Item {
     })
   }
 
-  // Best-effort: ask Hyprland to float/tile this window to match the
-  // preference. Requires the user to drop any hand-written float rule for the
-  // omaset window (hyprland.lua), since omaset now owns its own presentation.
+  // Apply the launch_floating preference by adding/removing the omaset
+  // window's float rule in the managed hypr-window block. Persistent, so it
+  // also governs how the window opens next time.
   function applyLaunchFloating() {
-    var action = root.launchFloating ? "setfloating" : "settiled"
-    exec(["hyprctl", "dispatch", action, "title:omaset Settings"], function() {})
+    exec([omasetBin, "ui-float", root.launchFloating ? "on" : "off"], function() {})
   }
 
   // Periodic refresh while the window is visible and idle, so values changed

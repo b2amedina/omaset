@@ -57,4 +57,21 @@ assert_contains "$OUT" "rounding  int" "help lists second sub-setting"
 OUT="$(run search fullwidth)"
 assert_contains "$OUT" "(grouped)" "search marks grouped"
 
+# ui-float adds/removes the omaset window's own float rule (launch_floating).
+capture_out ui-float on
+assert_eq "$OUT" "ok" "ui-float on"
+file="$(cat "$OMASET_HYPR_DIR/hyprland.lua")"
+assert_contains "$file" 'o.window({ class = "^org.quickshell$", title = "^omaset Settings$" }, { center = true, float = true })' "float rule added"
+
+capture_out ui-float on
+assert_eq "$OUT" "ok" "ui-float on idempotent"
+
+capture_out ui-float off
+assert_eq "$OUT" "ok" "ui-float off"
+file="$(cat "$OMASET_HYPR_DIR/hyprland.lua")"
+assert_not_contains "$file" "omaset Settings" "float rule removed"
+
+capture ui-float bogus
+assert_exit "$CODE" 1 "ui-float invalid arg rejected"
+
 echo "ok"
