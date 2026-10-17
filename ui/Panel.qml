@@ -527,6 +527,7 @@ Item {
     searchQuery = ""
     searchResults = []
     searchSel = 0
+    focusPane = "content"
   }
 
   function exitSearch() {
@@ -584,6 +585,7 @@ Item {
   function enterChanged() {
     changedMode = true
     changedSel = 0
+    focusPane = "content"
     refreshChanged()
   }
 
@@ -634,6 +636,7 @@ Item {
   function enterPrefs() {
     prefsMode = true
     prefsSel = 0
+    focusPane = "content"
     loadPreferences()
   }
 
@@ -820,7 +823,8 @@ Item {
                     width: sidebar.width - Style.spacing.md * 2
                     height: Style.space(28)
 
-                    readonly property bool active: root.activePanelId === modelData.id
+                    readonly property bool active: !root.searchMode && !root.changedMode && !root.prefsMode
+                      && root.activePanelId === modelData.id
                     readonly property bool cursor: root.focusPane === "sidebar" && root.selectedSidebar === index
 
                     Rectangle {
@@ -887,7 +891,9 @@ Item {
                   Text {
                     anchors.verticalCenter: parent.verticalCenter
                     textFormat: Text.PlainText
-                    text: root.searchMode ? "\uf002" : (root.changedMode ? "\uf044" : root.iconFor(root.activePanelId))
+                    text: root.searchMode ? "\uf002"
+                      : (root.changedMode ? "\uf044"
+                      : (root.prefsMode ? "\uf013" : root.iconFor(root.activePanelId)))
                     color: root.accent
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.iconLarge
@@ -895,7 +901,9 @@ Item {
                   Text {
                     anchors.verticalCenter: parent.verticalCenter
                     textFormat: Text.PlainText
-                    text: root.searchMode ? "Search" : (root.changedMode ? "Changed" : (root.activePanel() ? root.activePanel().title : ""))
+                    text: root.searchMode ? "Search"
+                      : (root.changedMode ? "Changed"
+                      : (root.prefsMode ? "Preferences" : (root.activePanel() ? root.activePanel().title : "")))
                     color: root.foreground
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.heading
@@ -914,7 +922,7 @@ Item {
                   anchors.margins: Style.spacing.panelPadding
                   anchors.topMargin: 0
                   clip: true
-                  visible: !root.searchMode && !root.changedMode
+                  visible: !root.searchMode && !root.changedMode && !root.prefsMode
                   ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                   ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
