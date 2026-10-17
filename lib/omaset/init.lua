@@ -541,7 +541,7 @@ local function cmd_keys(flags, pos)
   if not (s.keyed or grouped(s)) then
     die("setting is not keyed: " .. s.id)
   end
-  local keys = M.keys(s)
+  local keys = flags["--all"] and M.keys_all(s) or M.keys(s)
   if keys == nil then
     die("setting has no keys: " .. s.id)
   end
@@ -791,6 +791,33 @@ local function cmd_ui_float(flags, pos)
   print("ok")
 end
 
+local function cmd_mcp(flags, pos)
+  local mcp = require("omaset.mcp")
+  local sub = pos[1]
+
+  if sub == "install" then
+    local names = {}
+    for i = 2, #pos do
+      names[#names + 1] = pos[i]
+    end
+    mcp.install(names)
+    return
+  end
+
+  if sub == "doctor" then
+    mcp.doctor()
+    return
+  end
+
+  if sub ~= nil and sub ~= "serve" and sub ~= "run" then
+    io.stderr:write("omaset mcp: unknown subcommand '" .. sub .. "' (expected install, doctor, or none to serve)\n")
+    os.exit(1)
+  end
+
+  M.load()
+  mcp.serve(M)
+end
+
 local function usage_text()
   local text = [[
 omaset — Omarchy settings engine with a keyboard-first UI
@@ -807,7 +834,7 @@ Usage:
   omaset changed [--json]           settings that differ from defaults
   omaset search <query> [--json]    find settings by id or label
   omaset help <id>                  show one setting's full spec
-  omaset keys <id> [--json]         list keys of a keyed setting
+  omaset keys <id> [--all] [--json] list keys of a keyed or grouped setting
 
   omaset history [--json] [N]       recent changes omaset has made
   omaset undo [--all] [--plain]     undo the last change (or all of them)
@@ -817,6 +844,10 @@ Usage:
   omaset preferences get <key> [--plain]     read one preference
   omaset preferences set <key> <val> [--plain]  write one preference
   omaset preferences reset <key> [--plain]    reset a preference to default
+
+  omaset mcp                      run the MCP server over stdio (for agents)
+  omaset mcp install [<agent>...] write the omaset MCP entry into agents' configs
+  omaset mcp doctor               report which agents are wired to the server
 
 Every command accepts --help (or -h) for command-specific help:
   omaset set --help                 # general help for a command
@@ -837,13 +868,14 @@ local COMMAND_HELP = {
   changed = "omaset changed [--json]\n  List settings whose effective value differs from the Omarchy default.",
   search = "omaset search <query> [--json]\n  Find settings by id or label substring.",
   help = "omaset help <id>\n  Show one setting's full spec (type, options, value, default).",
-  keys = "omaset keys <id> [--json]\n  List the keys of a keyed setting (e.g. workspace numbers).",
+  keys = "omaset keys <id> [--all] [--json]\n  List the keys of a keyed or grouped setting (e.g. workspace numbers). --all includes persisted keys for workspaces not currently open.",
   ui = "omaset ui [open|close|toggle]\n  Open the keyboard settings window (toggle by default). Requires the Omarchy shell plugin to be installed.",
   history = "omaset history [--json] [N]\n  List recent changes omaset has made, oldest first (N limits to the most recent).",
   undo = "omaset undo [--all] [--plain]\n  Undo the most recent change, or --all to revert every change in reverse order.",
   rollback = "omaset rollback [--json]\n  Restore the pre-omaset .bak snapshots of the config files omaset has written.",
   preferences = "omaset preferences [list|get <key>|set <key> <val>|reset <key>] [--json|--plain]\n  List or edit omaset's own UI preferences (not Omarchy settings).",
   ["ui-float"] = "omaset ui-float <on|off>\n  Add or remove the omaset window's float/center rule (driven by the launch_floating preference).",
+  mcp = "omaset mcp\n  Run the MCP server over stdio for agents.\nomaset mcp install [<agent>...]\n  Write the omaset MCP entry into the named agents' configs (all when none are named).\nomaset mcp doctor\n  Report which agents are wired to the omaset MCP server.",
 }
 
 local function value_hint(setting)
@@ -1032,6 +1064,8 @@ function M.main(arg)
     cmd_preferences(flags, pos)
   elseif cmd == "ui-float" then
     cmd_ui_float(flags, pos)
+  elseif cmd == "mcp" then
+    cmd_mcp(flags, pos)
   else
     io.stderr:write("omaset: unknown command: " .. tostring(cmd) .. "\n\n" .. usage_text() .. "\n")
     os.exit(1)

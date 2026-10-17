@@ -49,6 +49,50 @@ function M.coerce(str, setting)
   return nil, "unknown type '" .. tostring(t) .. "'"
 end
 
+-- Validate a JSON value against a setting's declared type (the typed sibling of
+-- coerce, which accepts strings). Returns true, or nil plus an error message.
+function M.validate(value, setting)
+  local t = setting.type or "string"
+  if t == "bool" then
+    if type(value) ~= "boolean" then
+      return nil, "expected a boolean, got " .. tostring(value)
+    end
+  elseif t == "int" then
+    if type(value) ~= "number" or value % 1 ~= 0 then
+      return nil, "expected an integer, got " .. tostring(value)
+    end
+  elseif t == "float" then
+    if type(value) ~= "number" then
+      return nil, "expected a number, got " .. tostring(value)
+    end
+  elseif t == "enum" then
+    if setting.options then
+      local ok = false
+      for _, opt in ipairs(setting.options) do
+        if opt == value then
+          ok = true
+          break
+        end
+      end
+      if not ok then
+        return nil, "'" .. tostring(value) .. "' is not a valid option (choose from: "
+          .. table.concat(setting.options, ", ") .. ")"
+      end
+    end
+  elseif t == "string" then
+    if type(value) ~= "string" then
+      return nil, "expected a string, got " .. tostring(value)
+    end
+  else
+    return nil, "unknown type '" .. tostring(t) .. "'"
+  end
+  local ok, err = M.check_range(value, setting)
+  if not ok then
+    return nil, err
+  end
+  return true
+end
+
 -- Validate a keyed setting's key argument.
 function M.validate_key(setting, key)
   local label = setting.key_label or "key"

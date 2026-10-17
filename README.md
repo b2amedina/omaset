@@ -28,6 +28,9 @@ bin/omaset ui [open|close|toggle]     # open the keyboard settings window (toggl
 bin/omaset history [--json] [N]       # recent changes omaset has made
 bin/omaset undo [--all] [--plain]     # undo the last change (or all of them)
 bin/omaset rollback [--json]          # restore pre-omaset config snapshots
+bin/omaset mcp                        # MCP server over stdio (for agents)
+bin/omaset mcp install [<agent>...]   # wire the server into agents' configs
+bin/omaset mcp doctor                 # report which agents are wired
 bin/omaset --version
 ```
 
@@ -59,6 +62,25 @@ omaset is built so an AI agent can drive Omarchy's settings through one JSON
 interface instead of editing dotfiles by hand. See
 [docs/agents.md](docs/agents.md) for the commands, a worked example, and the
 safety model.
+
+## MCP server
+
+`omaset mcp` runs a zero-dependency [Model Context Protocol](https://modelcontextprotocol.io)
+server over stdio, exposing omaset's settings as typed tools — so Claude Code,
+Codex, opencode, Gemini, or Copilot can discover, read, and change settings in
+session without shelling out to the CLI.
+
+```
+omaset mcp install               # wire the server into every supported agent
+omaset mcp install claude opencode  # or name the agents you use
+omaset mcp doctor                # verify which agents point at the server
+```
+
+Tools: `schema`, `search`, `get`, `set`, `reset`, `changed`, `help`, `keys`,
+`undo`, `open_ui` (the client namespaces them as `omaset_<tool>`, so the double
+`omaset_omaset_` prefix never appears). Every write goes through the same
+validation and journal as the CLI, so agent changes are visible in
+`omaset history` and undoable.
 
 ## Safety, undo & rollback
 
@@ -146,6 +168,7 @@ lib/omaset/
   dsl.lua               panel()/section()/setting() declarative DSL
   discovery.lua         loads share/settings/*.lua (and ~/.config/omaset/settings/)
   types.lua             int/float/bool/enum coercion + range checks
+  mcp.lua               MCP server (JSON-RPC over stdio) + agent registration
   json.lua              minimal JSON encoder + decoder (journal, preferences)
   journal.lua           append-only change log for history/undo
   preferences.lua       omaset's own UI preferences (separate from settings)

@@ -6,7 +6,37 @@ without needing to know which dotfile each setting lives in.
 
 The contract is `docs/protocol.md`; this page is the practical guide.
 
-## The four commands you need
+## MCP (recommended)
+
+omaset ships an MCP server so an agent can call settings as typed tools instead
+of parsing CLI output. Enable it once:
+
+```
+omaset mcp install            # all supported agents
+omaset mcp install claude     # or a specific one
+omaset mcp doctor             # verify
+```
+
+The server is `omaset mcp` (JSON-RPC over stdio) and exposes these tools:
+
+| Tool | Purpose |
+|---|---|
+| `schema` | every panel/setting + current value |
+| `search` | find by id/label/description |
+| `get` | read one setting (value + default) |
+| `set` | write a value (validated, applied, journaled) |
+| `reset` | revert omaset's override |
+| `changed` | settings differing from stock |
+| `help` | one setting's spec |
+| `keys` | enumerate a keyed/grouped setting's keys (value + default each) |
+| `undo` | undo the last change |
+| `open_ui` | summon the settings window for the user |
+
+Clients namespace tools as `<server>_<tool>` (e.g. `omaset_get`). Each tool
+returns the data as JSON in the text content (and again as `structuredContent`),
+so agents see the real payload either way.
+
+## The CLI commands you need
 
 ```
 omaset schema                # every panel + setting + current value, as JSON
