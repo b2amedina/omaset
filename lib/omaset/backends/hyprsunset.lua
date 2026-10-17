@@ -86,6 +86,20 @@ local function remove_block(content)
   return content:sub(1, start - 1) .. content:sub(line_end + 1)
 end
 
+-- Snapshot the original config once, before omaset's first write, so
+-- `rollback` can restore it — the same .omaset.bak convention the hypr-lua and
+-- hypr-window backends use.
+local function snapshot_once(file)
+  if util.read_file(file .. ".omaset.bak") == nil then
+    util.write_file(file .. ".omaset.bak", util.read_file(file) or "")
+  end
+end
+
+local function commit(file, content)
+  snapshot_once(file)
+  return util.write_file(file, content)
+end
+
 function M.read(setting, key)
   local content = util.read_file(config_file()) or ""
   local prof = managed_profile(content)
@@ -119,17 +133,17 @@ function M.write(setting, key, value)
   if setting.path == "schedule" then
     if value then
       prof.temperature = prof.temperature or DEFAULT_TEMP
-      return util.write_file(file, replace_or_append(content, build_block(prof)))
+      return commit(file, replace_or_append(content, build_block(prof)))
     end
     if managed_profile(content) == nil then
       return true
     end
-    return util.write_file(file, remove_block(content))
+    return commit(file, remove_block(content))
   end
 
   if setting.path == "temperature" then
     prof.temperature = value
-    return util.write_file(file, replace_or_append(content, build_block(prof)))
+    return commit(file, replace_or_append(content, build_block(prof)))
   end
 
   return nil, "unknown hyprsunset path: " .. tostring(setting.path)
@@ -143,19 +157,31 @@ function M.reset(setting, key)
     if managed_profile(content) == nil then
       return true
     end
-    return util.write_file(file, remove_block(content))
+    return commit(file, remove_block(content))
   end
 
   if setting.path == "temperature" then
     local prof = managed_profile(content)
     if prof and prof.temperature then
       prof.temperature = DEFAULT_TEMP
-      return util.write_file(file, replace_or_append(content, build_block(prof)))
+      return commit(file, replace_or_append(content, build_block(prof)))
     end
     return true
   end
 
   return nil, "unknown hyprsunset path: " .. tostring(setting.path)
+end
+
+-- Restore the pre-omaset snapshot (if any). This is the panic-button restore
+-- for the night-light config, matching the other file-writing backends.
+function M.restore()
+  local file = config_file()
+  local content = util.read_file(file .. ".omaset.bak")
+  if content == nil then
+    return 0
+  end
+  util.write_file(file, content)
+  return 1
 end
 
 registry.register("hyprsunset", M)

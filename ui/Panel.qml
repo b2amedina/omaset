@@ -17,6 +17,7 @@ Item {
   // ---- plugin lifecycle ------------------------------------------------
   property bool closingFromHost: false
   property var shell: null
+  property var manifest: null
 
   function open(payloadJson) {
     closingFromHost = false
@@ -48,9 +49,17 @@ Item {
   readonly property color recessedColor: Qt.darker(background, 1.35)
 
   // ---- omaset binary ---------------------------------------------------
+  // The engine is bundled with the plugin (bin/omaset lives next to the QML),
+  // so resolve it relative to the plugin's install directory. `omarchy plugin
+  // add` always installs a plugin to <XDG_CONFIG_HOME>/omarchy/plugins/<id>/.
+  // OMASET_BIN overrides for a separately-installed engine.
   readonly property string omasetBin: {
     var e = Quickshell.env("OMASET_BIN")
-    return (e && e.length > 0) ? e : "omaset"
+    if (e && e.length > 0) return e
+    var id = (manifest && manifest.id) ? String(manifest.id) : "b2amedina.omaset"
+    var cfg = Quickshell.env("XDG_CONFIG_HOME")
+    if (!cfg || cfg.length === 0) cfg = Quickshell.env("HOME") + "/.config"
+    return cfg + "/omarchy/plugins/" + id + "/bin/omaset"
   }
 
   // ---- process runner (serialized command queue) -----------------------

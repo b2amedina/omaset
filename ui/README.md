@@ -17,11 +17,10 @@ session).
 omaset ui              # toggle open / close
 omaset ui open         # open
 omaset ui close        # close
-omaset-ui-reload       # restart the shell + reopen (development)
+omaset ui reload       # restart the shell + reopen (development)
 ```
 
-`omaset ui`/`omaset-ui-reload` are thin wrappers over the shell IPC; the
-underlying commands are:
+`omaset ui` is a thin wrapper over the shell IPC; the underlying commands are:
 
 ```sh
 omarchy-shell shell toggle b2amedina.omaset '{}'   # open / close
@@ -29,25 +28,34 @@ omarchy-shell shell summon b2amedina.omaset '{}'   # open only
 omarchy-shell shell hide b2amedina.omaset          # close only
 ```
 
+`omaset ui reload` additionally runs `omarchy restart shell` first, because the
+shell's file watcher does not follow symlinks and a plain rescan would not pick
+up edits under a symlinked dev checkout.
+
 There is also an optional bar icon (`bar-widget`). It is not added to the bar
 by default; enable it by adding `b2amedina.omaset` to `shell.json`'s bar
 layout.
 
 ## Install
 
-The plugin directory is symlinked into the Omarchy plugins dir, and the
-`omaset` binary (which exposes `omaset ui`) plus the dev-reload helper are
-linked onto `PATH`:
+The marketplace install is a single command that clones this repository (the
+manifest lives at the repo root, with the QML under `ui/`) and enables it:
 
 ```sh
-ln -s "$PWD/ui" ~/.config/omarchy/plugins/b2amedina.omaset
-ln -s "$PWD/bin/omaset" ~/.local/bin/omaset
-ln -s "$PWD/bin/omaset-ui-reload" ~/.local/bin/omaset-ui-reload
+omarchy plugin add https://github.com/b2amedina/omaset.git --enable
 ```
 
-The shell rescans the plugins dir on change. `OMASET_BIN` (optional) points
-the panel at a different omaset executable; otherwise it runs `omaset` from
-`PATH`.
+For development, symlink the repository root into the Omarchy plugins dir (the
+panel finds the engine bundled alongside the QML, so no PATH entry is needed):
+
+```sh
+ln -s "$PWD" ~/.config/omarchy/plugins/b2amedina.omaset
+ln -s "$PWD/bin/omaset" ~/.local/bin/omaset   # optional, for CLI use
+```
+
+The shell rescans the plugins dir on change. `OMASET_BIN` (optional) points the
+panel at a different `omaset` executable; otherwise it runs the engine bundled
+with the plugin at `~/.config/omarchy/plugins/b2amedina.omaset/bin/omaset`.
 
 The window floats because omaset manages a `o.window(... float/center ...)`
 rule for its own window (the `launch_floating` preference); no hand-written
@@ -72,7 +80,8 @@ settings differ from Omarchy stock, `N settings found` while searching.
 
 ## Structure
 
-- `manifest.json` — plugin metadata (`panel` + `bar-widget` kinds).
+- `manifest.json` (at the repo root) — plugin metadata (`panel` + `bar-widget`
+  kinds).
 - `Panel.qml` — the window: sidebar, content, footer, process runner, cursor
   model, search.
 - `BarWidget.qml` — optional bar icon that toggles the window.

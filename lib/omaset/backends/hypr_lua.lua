@@ -108,7 +108,7 @@ local function parse_managed_block(content)
     end,
   }, { __index = function() return function() end end })
 
-  local chunk = load(body, "=omaset-managed", "t", { hl = hl })
+  local chunk = util.load_chunk(body, "=omaset-managed", { hl = hl })
   if chunk then
     pcall(chunk)
   end

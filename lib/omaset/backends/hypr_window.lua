@@ -66,7 +66,7 @@ local function parse_rules(content)
       rules[#rules + 1] = { match = match, rules = r }
     end,
   }
-  local chunk = load(body, "=omaset-window", "t", { o = o })
+  local chunk = util.load_chunk(body, "=omaset-window", { o = o })
   if chunk then
     pcall(chunk)
   end

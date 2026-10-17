@@ -1,16 +1,37 @@
 # omaset
 
-An Omarchy settings engine: a backend-pluggable model of every setting plus
+An Omarchy settings engine: a backend-pluggable model of Omarchy settings plus
 a JSON protocol that any frontend can drive.
 
 It ships a command-line interface and a keyboard-first settings window (an
-Omarchy shell plugin). Run `omaset ui` to open it — or drive every setting
+Omarchy shell plugin). Run `omaset ui` to open it — or drive its settings
 headlessly through the JSON protocol.
 
-Extensible: every setting and panel is declared in a small Lua DSL, so adding
-or overriding a setting means dropping in a `.lua` file.
+Extensible: every omaset setting and panel is declared in a small Lua DSL, so
+adding or overriding a setting means dropping in a `.lua` file.
 
 **Status:** engine + CLI + keyboard-first UI (`omaset ui`).
+
+## Install
+
+The settings window and its engine ship together as an Omarchy shell plugin:
+
+```
+omarchy plugin add https://github.com/b2amedina/omaset.git --enable
+```
+
+This clones the plugin into `~/.config/omarchy/plugins/b2amedina.omaset/` and
+enables it. The engine is bundled inside that folder — there is nothing else to
+install; it uses only the `lua5.1` interpreter and `jq` that vanilla Omarchy
+already ships. Open the window with `omaset ui` (toggle) or
+`omarchy-shell shell toggle b2amedina.omaset '{}'`.
+
+The `omaset` CLI is optional: link the bundled binary onto your PATH if you want
+to drive settings from a terminal or an agent (see [For agents](#for-agents)):
+
+```
+ln -s ~/.config/omarchy/plugins/b2amedina.omaset/bin/omaset ~/.local/bin/omaset
+```
 
 ## Usage
 
@@ -24,7 +45,7 @@ bin/omaset changed [--json]           # settings that differ from defaults
 bin/omaset search <query> [--json]    # find settings by id or label
 bin/omaset help <id>                  # one setting's type/options/default/current
 bin/omaset keys <id>                  # list keys of a keyed setting (workspaces)
-bin/omaset ui [open|close|toggle]     # open the keyboard settings window (toggle)
+bin/omaset ui [open|close|toggle|reload]  # open the keyboard settings window (toggle)
 bin/omaset history [--json] [N]       # recent changes omaset has made
 bin/omaset undo [--all] [--plain]     # undo the last change (or all of them)
 bin/omaset rollback [--json]          # restore pre-omaset config snapshots
@@ -41,8 +62,8 @@ To see what values a setting accepts, use `omaset help <id>` (lists `options`
 for enums, `min..max` for numbers) or `omaset set <id> --help`, which shows the
 `<a|b|c>` form. An invalid enum value lists the valid options in the error.
 
-No installation needed — it runs in place with `luajit` (and `jq` for the
-`shell-json` backend).
+The engine runs in place — no build step — using only the `lua5.1` interpreter
+and `jq` that vanilla Omarchy already ships.
 
 ## Settings window
 
@@ -86,9 +107,9 @@ validation and journal as the CLI, so agent changes are visible in
 
 omaset never parses-and-rewrites your files. It only writes into a marked
 `-- omaset:begin/end` block (Lua config) or via Omarchy's own `jq` pipeline
-(`shell.json`), keeps a one-time `<file>.omaset.bak` snapshot before its first
-write, and re-validates each write (`hyprctl configerrors`) with an automatic
-revert on failure.
+(`shell.json`), and keeps a one-time `<file>.omaset.bak` snapshot before its
+first write to any config file. Hyprland Lua config writes are re-validated
+with `hyprctl configerrors` and automatically reverted on failure.
 
 - `omaset history` lists every change omaset has made, oldest first, from an
   append-only journal at `~/.local/state/omaset/journal.jsonl`.
@@ -97,8 +118,9 @@ revert on failure.
   `reset` when the setting was previously untouched (so "back to default" keeps
   following the Omarchy default rather than pinning a value).
 - `omaset rollback` is the panic button: it restores every `<file>.omaset.bak`
-  snapshot, returning each config file to the state it had before omaset first
-  wrote to it. It does not depend on the journal.
+  snapshot for each file-writing backend, returning each config file to the
+  state it had before omaset first wrote to it. It does not depend on the
+  journal.
 
 ## Reset & changed semantics
 
@@ -162,7 +184,6 @@ to run while refactoring internals.
 
 ```
 bin/omaset              CLI entry (sets up package.path); `omaset ui` opens the window
-bin/omaset-ui-reload    reload the plugin + reopen (development)
 lib/omaset/
   init.lua              registry + schema + command dispatch
   dsl.lua               panel()/section()/setting() declarative DSL
@@ -228,6 +249,8 @@ ui/                     the keyboard-first settings window (Quickshell plugin)
   `temperature` (its color temperature in Kelvin, default 4000). Writing the
   temperature creates the profile if it does not exist; resetting the schedule
   removes the block entirely.
+- Keeps a `<file>.omaset.bak` snapshot before its first write, so `rollback`
+  restores the original `hyprsunset.conf` like the other file-writing backends.
 
 ### Extending with Lua
 

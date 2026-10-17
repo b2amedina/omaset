@@ -22,18 +22,18 @@ mkdir -p "$OMASET_HYPR_DIR" "$OMASET_SETTINGS_DIR" "$OMASET_BACKENDS_DIR"
 
 # Run omaset, stdout to the caller.
 run() {
-  luajit "$OMASET" "$@"
+  lua5.1 "$OMASET" "$@"
 }
 
 # Run omaset, capturing merged stdout+stderr into $OUT and exit code into $CODE.
 capture() {
-  OUT="$(luajit "$OMASET" "$@" 2>&1)"
+  OUT="$(lua5.1 "$OMASET" "$@" 2>&1)"
   CODE=$?
 }
 
 # Run omaset, capturing stdout only into $OUT and exit code into $CODE.
 capture_out() {
-  OUT="$(luajit "$OMASET" "$@" 2>/dev/null)"
+  OUT="$(lua5.1 "$OMASET" "$@" 2>/dev/null)"
   CODE=$?
 }
 

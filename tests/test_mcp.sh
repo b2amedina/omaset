@@ -20,7 +20,7 @@ OUT="$(printf '%s\n' \
   '{"jsonrpc":"2.0","id":13,"method":"ping"}' \
   '{"jsonrpc":"2.0","id":14,"method":"tools/call","params":{"name":"keys","arguments":{"id":"fullwidth_style"}}}' \
   '{"jsonrpc":"2.0","id":15,"method":"tools/call","params":{"name":"keys","arguments":{"id":"gaps_in"}}}' \
-  | luajit "$OMASET" mcp 2>/dev/null)"
+  | lua5.1 "$OMASET" mcp 2>/dev/null)"
 
 assert_contains "$OUT" '"protocolVersion":"2025-11-25"' "initialize echoes version"
 assert_contains "$OUT" '"serverInfo":{"name":"omaset"' "initialize reports serverInfo"
@@ -61,4 +61,4 @@ assert_contains "$OUT" '"sub":"border_size"' "keys lists border_size"
 assert_contains "$OUT" '"sub":"rounding"' "keys lists rounding"
 assert_contains "$OUT" '"message":"setting is not keyed or grouped: gaps_in"' "keys rejects non-keyed setting"
 
-echo "PASS  test_mcp.sh"
+echo "ok"

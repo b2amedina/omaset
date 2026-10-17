@@ -216,7 +216,7 @@ function M.schema()
   return out
 end
 
-M.VERSION = "0.2.0"
+M.VERSION = "0.1.0"
 
 local function die(msg)
   io.stderr:write("omaset: " .. msg .. "\n")
@@ -563,8 +563,14 @@ local function cmd_ui(pos)
     shell_cmd = "omarchy-shell shell hide b2amedina.omaset"
   elseif action == "toggle" then
     shell_cmd = "omarchy-shell shell toggle b2amedina.omaset '{}'"
+  elseif action == "reload" then
+    -- The shell's file watcher does not follow symlinks, so a plain rescan does
+    -- not pick up edits under a symlinked dev checkout; a full shell restart
+    -- recompiles the plugin QML. Restart, then reopen.
+    os.execute("omarchy restart shell")
+    shell_cmd = "omarchy-shell shell summon b2amedina.omaset '{}'"
   else
-    die("ui: expected open, close, or toggle (got '" .. action .. "')")
+    die("ui: expected open, close, toggle, or reload (got '" .. action .. "')")
   end
   local ok = os.execute(shell_cmd)
   if ok ~= 0 then
@@ -824,7 +830,7 @@ omaset — Omarchy settings engine with a keyboard-first UI
 
 Usage:
   omaset ui                         open the settings window (toggle)
-  omaset ui open|close              open or close it explicitly
+  omaset ui open|close|reload       open, close, or restart+reopen it
 
   omaset list [--json]              list panels and settings with values
   omaset schema                     full schema as JSON
@@ -869,7 +875,7 @@ local COMMAND_HELP = {
   search = "omaset search <query> [--json]\n  Find settings by id or label substring.",
   help = "omaset help <id>\n  Show one setting's full spec (type, options, value, default).",
   keys = "omaset keys <id> [--all] [--json]\n  List the keys of a keyed or grouped setting (e.g. workspace numbers). --all includes persisted keys for workspaces not currently open.",
-  ui = "omaset ui [open|close|toggle]\n  Open the keyboard settings window (toggle by default). Requires the Omarchy shell plugin to be installed.",
+  ui = "omaset ui [open|close|toggle|reload]\n  Open the keyboard settings window (toggle by default). reload restarts the shell and reopens (development). Requires the Omarchy shell plugin to be installed.",
   history = "omaset history [--json] [N]\n  List recent changes omaset has made, oldest first (N limits to the most recent).",
   undo = "omaset undo [--all] [--plain]\n  Undo the most recent change, or --all to revert every change in reverse order.",
   rollback = "omaset rollback [--json]\n  Restore the pre-omaset .bak snapshots of the config files omaset has written.",

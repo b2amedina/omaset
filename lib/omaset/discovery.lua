@@ -15,7 +15,7 @@ function M.load_file(path)
   f:close()
 
   local env = dsl.environment()
-  local chunk, err = load(content, "@" .. path, "t", env)
+  local chunk, err = util.load_chunk(content, "@" .. path, env)
   if not chunk then
     return nil, path .. ": " .. tostring(err)
   end

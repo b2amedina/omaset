@@ -43,6 +43,26 @@ function M.shell_quote(s)
   return "'" .. tostring(s):gsub("'", "'\\''") .. "'"
 end
 
+-- Compile a Lua source string into a chunk running in the given environment.
+-- Uses loadstring + setfenv so it works on the vanilla Lua 5.1 interpreter
+-- Omarchy ships (the 5.2+ load(str, name, "t", env) form is unavailable there)
+-- as well as LuaJIT. Bytecode chunks are rejected to keep the "text only"
+-- hardening that load's "t" mode provided.
+function M.load_chunk(str, chunkname, env)
+  if type(str) ~= "string" then
+    return nil, "expected source string"
+  end
+  if str:sub(1, 4) == "\27Lua" then
+    return nil, "bytecode not allowed: " .. (chunkname or "chunk")
+  end
+  local f, err = loadstring(str, chunkname)
+  if not f then
+    return nil, err
+  end
+  setfenv(f, env)
+  return f
+end
+
 -- Run a command, capturing combined stdout+stderr and the exit code.
 function M.run_capture(cmd)
   local p = io.popen(cmd .. " 2>&1")
