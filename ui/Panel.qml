@@ -22,7 +22,7 @@ Item {
     closingFromHost = false
     window.visible = true
     loadSchema()
-    loadPreferences()
+    loadPreferences(function() { applyLaunchFloating() })
     refreshChanged()
     Qt.callLater(function() { if (keyCatcher) keyCatcher.forceActiveFocus() })
   }
@@ -229,7 +229,10 @@ Item {
   function scheduleChanged() { changedTimer.restart() }
 
   // ---- preferences -----------------------------------------------------
-  function loadPreferences() {
+  // Load preference values for display. Does NOT apply the launch_floating
+  // rule — that happens on window open and on explicit change, so re-opening
+  // the preferences overlay can't re-apply a stale value and clobber a toggle.
+  function loadPreferences(onDone) {
     exec([omasetBin, "preferences", "--json"], function(text) {
       var o = parseJson(text)
       var list = (o && o.preferences && Array.isArray(o.preferences)) ? o.preferences : []
@@ -239,7 +242,7 @@ Item {
         if (p.key === "refresh_interval_sec") root.refreshIntervalSec = Number(p.value)
         else if (p.key === "launch_floating") root.launchFloating = (p.value === true)
       }
-      applyLaunchFloating()
+      if (onDone) onDone()
     })
   }
 
