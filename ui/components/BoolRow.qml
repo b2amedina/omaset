@@ -19,6 +19,11 @@ BorderSurface {
   readonly property bool hasCursor: panel ? (panel.focusPane === "content" && panel.selectedRow === rowIndex) : false
   readonly property bool hot: hasCursor
 
+  onHasCursorChanged: {
+    if (root.hasCursor && root.visible && root.panel)
+      root.panel.ensureRowVisible(root)
+  }
+
   readonly property var cursorSpec: Border.controlSpec("hover-cursor", fg, accent)
   readonly property var idleSpec: ({
     color: "transparent",
