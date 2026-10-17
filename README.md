@@ -86,7 +86,12 @@ recomputes the default from Omarchy's shipped config on every call.
 
 - `changed` diffs the *effective* value (as read from your config) against that
   stock default, so it sees changes made by hand-editing, `omarchy` commands, or
-  hotkeys too.
+  hotkeys too. In the settings window, press `c` to open a "Changed" list of
+  every differing setting (value → default); Enter jumps to it.
+- A setting can declare its own `default` when the backend cannot recompute
+  one — the `omarchy` passthrough toggles (`nightlight`, `window-no-gaps`,
+  `single-window-square`) declare `default = false` so they participate in
+  `changed` too.
 - `hypr-lua` writes into a managed `-- omaset:begin/end` block, so `reset` only
   removes omaset's block. A hand-written `hl.config(...)` override elsewhere in
   the file is left alone (and would take effect again). To restore *everything*

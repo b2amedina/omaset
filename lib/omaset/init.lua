@@ -140,6 +140,12 @@ function M.read_default(setting, key)
     end
     return nil
   end
+  -- A setting may declare its own default (e.g. an `omarchy` passthrough
+  -- toggle whose stock state the backend cannot recompute). It wins over the
+  -- backend's read_default.
+  if setting.default ~= nil then
+    return setting.default
+  end
   local backend, err = M.backend_for(setting)
   if not backend then
     return nil, err

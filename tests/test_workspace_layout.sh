@@ -38,7 +38,6 @@ assert_eq "$(cat "$ST/3.lua")" 'hl.workspace_rule({ workspace = "3", layout = "s
 OUT="$(run changed)"
 assert_contains "$OUT" "workspace_layout:2" "changed lists workspace 2"
 assert_contains "$OUT" "workspace_layout:3" "changed lists workspace 3"
-assert_not_contains "$OUT" "nightlight" "runtime toggle not in changed"
 
 # reset removes the rule.
 run reset workspace_layout 3

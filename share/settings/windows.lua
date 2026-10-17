@@ -36,6 +36,7 @@ panel("windows", "Windows", function()
       description = "Remove the gaps between tiled windows.",
       backend = "omarchy",
       mode = "toggle",
+      default = false,
       command = "omarchy hyprland toggle window-no-gaps",
       status = "omarchy hyprland toggle enabled window-no-gaps && echo true || echo false",
     })
@@ -47,6 +48,7 @@ panel("windows", "Windows", function()
       description = "Keep a single tiled window in a square aspect ratio.",
       backend = "omarchy",
       mode = "toggle",
+      default = false,
       command = "omarchy hyprland toggle single-window-aspect-ratio",
       status = "omarchy hyprland toggle enabled single-window-aspect-ratio && echo true || echo false",
     })

@@ -47,6 +47,11 @@ a value is stored or how its default is computed. Within a panel, settings are
 listed alphabetically by `id`, with each section's settings kept contiguous
 (sections ordered by their alphabetically-first member).
 
+A setting may also declare a `default` value. When present it is the stock
+default for that setting, overriding the backend's `read_default`; it is how a
+backend that cannot recompute its own default (e.g. an `omarchy` passthrough
+toggle) still participates in `changed`.
+
 ### `get <id>`
 
 ```
@@ -76,7 +81,10 @@ error to stderr.
 { "changed": [ { "id", "panel", "label", "value", "default" }, ... ] }
 ```
 
-Settings whose current value differs from the Omarchy default.
+Settings whose current value differs from the Omarchy default. Keyed and
+grouped entries also carry `key` or `sub` respectively. Settings with no
+default (none are shipped anymore, but a custom backend may omit one) are
+never reported as changed.
 
 ### `search <query> [--json]`
 

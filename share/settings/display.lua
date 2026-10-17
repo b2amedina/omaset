@@ -7,6 +7,7 @@ panel("display", "Display", function()
       description = "Tint the screen warmer in the evening.",
       backend = "omarchy",
       mode = "toggle",
+      default = false,
       command = "omarchy toggle nightlight",
       status = "omarchy toggle nightlight --status | jq -r .enabled",
     })

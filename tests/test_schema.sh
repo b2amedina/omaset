@@ -25,4 +25,11 @@ assert_eq "$(echo "$OUT" | jq -r '[.panels[].settings[] | select(.id | startswit
 assert_eq "$(echo "$OUT" | jq -r '[.panels[].id] | index("animations") == null')" "true" "animations panel removed"
 assert_eq "$(echo "$OUT" | jq -r '.panels[] | select(.id=="appearance") | [.settings[].id] | index("animations_enabled") != null')" "true" "animations_enabled in appearance"
 
+# The omarchy passthrough toggles declare a stock default so they count as
+# "changed" when on.
+for id in nightlight window_no_gaps single_window_square; do
+  assert_eq "$(echo "$OUT" | jq -r --arg id "$id" '[.panels[].settings[] | select(.id==$id) | .default] | .[0]')" \
+    "false" "$id declares default=false"
+done
+
 echo "ok"

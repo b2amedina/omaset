@@ -115,6 +115,8 @@ Item {
   property var keyed: ({})       // id -> [keys]
   property var rows: []
   property int changedCount: -1
+  property var changedList: []     // `omaset changed --json` entries
+  property var pendingSelect: null // deferred row selection for keyed jumps
 
   property int selectedSidebar: 0
   property int selectedRow: -1
@@ -125,6 +127,10 @@ Item {
   property string searchQuery: ""
   property var searchResults: []
   property int searchSel: 0
+
+  // changed
+  property bool changedMode: false
+  property int changedSel: 0
 
   // ---- data loading ----------------------------------------------------
   function loadSchema() {
@@ -197,10 +203,12 @@ Item {
 
   function refreshChanged() {
     exec([omasetBin, "changed", "--json"], function(text) {
-      var n = 0
       var o = parseJson(text)
-      if (o && o.changed) n = o.changed.length
-      root.changedCount = n
+      var list = (o && o.changed && Array.isArray(o.changed)) ? o.changed : []
+      root.changedList = list
+      root.changedCount = list.length
+      if (root.changedSel >= root.changedList.length)
+        root.changedSel = Math.max(0, root.changedList.length - 1)
     })
   }
 
@@ -215,6 +223,7 @@ Item {
   function rebuildRows() {
     root.rows = Model.rowsFor(activePanel(), effective, keyed)
     clampRow()
+    applyPendingSelect()
   }
 
   function iconFor(id) {
@@ -409,6 +418,31 @@ Item {
     clampRow()
   }
 
+  function selectRowByKey(id, sub, key) {
+    var idx = interactiveIndices()
+    for (var i = 0; i < idx.length; i++) {
+      var r = rows[idx[i]]
+      if (!r || r.id !== id) continue
+      if (sub !== undefined && sub !== null && r.sub !== sub) continue
+      if (key !== undefined && key !== null && r.key !== key) continue
+      selectedRow = idx[i]; return true
+    }
+    return false
+  }
+
+  // Re-attempt a keyed jump once the panel's keys have loaded. Called from
+  // rebuildRows(); clears itself when the row is found.
+  function applyPendingSelect() {
+    if (!pendingSelect) return
+    var p = pendingSelect
+    if (p.key !== undefined && p.key !== null) {
+      var keys = (keyed && keyed[p.id]) || []
+      if (keys.indexOf(p.key) < 0) return   // still waiting on `omaset keys`
+    }
+    pendingSelect = null
+    if (!selectRowByKey(p.id, p.sub, p.key)) clampRow()
+  }
+
   // ---- search ----------------------------------------------------------
   function enterSearch() {
     searchMode = true
@@ -468,6 +502,56 @@ Item {
     refreshChanged()
   }
 
+  // ---- changed ---------------------------------------------------------
+  function enterChanged() {
+    changedMode = true
+    changedSel = 0
+    refreshChanged()
+  }
+
+  function exitChanged() {
+    changedMode = false
+  }
+
+  function moveChanged(dy) {
+    if (changedList.length === 0) return
+    changedSel = Math.max(0, Math.min(changedList.length - 1, changedSel + dy))
+  }
+
+  function changedLabel(r) {
+    var label = r.label || r.id
+    if (r.key !== undefined && r.key !== null) label += " " + r.key
+    else if (r.sub !== undefined && r.sub !== null) label += " · " + r.sub
+    return label
+  }
+
+  function openChangedResult() {
+    if (changedList.length === 0) return
+    var r = changedList[changedSel]
+    if (!r) return
+    var targetPanel = r.panel
+    exitChanged()
+    if (targetPanel) {
+      var found = -1
+      for (var i = 0; i < panels.length; i++) if (panels[i].id === targetPanel) { found = i; break }
+      if (found >= 0) selectedSidebar = found
+      activePanelId = targetPanel
+      rebuildRows()
+      loadPanelExtras()
+    }
+    if (r.key !== undefined && r.key !== null) {
+      var keys = (keyed && keyed[r.id]) || []
+      if (keys.indexOf(r.key) < 0) {
+        pendingSelect = { id: r.id, sub: r.sub, key: r.key }
+      } else if (!selectRowByKey(r.id, r.sub, r.key)) {
+        clampRow()
+      }
+    } else if (!selectRowByKey(r.id, r.sub)) {
+      clampRow()
+    }
+    focusPane = "content"
+  }
+
   // ---- scroll ----------------------------------------------------------
   function ensureRowVisible(item) {
     if (!item || !scrollArea) return
@@ -486,11 +570,15 @@ Item {
   // ---- footer ----------------------------------------------------------
   readonly property string footerHints: searchMode
     ? "\u2191\u2193 move · \u23ce open · esc clear"
-    : "j k move · h l adjust · \u2423/\u23ce select · tab pane · x reset · / search · esc close"
+    : changedMode
+    ? "\u2191\u2193 move · \u23ce open · esc close"
+    : "j k move · h l adjust · \u2423/\u23ce select · tab pane · x reset · / search · c changed · esc close"
   readonly property string footerContext: searchMode
     ? (searchResults.length > 0 ? searchResults.length + " settings found" : "")
+    : changedMode
+    ? (changedList.length > 0 ? changedList.length + " changed" : "no changes")
     : (changedCount > 0 ? changedCount + " changed" : "")
-  readonly property color footerContextColor: searchMode ? accent : urgent
+  readonly property color footerContextColor: (searchMode || changedMode) ? accent : urgent
 
   // ---- window ----------------------------------------------------------
   FloatingWindow {
@@ -537,13 +625,21 @@ Item {
           }
           return
         }
-        if (event.text === "/") { root.enterSearch(); event.accepted = true }
+        if (root.changedMode) {
+          if (event.key === Qt.Key_Escape) { root.exitChanged(); event.accepted = true; return }
+          if (event.key === Qt.Key_Down || event.text === "j") { root.moveChanged(1); event.accepted = true; return }
+          if (event.key === Qt.Key_Up || event.text === "k") { root.moveChanged(-1); event.accepted = true; return }
+          if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { root.openChangedResult(); event.accepted = true; return }
+          return
+        }
+        if (event.text === "/") { root.enterSearch(); event.accepted = true; return }
+        if (event.text === "c" || event.text === "C") { root.enterChanged(); event.accepted = true }
       }
 
         PanelKeyCatcher {
           id: keyCatcher
           anchors.fill: parent
-          blocked: root.searchMode
+          blocked: root.searchMode || root.changedMode
 
         onMoveRequested: function(dx, dy) {
           if (dy !== 0) root.moveV(dy)
@@ -657,7 +753,7 @@ Item {
                   Text {
                     anchors.verticalCenter: parent.verticalCenter
                     textFormat: Text.PlainText
-                    text: root.searchMode ? "\uf002" : root.iconFor(root.activePanelId)
+                    text: root.searchMode ? "\uf002" : (root.changedMode ? "\uf044" : root.iconFor(root.activePanelId))
                     color: root.accent
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.iconLarge
@@ -665,7 +761,7 @@ Item {
                   Text {
                     anchors.verticalCenter: parent.verticalCenter
                     textFormat: Text.PlainText
-                    text: root.searchMode ? "Search" : (root.activePanel() ? root.activePanel().title : "")
+                    text: root.searchMode ? "Search" : (root.changedMode ? "Changed" : (root.activePanel() ? root.activePanel().title : ""))
                     color: root.foreground
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.heading
@@ -684,7 +780,7 @@ Item {
                   anchors.margins: Style.spacing.panelPadding
                   anchors.topMargin: 0
                   clip: true
-                  visible: !root.searchMode
+                  visible: !root.searchMode && !root.changedMode
                   ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                   ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
@@ -817,6 +913,69 @@ Item {
                           onClicked: { root.searchSel = index; root.openSearchResult() }
                           onContainsMouseChanged: if (containsMouse) root.searchSel = index
                         }
+                      }
+                    }
+                  }
+                }
+
+                FocusScope {
+                  id: changedScope
+                  anchors.fill: parent
+                  anchors.margins: Style.spacing.panelPadding
+                  anchors.topMargin: 0
+                  visible: root.changedMode
+
+                  ListView {
+                    id: changedResultsList
+                    anchors.fill: parent
+                    clip: true
+                    spacing: Style.space(4)
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                    model: root.changedList
+                    delegate: BorderSurface {
+                      required property var modelData
+                      required property int index
+                      width: changedResultsList.width - Style.space(12)
+                      height: Style.space(48)
+                      radius: Style.cornerRadius
+                      readonly property bool sel: root.changedSel === index
+                      color: sel ? Style.hoverFillFor(root.foreground, root.accent) : "transparent"
+                      borderSpec: Border.none()
+
+                      Column {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.leftMargin: Style.spacing.controlPaddingX
+                        anchors.rightMargin: Style.spacing.controlPaddingX
+                        spacing: 0
+
+                        Text {
+                          textFormat: Text.PlainText
+                          text: root.changedLabel(modelData)
+                          color: root.foreground
+                          font.family: root.fontFamily
+                          font.pixelSize: Style.font.body
+                          font.bold: true
+                          elide: Text.ElideRight
+                          width: parent.width
+                        }
+                        Text {
+                          textFormat: Text.PlainText
+                          text: modelData.panel + " · " + modelData.value + " \u2192 " + modelData.default
+                          color: Qt.darker(root.foreground, 1.5)
+                          font.family: root.fontFamily
+                          font.pixelSize: Style.font.caption
+                          elide: Text.ElideRight
+                          width: parent.width
+                        }
+                      }
+
+                      MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: { root.changedSel = index; root.openChangedResult() }
+                        onContainsMouseChanged: if (containsMouse) root.changedSel = index
                       }
                     }
                   }
