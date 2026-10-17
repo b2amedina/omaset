@@ -33,6 +33,19 @@ to drive settings from a terminal or an agent (see [For agents](#for-agents)):
 ln -s ~/.config/omarchy/plugins/b2amedina.omaset/bin/omaset ~/.local/bin/omaset
 ```
 
+## Remove
+
+```
+omaset rollback                      # optional: restore config files omaset touched
+omarchy plugin remove b2amedina.omaset
+unlink ~/.local/bin/omaset           # only if you linked the CLI
+```
+
+`omarchy plugin remove` deletes the plugin folder; the optional CLI symlink is
+yours to unlink. omaset's own state is left in place — the change journal
+(`~/.local/state/omaset/journal.jsonl`), preferences
+(`~/.config/omaset/preferences.json`), and any `<file>.omaset.bak` snapshots.
+
 ## Usage
 
 ```
