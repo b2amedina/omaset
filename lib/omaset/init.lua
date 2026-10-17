@@ -615,8 +615,10 @@ local function apply_undo(entry)
     return nil, "unknown setting in journal: " .. tostring(entry.id)
   end
   local key = entry.key or entry.sub
-  local old = (entry.old == json.null) and nil or entry.old
-  local def = (entry.default == json.null) and nil or entry.default
+  local old = entry.old
+  if old == json.null then old = nil end
+  local def = entry.default
+  if def == json.null then def = nil end
   if entry.op == "set" then
     if old == def then
       return M.reset_value(s, key)

@@ -146,8 +146,9 @@ lib/omaset/
   dsl.lua               panel()/section()/setting() declarative DSL
   discovery.lua         loads share/settings/*.lua (and ~/.config/omaset/settings/)
   types.lua             int/float/bool/enum coercion + range checks
-  json.lua              minimal JSON encoder + decoder (journal round-trip)
+  json.lua              minimal JSON encoder + decoder (journal, preferences)
   journal.lua           append-only change log for history/undo
+  preferences.lua       omaset's own UI preferences (separate from settings)
   util.lua              deep merge/get/set, serializer, shell helpers
   backends/             pluggable backends (self-register via load_dir)
     hypr_lua.lua         reads/writes Hyprland Lua config (looknfeel.lua etc.)
