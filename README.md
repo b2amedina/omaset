@@ -10,7 +10,7 @@ headlessly through the JSON protocol.
 Extensible: every omaset setting and panel is declared in a small Lua DSL, so
 adding or overriding a setting means dropping in a `.lua` file.
 
-**Status:** engine + CLI + keyboard-first UI (`omaset ui`).
+**Status:** engine + CLI + keyboard-first UI (`omaset ui`) + MCP server.
 
 ## Install
 
@@ -49,6 +49,7 @@ bin/omaset ui [open|close|toggle|reload]  # open the keyboard settings window (t
 bin/omaset history [--json] [N]       # recent changes omaset has made
 bin/omaset undo [--all] [--plain]     # undo the last change (or all of them)
 bin/omaset rollback [--json]          # restore pre-omaset config snapshots
+bin/omaset preferences [list|get|set|reset]  # omaset's own UI preferences
 bin/omaset mcp                        # MCP server over stdio (for agents)
 bin/omaset mcp install [<agent>...]   # wire the server into agents' configs
 bin/omaset mcp doctor                 # report which agents are wired
