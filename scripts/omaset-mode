@@ -1,0 +1,237 @@
+#!/usr/bin/env bash
+# omaset-mode - switch the installed b2amedina.omaset shell plugin between a
+# development symlink (this working tree) and a clean clone of the git
+# repository (what a new user gets from `omarchy plugin add ...`).
+#
+# It manages only the plugin directory
+# (~/.config/omarchy/plugins/b2amedina.omaset). Directory removal is always
+# delegated to `omarchy plugin remove`, which is symlink-aware and id-safe:
+# this script contains no `rm`, no relative paths, and never changes directory.
+#
+# The CLI link on PATH (~/.local/bin/omaset) is intentionally not managed here.
+# A new user installs only the plugin, so testing with the dev CLI still on PATH
+# is not a clean environment; each command prints the by-hand step.
+
+set -euo pipefail
+
+# Repo root is derived from this script's own location (scripts/omaset-mode),
+# following the symlink on PATH. Override with OMASET_REPO if it is relocated.
+SELF=$(readlink -f -- "${BASH_SOURCE[0]}")
+SCRIPT_DIR=$(dirname -- "$SELF")
+REPO_DEFAULT=$(dirname -- "$SCRIPT_DIR")
+REPO="${OMASET_REPO:-$REPO_DEFAULT}"
+
+PLUGINS_DIR="$HOME/.config/omarchy/plugins"
+ID="b2amedina.omaset"
+TARGET="$PLUGINS_DIR/$ID"
+CLI="$HOME/.local/bin/omaset"
+
+usage() {
+  cat <<'USAGE'
+omaset-mode - switch the b2amedina.omaset shell plugin between this working
+tree (dev) and a clean clone of the git repository (test).
+
+Usage:
+  omaset-mode dev                      symlink this working tree into the plugins dir
+  omaset-mode test [--ref R] [--url U] clone, validate and enable the git repo
+  omaset-mode clean                    remove whatever is installed
+  omaset-mode status                   report the mode and related state
+  omaset-mode --help
+
+It manages only ~/.config/omarchy/plugins/b2amedina.omaset.
+Removal always goes through `omarchy plugin remove`. The CLI link
+~/.local/bin/omaset is left to you:
+
+  leave dev:  unlink ~/.local/bin/omaset
+  back:       ln -sfn <repo>/bin/omaset ~/.local/bin/omaset
+  or point it at the tested clone:
+              ln -sfn ~/.config/omarchy/plugins/b2amedina.omaset/bin/omaset ~/.local/bin/omaset
+USAGE
+}
+
+fail() {
+  echo "omaset-mode: $*" >&2
+  exit 1
+}
+
+# The shell IPC can time out transiently while it is rescanning plugins, so
+# both rescan and enable are best-effort with retries rather than fatal.
+rescan_retry() {
+  local i
+  for i in {1..5}; do
+    omarchy-shell shell rescanPlugins >/dev/null 2>&1 && return 0
+    sleep 0.2
+  done
+  return 0
+}
+
+enable_retry() {
+  local i
+  for i in {1..15}; do
+    if omarchy plugin enable "$ID" >/dev/null 2>&1; then
+      echo "enabled: $ID"
+      return 0
+    fi
+    sleep 0.3
+  done
+  echo "omaset-mode: warning: could not enable $ID yet; run: omarchy plugin enable $ID" >&2
+  return 0
+}
+
+# Remove whatever occupies the plugin path, through omarchy (never directly).
+# This unlinks a dev symlink, deletes a git clone, or backs up a plain dir.
+remove_any() {
+  if [[ -e $TARGET || -L $TARGET ]]; then
+    omarchy plugin remove "$ID" --yes
+  fi
+}
+
+# Default clone source: the repo's origin remote when set, else the local repo
+# itself (a clean clone of committed state, for offline testing).
+default_url() {
+  local u
+  u=$(git -C "$REPO" remote get-url origin 2>/dev/null || true)
+  if [[ -n $u ]]; then
+    printf '%s\n' "$u"
+  else
+    printf '%s\n' "$REPO"
+  fi
+}
+
+plugin_mode() {
+  if [[ -L $TARGET ]]; then
+    echo dev
+  elif [[ -d $TARGET/.git ]]; then
+    echo test
+  elif [[ -e $TARGET ]]; then
+    echo other
+  else
+    echo none
+  fi
+}
+
+cmd_dev() {
+  remove_any
+  ln -sfn "$REPO" "$TARGET"
+  rescan_retry
+  enable_retry
+  echo "dev: $TARGET -> $REPO"
+  echo "  by hand:  ln -sfn $REPO/bin/omaset $CLI"
+}
+
+cmd_test() {
+  local url="" ref=""
+  while (( $# > 0 )); do
+    case "$1" in
+    --url)
+      url="${2:-}"
+      [[ -n $url ]] || fail "--url requires a value"
+      shift 2
+      ;;
+    --ref)
+      ref="${2:-}"
+      [[ -n $ref ]] || fail "--ref requires a value"
+      shift 2
+      ;;
+    *)
+      fail "unknown test option: $1"
+      ;;
+    esac
+  done
+
+  [[ -n $url ]] || url=$(default_url)
+
+  if [[ $url == "$REPO" && -n $(git -C "$REPO" status --porcelain 2>/dev/null) ]]; then
+    echo "omaset-mode: warning: $REPO has uncommitted changes; a clone tests committed state only" >&2
+  fi
+
+  remove_any
+
+  # `omarchy plugin add` runs a trailing shell rescan that can time out on a
+  # busy shell; tolerate a non-zero exit as long as the clone landed, then
+  # rescan and enable ourselves with retries.
+  if ! omarchy plugin add "$url" --yes; then
+    if [[ -d $TARGET/.git ]]; then
+      echo "omaset-mode: warning: 'omarchy plugin add' exited non-zero but the clone is present; continuing" >&2
+    else
+      fail "'omarchy plugin add' failed and no clone landed at $TARGET"
+    fi
+  fi
+
+  if [[ -n $ref ]]; then
+    git -C "$TARGET" checkout --detach "$ref"
+    omarchy plugin validate "$TARGET" || fail "ref '$ref' failed plugin validation"
+  fi
+
+  rescan_retry
+  enable_retry
+
+  echo "test: $TARGET @ $(git -C "$TARGET" describe --always --dirty 2>/dev/null || echo '?')"
+  echo "  by hand:  unlink $CLI   (drops the dev CLI so the env matches a new user)"
+}
+
+cmd_clean() {
+  remove_any
+  echo "clean: no plugin installed at $TARGET"
+}
+
+cmd_status() {
+  local m enabled t
+  m=$(plugin_mode)
+  case $m in
+  dev)
+    echo "plugin:  dev  -> $(readlink -- "$TARGET")"
+    ;;
+  test)
+    echo "plugin:  test @ $(git -C "$TARGET" describe --always --dirty 2>/dev/null || echo '?') [$(git -C "$TARGET" remote get-url origin 2>/dev/null || echo local)]"
+    ;;
+  other)
+    echo "plugin:  other (plain directory) at $TARGET"
+    ;;
+  none)
+    echo "plugin:  none"
+    ;;
+  esac
+
+  enabled=$(omarchy plugin list --json 2>/dev/null |
+    jq -r --arg id "$ID" '.[] | select(.id == $id) | .enabled' 2>/dev/null | head -n1 || true)
+  [[ -n $enabled ]] && echo "enabled: $enabled"
+
+  if [[ -L $CLI ]]; then
+    echo "cli:     $(readlink -- "$CLI")"
+  elif [[ -e $CLI ]]; then
+    echo "cli:     present (not a symlink)"
+  else
+    echo "cli:     absent"
+  fi
+
+  [[ -f $HOME/.config/omaset/preferences.json ]] && echo "prefs:   present"
+  [[ -f $HOME/.local/state/omaset/journal.jsonl ]] && echo "journal: present"
+
+  if [[ $m == test && -L $CLI ]]; then
+    t=$(readlink -f -- "$CLI" 2>/dev/null || true)
+    if [[ $t == "$REPO"/* ]]; then
+      echo "LEAK:    $CLI -> $t (dev tree; unlink it while testing)"
+    else
+      echo "leak:    none (cli does not point into the dev tree)"
+    fi
+  fi
+}
+
+main() {
+  [[ $# -ge 1 ]] || { usage; exit 1; }
+  local cmd="$1"
+  shift
+  case "$cmd" in
+  dev) cmd_dev "$@" ;;
+  test) cmd_test "$@" ;;
+  clean) cmd_clean "$@" ;;
+  status) cmd_status "$@" ;;
+  -h | --help | help) usage ;;
+  *)
+    fail "unknown command: $cmd (try --help)"
+    ;;
+  esac
+}
+
+main "$@"
