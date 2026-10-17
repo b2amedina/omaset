@@ -17,7 +17,7 @@ BorderSurface {
   readonly property color accent: panel ? panel.accent : Color.accent
   readonly property string fontFamily: panel ? panel.fontFamily : Style.font.family
   readonly property bool hasCursor: panel ? (panel.focusPane === "content" && panel.selectedRow === rowIndex) : false
-  readonly property bool hot: hasCursor || hover.hovered
+  readonly property bool hot: hasCursor
 
   readonly property var cursorSpec: Border.controlSpec("hover-cursor", fg, accent)
   readonly property var idleSpec: ({
@@ -81,11 +81,10 @@ BorderSurface {
   MouseArea {
     anchors.fill: parent
     cursorShape: Qt.PointingHandCursor
-    onClicked: if (root.panel) root.panel.commit(root.row, !root.row.value)
-  }
-
-  HoverHandler {
-    id: hover
-    onHoveredChanged: if (hovered && root.panel) root.panel.cursorTo(root.rowIndex)
+    onClicked: {
+      if (!root.panel) return
+      root.panel.cursorTo(root.rowIndex)
+      root.panel.commit(root.row, !root.row.value)
+    }
   }
 }

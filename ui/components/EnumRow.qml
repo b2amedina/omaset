@@ -3,8 +3,9 @@ import qs.Ui
 import qs.Commons
 
 // Enum setting: label on the left, a segmented ButtonGroup on the right.
-// Rows carry a subtle idle fill (no border) that brightens to the shared
-// hover-cursor state when the keyboard cursor or mouse lands on the row.
+// Rows carry a subtle idle fill (no border) that brightens to the accent
+// border + fill when the keyboard cursor lands on the row. Mouse hover does
+// not move or highlight the cursor.
 BorderSurface {
   id: root
 
@@ -16,7 +17,7 @@ BorderSurface {
   readonly property color accent: panel ? panel.accent : Color.accent
   readonly property string fontFamily: panel ? panel.fontFamily : Style.font.family
   readonly property bool hasCursor: panel ? (panel.focusPane === "content" && panel.selectedRow === rowIndex) : false
-  readonly property bool hot: hasCursor || hover.hovered
+  readonly property bool hot: hasCursor
 
   readonly property var cursorSpec: Border.controlSpec("hover-cursor", fg, accent)
   readonly property var idleSpec: ({
@@ -29,6 +30,11 @@ BorderSurface {
   color: Style.controlFill(false, hot, fg, accent)
   borderSpec: hot ? cursorSpec : idleSpec
   implicitHeight: Math.max(44, content.implicitHeight + Style.spacing.controlGap * 2)
+
+  MouseArea {
+    anchors.fill: parent
+    onClicked: if (root.panel) root.panel.cursorTo(root.rowIndex)
+  }
 
   Row {
     id: content
@@ -76,13 +82,11 @@ BorderSurface {
       background: root.panel ? root.panel.background : Color.background
       accent: root.accent
       fontFamily: root.fontFamily
-      onChanged: function(v) { if (root.panel) root.panel.commit(root.row, v) }
-      onHovered: function(i, h) { if (h && root.panel) root.panel.cursorTo(root.rowIndex) }
+      onChanged: function(v) {
+        if (!root.panel) return
+        root.panel.cursorTo(root.rowIndex)
+        root.panel.commit(root.row, v)
+      }
     }
-  }
-
-  HoverHandler {
-    id: hover
-    onHoveredChanged: if (hovered && root.panel) root.panel.cursorTo(root.rowIndex)
   }
 }

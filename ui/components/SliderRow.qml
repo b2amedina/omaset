@@ -4,8 +4,8 @@ import qs.Commons
 
 // Bounded int/float setting: label on the left, a PanelSlider with a live
 // value readout on the right. Rows carry a subtle idle fill (no border) that
-// brightens to the shared hover-cursor state when the keyboard cursor or mouse
-// lands on the row.
+// brightens to the accent border + fill when the keyboard cursor lands on the
+// row. Mouse hover does not move or highlight the cursor.
 BorderSurface {
   id: root
 
@@ -17,7 +17,7 @@ BorderSurface {
   readonly property color accent: panel ? panel.accent : Color.accent
   readonly property string fontFamily: panel ? panel.fontFamily : Style.font.family
   readonly property bool hasCursor: panel ? (panel.focusPane === "content" && panel.selectedRow === rowIndex) : false
-  readonly property bool hot: hasCursor || hover.hovered
+  readonly property bool hot: hasCursor
 
   readonly property var cursorSpec: Border.controlSpec("hover-cursor", fg, accent)
   readonly property var idleSpec: ({
@@ -40,6 +40,11 @@ BorderSurface {
   color: Style.controlFill(false, hot, fg, accent)
   borderSpec: hot ? cursorSpec : idleSpec
   implicitHeight: Math.max(44, content.implicitHeight + Style.spacing.controlGap * 2)
+
+  MouseArea {
+    anchors.fill: parent
+    onClicked: if (root.panel) root.panel.cursorTo(root.rowIndex)
+  }
 
   Row {
     id: content
@@ -97,6 +102,7 @@ BorderSurface {
         integer: root.row.integer === true
         onReleased: function(v) {
           if (!root.panel) return
+          root.panel.cursorTo(root.rowIndex)
           var out = root.row.integer ? Math.round(v) : Math.round(v * 1000) / 1000
           root.panel.commit(root.row, out)
         }
@@ -115,10 +121,5 @@ BorderSurface {
         font.pixelSize: Style.font.body
       }
     }
-  }
-
-  HoverHandler {
-    id: hover
-    onHoveredChanged: if (hovered && root.panel) root.panel.cursorTo(root.rowIndex)
   }
 }
