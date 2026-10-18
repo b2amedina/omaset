@@ -3,10 +3,11 @@
 > **The settings engine Omarchy has been missing.**
 
 omaset gives every Omarchy setting one place to live: a keyboard-first
-window, a plain-text CLI, and an MCP server your agents already speak.
-Browse, search, and change anything — gaps, blur, bar position, layouts,
-night light, window styles — and stay safe with a journal, undo, and
-one-command rollback. It never rewrites your dotfiles, and it renders in
+window, a plain-text CLI, and an MCP server your agents already speak. No
+more hand-editing dotfiles or hunting down scattered `omarchy` commands —
+change anything (gaps, blur, bar position, layouts, night light, window
+styles) from one place, and stay safe with a journal, undo, and
+one-command rollback. It never rewrites your config, and it renders in
 whatever theme you're running, so it feels like part of Omarchy rather
 than a bolt-on.
 
@@ -16,8 +17,10 @@ than a bolt-on.
 
 ## Why omaset
 
-- **One surface for every setting.** Appearance, tiling layout, bar,
-  input, windows, power & idle — one window, one command, one protocol.
+- **One place to change everything.** No more hand-editing dotfiles or
+  memorizing scattered `omarchy` commands — appearance, tiling layout,
+  bar, input, windows, and power all live in one window, one command, and
+  one protocol.
 - **Agent-friendly.** An MCP server exposes settings as typed tools, so
   your agent can widen the gaps or toggle blur in-session — and every
   change lands in the same journal you can undo.
