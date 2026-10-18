@@ -1,0 +1,35 @@
+<svg width="1280" height="356" viewBox="0 0 1280 356" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#181414"/>
+      <stop offset="1" stop-color="#211b1b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="356" fill="url(#bg)"/>
+  <g font-family="JetBrainsMono Nerd Font, monospace">
+  <rect x="100" y="48" width="300" height="210" rx="10" fill="#211b1b" stroke="#72696a" stroke-opacity="0.35" stroke-width="1.5"/>
+    <rect x="145" y="82" width="210" height="142" rx="0" fill="#2c2525" stroke="#f38d70" stroke-width="2"/>
+    <line x1="146.0" y1="112" x2="354.0" y2="112" stroke="#3d2f2a" stroke-width="2"/>
+    <rect x="165" y="134" width="156" height="9" rx="4.5" fill="#3d2f2a"/>
+    <rect x="165" y="160" width="112" height="9" rx="4.5" fill="#3d2f2a"/>
+    <rect x="165" y="186" width="136" height="9" rx="4.5" fill="#3d2f2a"/>
+    <rect x="165" y="212" width="88" height="9" rx="4.5" fill="#3d2f2a"/>
+  <text x="250" y="308" fill="#e6d9db" font-size="21" font-weight="bold" text-anchor="middle">Normal</text>
+  <rect x="490" y="48" width="300" height="210" rx="10" fill="#211b1b" stroke="#72696a" stroke-opacity="0.35" stroke-width="1.5"/>
+    <rect x="502" y="82" width="276" height="142" rx="20" fill="#2c2525" stroke="#f38d70" stroke-width="6"/>
+    <line x1="505.0" y1="112" x2="775.0" y2="112" stroke="#3d2f2a" stroke-width="2"/>
+    <rect x="526" y="134" width="210" height="9" rx="4.5" fill="#3d2f2a"/>
+    <rect x="526" y="160" width="150" height="9" rx="4.5" fill="#3d2f2a"/>
+    <rect x="526" y="186" width="182" height="9" rx="4.5" fill="#3d2f2a"/>
+    <rect x="526" y="212" width="119" height="9" rx="4.5" fill="#3d2f2a"/>
+  <text x="640" y="308" fill="#e6d9db" font-size="21" font-weight="bold" text-anchor="middle">Full width</text>
+  <rect x="880" y="48" width="300" height="210" rx="10" fill="#211b1b" stroke="#72696a" stroke-opacity="0.35" stroke-width="1.5"/>
+    <rect x="880" y="48" width="300" height="210" rx="0" fill="#2c2525" stroke="#f38d70" stroke-width="10"/>
+    <line x1="885.0" y1="78" x2="1175.0" y2="78" stroke="#3d2f2a" stroke-width="2"/>
+    <rect x="908" y="100" width="224" height="9" rx="4.5" fill="#3d2f2a"/>
+    <rect x="908" y="126" width="161" height="9" rx="4.5" fill="#3d2f2a"/>
+    <rect x="908" y="152" width="195" height="9" rx="4.5" fill="#3d2f2a"/>
+    <rect x="908" y="178" width="127" height="9" rx="4.5" fill="#3d2f2a"/>
+  <text x="1030" y="308" fill="#e6d9db" font-size="21" font-weight="bold" text-anchor="middle">Tiled full screen</text>
+  </g>
+</svg>

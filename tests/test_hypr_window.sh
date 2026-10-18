@@ -61,7 +61,7 @@ assert_contains "$OUT" "(grouped)" "search marks grouped"
 capture_out ui-float on
 assert_eq "$OUT" "ok" "ui-float on"
 file="$(cat "$OMASET_HYPR_DIR/hyprland.lua")"
-assert_contains "$file" 'o.window({ class = "^org.quickshell$", title = "^omaset Settings$" }, { center = true, float = true })' "float rule added"
+assert_contains "$file" 'o.window({ class = "^org.quickshell$", title = "^omaset Settings$" }, { center = true, float = true, opacity = "1 1", tag = "-default-opacity" })' "float rule added"
 
 capture_out ui-float on
 assert_eq "$OUT" "ok" "ui-float on idempotent"

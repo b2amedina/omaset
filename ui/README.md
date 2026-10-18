@@ -65,7 +65,7 @@ Hyprland rule is required.
 
 | Key | Action |
 |-----|--------|
-| `j` / `k` | move between settings (or sidebar panels) |
+| `j` / `k` (or `↑` / `↓`) | move between settings (or sidebar panels) |
 | `h` / `l` (or `←` / `→`) | adjust the focused slider or cycle a segmented control |
 | `Tab` / `Shift+Tab` | switch sidebar/content pane |
 | `Space` / `Enter` | activate the current row (toggle / select / nudge) |

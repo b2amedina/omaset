@@ -827,44 +827,71 @@ local function cmd_mcp(flags, pos)
 end
 
 local function usage_text()
-  local text = [[
-omaset — Omarchy settings engine with a keyboard-first UI
+  local groups = {
+    {
+      "Common commands",
+      {
+        { "omaset ui", "Open the keyboard settings window (toggle)" },
+        { "omaset list", "List panels and settings with current values" },
+        { "omaset get <id> [<key>]", "Read a setting" },
+        { "omaset set <id> [<key>] <val>", "Write a setting" },
+        { "omaset reset <id> [<key>|--all]", "Revert omaset's override" },
+        { "omaset search <query>", "Find settings by id or label" },
+        { "omaset changed", "Settings that differ from the Omarchy default" },
+      },
+    },
+    {
+      "Safety & history",
+      {
+        { "omaset history [N]", "Recent changes omaset has made" },
+        { "omaset undo [--all]", "Undo the last change (or all of them)" },
+        { "omaset rollback", "Restore pre-omaset config snapshots" },
+      },
+    },
+    {
+      "Preferences",
+      {
+        { "omaset preferences", "List omaset's own UI preferences" },
+        { "omaset preferences get <key>", "Read one preference" },
+        { "omaset preferences set <key> <val>", "Write one preference" },
+        { "omaset preferences reset <key>", "Reset a preference to default" },
+      },
+    },
+    {
+      "MCP (for agents)",
+      {
+        { "omaset mcp", "Run the MCP server over stdio" },
+        { "omaset mcp install [<agent>...]", "Write the MCP entry into agents' configs" },
+        { "omaset mcp doctor", "Report which agents are wired up" },
+      },
+    },
+  }
 
-Usage:
-  omaset ui                         open the settings window (toggle)
-  omaset ui open|close|reload       open, close, or restart+reopen it
+  local width = 0
+  for _, g in ipairs(groups) do
+    for _, row in ipairs(g[2]) do
+      if #row[1] > width then width = #row[1] end
+    end
+  end
 
-  omaset list [--json]              list panels and settings with values
-  omaset schema                     full schema as JSON
-  omaset get <id> [<key>] [--plain]   read a setting
-  omaset set <id> [<key>] <val> [--plain]  write a setting
-  omaset reset <id> [<key>|--all] [--plain]  revert omaset's override
-  omaset changed [--json]           settings that differ from defaults
-  omaset search <query> [--json]    find settings by id or label
-  omaset help <id>                  show one setting's full spec
-  omaset keys <id> [--all] [--json] list keys of a keyed or grouped setting
-
-  omaset history [--json] [N]       recent changes omaset has made
-  omaset undo [--all] [--plain]     undo the last change (or all of them)
-  omaset rollback [--json]          restore pre-omaset config snapshots
-
-  omaset preferences [--json]       list omaset's own UI preferences
-  omaset preferences get <key> [--plain]     read one preference
-  omaset preferences set <key> <val> [--plain]  write one preference
-  omaset preferences reset <key> [--plain]    reset a preference to default
-
-  omaset mcp                      run the MCP server over stdio (for agents)
-  omaset mcp install [<agent>...] write the omaset MCP entry into agents' configs
-  omaset mcp doctor               report which agents are wired to the server
-
-Every command accepts --help (or -h) for command-specific help:
-  omaset set --help                 # general help for a command
-  omaset set <id> --help            # help for a specific setting
-  omaset --version                  # print the version
-]]
-  text = text:gsub("^%s+", "")
-  text = text:gsub("%s+$", "")
-  return text
+  local out = {
+    "omaset — Omarchy settings engine",
+    "",
+    "Usage:",
+    "  omaset <command> [args...]",
+    "  omaset <command> --help",
+    "  omaset help <id>",
+    "",
+  }
+  for _, g in ipairs(groups) do
+    out[#out + 1] = g[1] .. ":"
+    for _, row in ipairs(g[2]) do
+      out[#out + 1] = "  " .. row[1] .. string.rep(" ", width - #row[1] + 2) .. row[2]
+    end
+    out[#out + 1] = ""
+  end
+  out[#out + 1] = "Every command accepts --help for command help; omaset --version prints the version."
+  return table.concat(out, "\n")
 end
 
 local COMMAND_HELP = {

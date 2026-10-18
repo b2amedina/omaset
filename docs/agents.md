@@ -87,6 +87,9 @@ omaset changed --json
 
 ## Safety model
 
+Full details — managed blocks, validation, `undo`, and `rollback` — are in
+[safety.md](safety.md).
+
 - omaset only writes into a managed `-- omaset:begin/end` block (or equivalent)
   in each config file; your hand-written config is never touched.
 - Every Hyprland write is reloaded and checked with `hyprctl configerrors`; on
@@ -100,4 +103,4 @@ omaset changed --json
 
 Every setting is declared in a small Lua DSL. Drop a `.lua` file in
 `~/.config/omaset/settings/` to add or override a setting — no engine changes.
-See the README's "Extending with Lua" section.
+See [extending.md](extending.md).
