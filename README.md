@@ -5,8 +5,9 @@
 omaset gives every Omarchy setting one place to live: a keyboard-first
 window, a plain-text CLI, and an MCP server your agents already speak. No
 more hand-editing dotfiles or hunting down scattered `omarchy` commands —
-change anything (gaps, blur, bar position, layouts, night light, window
-styles) from one place, and stay safe with a journal, undo, and
+reach the settings you'd otherwise only find by editing a config file
+(window styles, lockscreen timeout, groupbar tuning, per-workspace
+layouts) from one place, and stay safe with a journal, undo, and
 one-command rollback. It never rewrites your config, and it renders in
 whatever theme you're running, so it feels like part of Omarchy rather
 than a bolt-on.
