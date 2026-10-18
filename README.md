@@ -1,37 +1,82 @@
 # omaset
 
-An Omarchy settings engine: a backend-pluggable model of Omarchy settings plus
-a JSON protocol that any frontend can drive.
+> **The settings engine Omarchy has been missing.**
 
-It ships a command-line interface and a keyboard-first settings window (an
-Omarchy shell plugin). Run `omaset ui` to open it — or drive its settings
-headlessly through the JSON protocol.
+omaset gives every Omarchy setting one place to live: a keyboard-first
+window, a plain-text CLI, and an MCP server your agents already speak.
+Browse, search, and change anything — gaps, blur, bar position, layouts,
+night light, window styles — and stay safe with a journal, undo, and
+one-command rollback. It never rewrites your dotfiles, and it renders in
+whatever theme you're running, so it feels like part of Omarchy rather
+than a bolt-on.
 
-Extensible: every omaset setting and panel is declared in a small Lua DSL, so
-adding or overriding a setting means dropping in a `.lua` file.
+<p align="center">
+  <img src="preview.png" alt="The omaset settings window" width="720">
+</p>
 
-**Status:** engine + CLI + keyboard-first UI (`omaset ui`) + MCP server.
+## Why omaset
+
+- **One surface for every setting.** Appearance, tiling layout, bar,
+  input, windows, power & idle — one window, one command, one protocol.
+- **Agent-friendly.** An MCP server exposes settings as typed tools, so
+  your agent can widen the gaps or toggle blur in-session — and every
+  change lands in the same journal you can undo.
+- **Safe by default.** omaset writes only into a marked block in each
+  file, validates with `hyprctl configerrors`, and reverts on failure.
+  Your hand-written config is never touched.
+- **Defaults that follow Omarchy.** `reset` recomputes the stock default
+  on every call, so "back to default" always means what Omarchy ships —
+  even after an update.
+- **Styled to match.** Colors, borders, and shapes come from your active
+  theme, so the settings window looks like it shipped with Omarchy, not
+  a separate app.
+- **Make window modes obvious.** Give full-width and tiled-fullscreen
+  windows their own border and rounding, so you can tell them apart at a
+  glance instead of guessing how a window will behave.
+
+## What it manages
+
+omaset models the settings Omarchy hands you today — the compositor, the
+bar, night light, and per-workspace layouts — each through a small,
+pluggable **backend**. The engine is deliberately backend-agnostic, so it
+can grow to cover more of the operating system and the applications on
+top of it without any change to the core.
+
+| Panel | Examples |
+|---|---|
+| Appearance | gaps, borders, rounding, blur, shadow, groupbar |
+| Tiling Layout | default layout, dwindle/master options, scrolling width |
+| Bar | position, transparency |
+| Input | mouse, trackpad, key repeat, numlock |
+| Windows | full-width & tiled-fullscreen styles, single-window square |
+| Power & Idle | screen and lock timeouts |
+| Display | night light on/off, schedule, temperature |
+| Behavior | focus, tearing, cursor hiding |
 
 ## Install
 
-The settings window and its engine ship together as an Omarchy shell plugin:
+The settings window and its engine ship together as an Omarchy shell
+plugin:
 
 ```
 omarchy plugin add https://github.com/b2amedina/omaset.git --enable
 ```
 
-This clones the plugin into `~/.config/omarchy/plugins/b2amedina.omaset/` and
-enables it. The engine is bundled inside that folder — there is nothing else to
-install; it uses only the `lua5.1` interpreter and `jq` that vanilla Omarchy
-already ships. Open the window with `omaset ui` (toggle) or
-`omarchy-shell shell toggle b2amedina.omaset '{}'`.
+This clones the plugin into `~/.config/omarchy/plugins/b2amedina.omaset/`
+and enables it. The engine is bundled inside that folder — there is
+nothing else to install; it uses only the `lua5.1` interpreter and `jq`
+that vanilla Omarchy already ships. Open the window with `omaset ui`
+(toggle) or `omarchy-shell shell toggle b2amedina.omaset '{}'`.
 
-The `omaset` CLI is optional: link the bundled binary onto your PATH if you want
-to drive settings from a terminal or an agent (see [For agents](#for-agents)):
+The `omaset` CLI is optional: link the bundled binary onto your PATH if
+you want to drive settings from a terminal or an agent (see
+[For agents](#for-agents)):
 
 ```
 ln -s ~/.config/omarchy/plugins/b2amedina.omaset/bin/omaset ~/.local/bin/omaset
 ```
+
+**Status:** engine + CLI + keyboard-first UI (`omaset ui`) + MCP server.
 
 ## Remove
 
@@ -242,7 +287,9 @@ ui/                     the keyboard-first settings window (Quickshell plugin)
   a single rule. `reset <id> <sub>` drops one field; `reset <id> --all` removes
   the whole rule, so the base `border_size`/`rounding` apply again.
 - Defaults are declared in the DSL (there is no Omarchy stock window rule to
-  read), so `changed` compares against those declared defaults.
+  read), so `changed` compares against those declared defaults. This is what
+  powers the window-mode styles above: give full-width or tiled-fullscreen
+  windows a distinct border and rounding so they are easy to identify.
 
 ### The `shell-json` backend
 
@@ -306,3 +353,4 @@ override it.
 
 - A backup picker / restore view.
 - Live previews (compositor/tiling/fullscreen) in the settings window.
+- More backends — extending coverage across the OS and its applications.
