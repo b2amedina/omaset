@@ -29,11 +29,9 @@ ORIG_WS="$(hyprctl activeworkspace -j | jq -r '.id')"
 focus_ws "$TOUR_WS"
 sleep 0.6
 
-# Omarchy tags every window with a default opacity (0.985/0.96), so wallpaper
-# bleeds through the settings window on film. omaset writes a "-default-opacity"
-# rule for its own window when launch_floating is on (lib/omaset/backends/
-# hypr_window.lua), so the window stays opaque even though every setting change
-# reloads the Hyprland config.
+# The window keeps Omarchy's standard look, including its default window
+# opacity (0.985/0.96): omaset adds no opacity rule of its own, so the wallpaper
+# behind the window stays slightly visible on film, exactly as it does on screen.
 before=$(wc -l <"$JOURNAL" 2>/dev/null || echo 0)
 
 "$OMASET" ui open >/dev/null 2>&1

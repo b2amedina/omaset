@@ -215,7 +215,7 @@ end
 -- it into the managed block; disabling removes it. The window then floats or
 -- tiles based purely on this rule rather than a hand-written one.
 local OMASET_MATCH = { class = "^org.quickshell$", title = "^omaset Settings$" }
-local OMASET_RULES = { float = true, center = true, tag = "-default-opacity", opacity = "1 1" }
+local OMASET_RULES = { float = true, center = true }
 
 function M.set_omaset_float(enabled)
   local file = user_file({ file = "hyprland" })
