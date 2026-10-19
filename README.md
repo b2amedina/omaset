@@ -22,6 +22,19 @@ really in your config, without ever rewriting it.
   <img src="media/ui-tour.gif" alt="A tour of the omaset settings window: search for a setting, adjust it, and review everything that differs from stock" width="800">
 </p>
 
+## Requirements
+
+omaset runs on Omarchy and uses what Omarchy already ships:
+
+- **Omarchy** — for the Lua 5.1 interpreter, Hyprland, and the Quickshell shell
+  (`omarchy-shell`) the window runs in.
+- **`hyprctl`** — to validate a change before it lands, and revert it if the
+  config errors.
+- **`hyprsunset`** — for the Display panel's night light.
+
+There is nothing else to install: the engine, the CLI, and the window ship as
+one plugin. `jq` appears in a few examples and dev scripts, not at runtime.
+
 ## Install
 
 ```sh
@@ -32,6 +45,12 @@ The engine and CLI do the real work; the settings window is a convenience on
 top. All three ship as one Omarchy plugin, so there is nothing separate to
 install. Click the omaset icon in your bar, or run `omaset ui` once you
 [link the CLI](docs/cli.md).
+
+On open the window also applies its own launch rule — floating and centered —
+by writing an `o.window(...)` rule for itself into the managed block of
+`~/.config/hypr/hyprland.lua`. It is on by default, can be turned off in
+Preferences (`p`), and stays inside the marked block like every other omaset
+write.
 
 ## What it manages
 
