@@ -50,7 +50,7 @@ local function build_block(prof)
     lines[#lines + 1] = "    temperature = " .. tostring(prof.temperature)
   end
   lines[#lines + 1] = "}"
-  return BEGIN_MARK .. "\n" .. table.concat(lines, "\n") .. "\n" .. END_MARK
+  return BEGIN_MARK .. "\n" .. table.concat(lines, "\n") .. "\n" .. END_MARK .. "\n"
 end
 
 local function replace_or_append(content, block)
@@ -60,7 +60,7 @@ local function replace_or_append(content, block)
     if base ~= "" and base:sub(-1) ~= "\n" then
       base = base .. "\n"
     end
-    return base .. "\n" .. block .. "\n"
+    return base .. "\n" .. block
   end
   local finish = content:find(END_MARK, start, true)
   local line_end = content:find("\n", finish, true)

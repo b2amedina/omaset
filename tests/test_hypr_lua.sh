@@ -21,6 +21,14 @@ file="$(cat "$OMASET_HYPR_DIR/looknfeel.lua")"
 assert_contains "$file" "gaps_in = 8" "gaps_in retained after second set"
 assert_contains "$file" "rounding = 6" "rounding added to same block"
 
+# A rewrite must keep the newline after the end marker, so handwritten config
+# that follows the managed block is not commented out.
+printf 'hl.config({ general = { border_size = 2 } })\n' >> "$OMASET_HYPR_DIR/looknfeel.lua"
+run set gaps_in 9
+file="$(cat "$OMASET_HYPR_DIR/looknfeel.lua")"
+assert_contains "$file" "-- omaset:end
+hl.config({ general = { border_size = 2 } })" "handwritten line after block preserved"
+
 # changed lists both overrides.
 OUT="$(run changed)"
 assert_contains "$OUT" "gaps_in" "changed lists gaps_in"

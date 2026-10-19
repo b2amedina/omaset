@@ -33,6 +33,12 @@ assert_contains "$(cat "$CFG")" "temperature = 3500" "temperature updated"
 capture_out get nightlight_temperature
 assert_eq "$OUT" '{"id":"nightlight_temperature","value":3500}' "temperature read back"
 
+# A rewrite must not swallow the line after the end marker.
+printf '# trailing user comment\n' >> "$CFG"
+run set nightlight_temperature 3300
+assert_contains "$(cat "$CFG")" "# -- omaset:end
+# trailing user comment" "handwritten line after block preserved"
+
 # reset temperature reverts to the default.
 capture_out reset nightlight_temperature
 assert_contains "$(cat "$CFG")" "temperature = 4000" "temperature reset"
