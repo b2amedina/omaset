@@ -59,6 +59,11 @@ with `options` — so a bad value is rejected before anything is written.
 Within a panel, settings are sorted alphabetically by id, with each section's
 settings kept contiguous (sections ordered by their first member).
 
+A `schema` reply is versioned (`schemaVersion`), so a frontend can refuse a shape
+it does not understand instead of rendering a partial or wrong list. The settings
+window checks it against the version it supports and shows an error when the
+engine and the window are out of step.
+
 ## One interface, three faces
 
 Everything the engine knows is reachable as JSON:

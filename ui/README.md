@@ -2,7 +2,10 @@
 
 A keyboard-first, schema-driven settings window for omaset, built as an
 Omarchy Quickshell plugin. It renders whatever `omaset schema` returns, so
-adding or removing a setting in Lua needs no QML changes.
+adding or removing a setting in Lua needs no QML changes. The reply carries a
+`schemaVersion`, and the window only renders a version it supports: a mismatch
+(an engine older or newer than the window) shows an error naming both versions
+rather than a partial list of settings.
 
 ## Launch
 

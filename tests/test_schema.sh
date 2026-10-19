@@ -5,6 +5,10 @@ OUT="$(run schema)"
 
 echo "$OUT" | jq empty || fail "schema is not valid JSON"
 
+# The reply is versioned so a consumer can refuse one it cannot render.
+assert_eq "$(echo "$OUT" | jq -r '.schemaVersion')" "1" "schema carries a version"
+assert_eq "$(echo "$OUT" | jq -r '.schemaVersion | type')" "number" "schema version is a number"
+
 # At least the built-in panels are present.
 assert_eq "$(echo "$OUT" | jq -r '.panels | length >= 4')" "true" "at least four panels"
 

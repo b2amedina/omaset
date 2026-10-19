@@ -118,6 +118,12 @@ Item {
   }
 
   // ---- model state -----------------------------------------------------
+  // The settings-schema version this window knows how to render. The engine
+  // stamps every `schema` reply with its own version; when the two differ the
+  // engine and this window are out of step, so show an error rather than a
+  // partial or mis-rendered list of settings.
+  readonly property int supportedSchemaVersion: 1
+  property string schemaError: ""
   property var schema: null
   property var panels: []
   property string activePanelId: ""
@@ -155,9 +161,31 @@ Item {
   }
 
   // ---- data loading ----------------------------------------------------
+  // Message for a `schema` reply this window cannot render, or "" when the
+  // reply is usable. An absent version means an engine older than this
+  // contract; a different one means the two were built out of step.
+  function schemaVersionError(v) {
+    if (v === undefined || v === null)
+      return "This omaset engine does not report a settings schema version, so "
+        + "it is older than this window (which needs schema version "
+        + supportedSchemaVersion + ")."
+    if (Number(v) !== supportedSchemaVersion)
+      return "This omaset engine speaks settings schema version " + v
+        + ", but this window only understands version " + supportedSchemaVersion + "."
+    return ""
+  }
+
   function loadSchema() {
     exec([omasetBin, "schema"], function(text) {
       var obj = parseJson(text)
+      var err = obj ? schemaVersionError(obj.schemaVersion)
+        : "Could not read the settings schema from the omaset engine at " + omasetBin + "."
+      if (err !== "") {
+        if (root.schemaError !== err) console.warn("omaset: " + err)
+        root.schemaError = err
+        return
+      }
+      root.schemaError = ""
       root.schema = obj
       if (obj && obj.panels && obj.panels.length) {
         root.panels = obj.panels
@@ -710,14 +738,18 @@ Item {
   }
 
   // ---- footer ----------------------------------------------------------
-  readonly property string footerHints: searchMode
+  readonly property string footerHints: schemaError !== ""
+    ? "esc close"
+    : searchMode
     ? "\u2191\u2193 move · \u23ce open · esc clear"
     : changedMode
     ? "\u2191\u2193 move · \u23ce open · esc close"
     : prefsMode
     ? "\u2191\u2193 move · \u23ce/\u2423 toggle · h l step · esc close"
     : "j k move · h l adjust · \u2423/\u23ce select · tab pane · x reset · / search · c changed · p prefs · esc close"
-  readonly property string footerContext: searchMode
+  readonly property string footerContext: schemaError !== ""
+    ? "schema mismatch"
+    : searchMode
     ? (searchResults.length > 0 ? searchResults.length + " settings found" : "")
     : changedMode
     ? (changedList.length > 0 ? changedList.length + " changed" : "no changes")
@@ -751,6 +783,13 @@ Item {
       // only claims "/" and lets PanelKeyCatcher keep its normal keys.
       Keys.priority: Keys.BeforeItem
       Keys.onPressed: function(event) {
+        // Nothing in the settings list is usable without a readable schema, so
+        // only Esc (close) means anything here.
+        if (root.schemaError !== "") {
+          if (event.key === Qt.Key_Escape) root.requestClose()
+          event.accepted = true
+          return
+        }
         if (root.searchMode) {
           if (event.key === Qt.Key_Escape) { root.exitSearch(); event.accepted = true; return }
           if (event.key === Qt.Key_Backspace) {
@@ -795,7 +834,7 @@ Item {
         PanelKeyCatcher {
           id: keyCatcher
           anchors.fill: parent
-          blocked: root.searchMode || root.changedMode || root.prefsMode
+          blocked: root.schemaError !== "" || root.searchMode || root.changedMode || root.prefsMode
 
         onMoveRequested: function(dx, dy) {
           if (dy !== 0) root.moveV(dy)
@@ -811,8 +850,9 @@ Item {
 
           Row {
             id: mainRow
+            visible: root.schemaError === ""
             width: parent.width
-            height: parent.height - footer.height
+            height: visible ? parent.height - footer.height : 0
 
             // ---- sidebar ------------------------------------------------
             Rectangle {
@@ -1305,6 +1345,65 @@ Item {
                     }
                   }
                 }
+              }
+            }
+          }
+
+          // Shown in place of the sidebar and settings list when the engine's
+          // settings schema is one this window cannot render (see
+          // supportedSchemaVersion). The window keeps its chrome and footer, so
+          // a version skew reads as an error rather than an empty window.
+          Item {
+            id: schemaErrorView
+            visible: root.schemaError !== ""
+            width: parent.width
+            height: visible ? parent.height - footer.height : 0
+
+            Column {
+              anchors.centerIn: parent
+              width: Math.min(parent.width - Style.spacing.xl * 4, Style.space(360))
+              spacing: Style.spacing.lg
+
+              Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                textFormat: Text.PlainText
+                text: "\uf071"
+                color: root.urgent
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.display
+              }
+
+              Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                textFormat: Text.PlainText
+                text: "Unsupported settings schema"
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.heading
+                font.bold: true
+              }
+
+              Text {
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                textFormat: Text.PlainText
+                text: root.schemaError
+                color: Qt.darker(root.foreground, 1.3)
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.body
+              }
+
+              Text {
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                textFormat: Text.PlainText
+                text: "Update the plugin to match:\nomarchy plugin update "
+                  + ((root.manifest && root.manifest.id) ? root.manifest.id : "b2amedina.omaset")
+                color: root.accent
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.bodySmall
               }
             }
           }

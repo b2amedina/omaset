@@ -9,8 +9,14 @@ emits valid, deterministic JSON (object keys are sorted).
 ### `schema`
 
 ```
-{ "panels": [ { "id", "title", "settings": [ ... ] } ] }
+{ "schemaVersion": 1, "panels": [ { "id", "title", "settings": [ ... ] } ] }
 ```
+
+`schemaVersion` versions the shape of this reply, independently of the engine
+version (`preferences` carries that). A consumer that renders the schema must
+check it and refuse a version it does not understand, rather than render a
+partial or wrong list of settings. The version is bumped only on incompatible
+shape changes; additive fields keep the same version.
 
 A `setting` object always has `id`, `type`, `label`, `backend`, and `value`
 (the current effective value, `null` if unset), plus a human-readable

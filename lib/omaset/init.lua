@@ -190,8 +190,15 @@ function M.keys_all(setting)
   return nil
 end
 
+-- Version of the settings schema that `schema` emits, independent of the
+-- engine version (M.VERSION): a consumer that renders the schema checks it and
+-- refuses a version it does not understand, so an engine and a frontend can
+-- evolve separately without silently mis-rendering. Bump it only when the
+-- shape changes incompatibly -- additive fields keep the same version.
+M.SCHEMA_VERSION = 1
+
 function M.schema()
-  local out = { panels = {} }
+  local out = { schemaVersion = M.SCHEMA_VERSION, panels = {} }
   for _, p in ipairs(dsl.panels) do
     local panel = { id = p.id, title = p.title, settings = {} }
     for _, s in ipairs(p.settings) do
