@@ -1,6 +1,7 @@
 import QtQuick
 import qs.Ui
 import qs.Commons
+import qs.Commons as Commons
 
 // Boolean setting: label on the left, a square ToggleSwitch on the right.
 // Mirrors qs.Ui.Toggle but with the flat row chrome (subtle idle fill, no
@@ -13,8 +14,8 @@ BorderSurface {
   property var row: ({})
   property int rowIndex: -1
 
-  readonly property color fg: panel ? panel.foreground : Color.foreground
-  readonly property color accent: panel ? panel.accent : Color.accent
+  readonly property color fg: panel ? panel.foreground : Commons.Color.foreground
+  readonly property color accent: panel ? panel.accent : Commons.Color.accent
   readonly property string fontFamily: panel ? panel.fontFamily : Style.font.family
   readonly property bool hasCursor: panel ? (panel.focusPane === "content" && panel.selectedRow === rowIndex) : false
   readonly property bool hot: hasCursor

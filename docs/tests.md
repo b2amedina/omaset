@@ -4,8 +4,9 @@
 tests/run.sh
 ```
 
-Every `tests/test_*.sh` is a black-box test that drives `bin/omaset` against
-fixture configs, reporting a pass/fail summary.
+Most `tests/test_*.sh` are black-box tests that drive `bin/omaset` against
+fixture configs, reporting a pass/fail summary. `test_qml_palette.sh` is a
+static guard for the window's QML palette references.
 
 They are pointed at scratch directories through environment variables —
 `OMARCHY_PATH`, `OMASET_HYPR_DIR`, `OMASET_SHELL_CONFIG`, and `OMASET_NO_APPLY` —

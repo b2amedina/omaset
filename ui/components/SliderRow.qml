@@ -1,6 +1,7 @@
 import QtQuick
 import qs.Ui
 import qs.Commons
+import qs.Commons as Commons
 
 // Bounded int/float setting: label on the left, a PanelSlider with a live
 // value readout on the right. Rows carry a subtle idle fill (no border) that
@@ -13,8 +14,8 @@ BorderSurface {
   property var row: ({})
   property int rowIndex: -1
 
-  readonly property color fg: panel ? panel.foreground : Color.foreground
-  readonly property color accent: panel ? panel.accent : Color.accent
+  readonly property color fg: panel ? panel.foreground : Commons.Color.foreground
+  readonly property color accent: panel ? panel.accent : Commons.Color.accent
   readonly property string fontFamily: panel ? panel.fontFamily : Style.font.family
   readonly property bool hasCursor: panel ? (panel.focusPane === "content" && panel.selectedRow === rowIndex) : false
   readonly property bool hot: hasCursor
@@ -33,7 +34,7 @@ BorderSurface {
 
   readonly property var sliderBar: QtObject {
     readonly property color foreground: root.fg
-    readonly property color background: root.panel ? root.panel.background : Color.background
+    readonly property color background: root.panel ? root.panel.background : Commons.Color.background
     readonly property color urgent: root.accent
     readonly property string fontFamily: root.fontFamily
     readonly property string position: "top"

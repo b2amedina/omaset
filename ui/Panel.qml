@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import qs.Ui
 import qs.Commons
+import qs.Commons as Commons
 import "components"
 import "model.js" as Model
 
@@ -40,10 +41,10 @@ Item {
   }
 
   // ---- theme -----------------------------------------------------------
-  readonly property color foreground: Color.foreground
-  readonly property color background: Color.background
-  readonly property color accent: Color.accent
-  readonly property color urgent: Color.urgent
+  readonly property color foreground: Commons.Color.foreground
+  readonly property color background: Commons.Color.background
+  readonly property color accent: Commons.Color.accent
+  readonly property color urgent: Commons.Color.urgent
   readonly property string fontFamily: Style.font.family
   readonly property color sidebarColor: Qt.darker(background, 1.12)
   readonly property color recessedColor: Qt.darker(background, 1.35)
@@ -891,7 +892,7 @@ Item {
                       radius: Style.cornerRadius
                       color: cursor
                         ? Style.hoverFillFor(root.foreground, root.accent)
-                        : (active ? Color.menu.selectedBackground : "transparent")
+                        : (active ? Commons.Color.menu.selectedBackground : "transparent")
                     }
 
                     Text {
@@ -900,7 +901,7 @@ Item {
                       anchors.verticalCenter: parent.verticalCenter
                       textFormat: Text.PlainText
                       text: root.iconFor(modelData.id)
-                      color: active ? Color.menu.selectedText : Qt.darker(root.foreground, 1.3)
+                      color: active ? Commons.Color.menu.selectedText : Qt.darker(root.foreground, 1.3)
                       font.family: root.fontFamily
                       font.pixelSize: Style.font.body
                     }

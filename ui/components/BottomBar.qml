@@ -1,6 +1,7 @@
 import QtQuick
 import qs.Ui
 import qs.Commons
+import qs.Commons as Commons
 
 // Footer bar: keyboard hints on the left, a contextual badge on the right
 // ("N changed" when edits differ from stock, "N settings found" while
@@ -11,11 +12,11 @@ Rectangle {
   property var panel: null
   property string hints: ""
   property string context: ""
-  property color contextColor: Color.accent
+  property color contextColor: Commons.Color.accent
 
   readonly property bool contextVisible: context !== ""
-  readonly property color fg: panel ? panel.foreground : Color.foreground
-  readonly property color bg: panel ? panel.background : Color.background
+  readonly property color fg: panel ? panel.foreground : Commons.Color.foreground
+  readonly property color bg: panel ? panel.background : Commons.Color.background
 
   height: Style.space(26)
   color: Qt.darker(bg, 1.15)
