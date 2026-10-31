@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import Quickshell
-import Quickshell.Io
 import qs.Ui
 import qs.Commons
 import qs.Commons as Commons
@@ -9,8 +8,8 @@ import "components"
 import "model.js" as Model
 
 // omaset settings window. A keyboard-first, schema-driven frontend for the
-// omaset JSON protocol: `omaset schema` renders the panels, and `omaset
-// get/set/reset` read and write each value. Launched from the CLI via
+// omaset RPC protocol: one long-lived `omaset rpc` process serves `schema`,
+// `get`, `set`, `reset`, and the other operations. Launched from the CLI via
 // `omarchy-shell shell toggle b2amedina.omaset '{}'` or an optional bar icon.
 Item {
   id: root
@@ -63,92 +62,19 @@ Item {
     return cfg + "/omarchy/plugins/" + id + "/bin/omaset"
   }
 
-  // ---- process runner (serialized command queue) -----------------------
-  property var queue: []
-  property var pendingCb: null
-  property bool runningCmd: false
-  property string lastErr: ""   // stderr of the last command
-  property int lastCode: 0      // exit code of the last command
-
-  Process {
-    id: cmd
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: { root.cmdOutText = text; root.cmdOutDone = true; root.maybeFinishCmd() }
-    }
-    stderr: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: { root.cmdErrText = text; root.cmdErrDone = true; root.maybeFinishCmd() }
-    }
-    onExited: function(code) { root.lastCode = code; root.cmdExited = true; root.maybeFinishCmd() }
-  }
-
-  property string cmdOutText: ""
-  property string cmdErrText: ""
-  property bool cmdOutDone: false
-  property bool cmdErrDone: false
-  property bool cmdExited: false
-
-  function exec(args, cb) {
-    queue.push({ args: args, cb: cb })
-    pump()
-  }
-
-  function pump() {
-    if (runningCmd || queue.length === 0) return
-    runningCmd = true
-    var job = queue.shift()
-    pendingCb = job.cb
-    cmdOutText = ""
-    cmdErrText = ""
-    cmdOutDone = false
-    cmdErrDone = false
-    cmdExited = false
-    lastErr = ""
-    lastCode = 0
-    cmd.command = job.args
-    cmd.running = true
-  }
-
-  // A command is only finished once stdout, stderr, and the exit signal have
-  // all arrived; their order is not guaranteed. This keeps the queue from
-  // handing the previous command's output to the next callback.
-  function maybeFinishCmd() {
-    if (!runningCmd || !cmdOutDone || !cmdErrDone || !cmdExited) return
-    onCmdDone(lastCode)
-  }
-
-  function onCmdDone(code) {
-    runningCmd = false
-    lastCode = code
-    lastErr = cmdErrText
-    cmdOutDone = false
-    cmdErrDone = false
-    cmdExited = false
-    var cb = pendingCb
-    pendingCb = null
-    if (cb) cb(cmdOutText, cmdErrText, code)
-    pump()
-  }
-
-  function parseJson(t) {
-    try { return JSON.parse(t) } catch (e) { return null }
+  // ---- RPC client ------------------------------------------------------
+  // One long-lived `omaset rpc` process carries every schema/get/set call, so
+  // opening a panel no longer spawns a process per setting and the UI no
+  // longer has to serialize commands itself.
+  RpcClient {
+    id: rpc
+    binary: root.omasetBin
   }
 
   function cloneObj(o) {
     var n = {}
     for (var k in o) n[k] = o[k]
     return n
-  }
-
-  function coercePlain(t) {
-    var s = String(t).replace(/\s+$/, "")
-    if (s === "") return null
-    if (s === "true") return true
-    if (s === "false") return false
-    var n = Number(s)
-    if (isFinite(n) && String(n) === s) return n
-    return s
   }
 
   // ---- model state -----------------------------------------------------
@@ -215,13 +141,13 @@ Item {
   }
 
   function loadSchema() {
-    exec([omasetBin, "schema"], function(text) {
-      var obj = parseJson(text)
-      var err = obj ? schemaVersionError(obj.schemaVersion)
-        : "Could not read the settings schema from the omaset engine at " + omasetBin + "."
-      if (err !== "") {
-        if (root.schemaError !== err) console.warn("omaset: " + err)
-        root.schemaError = err
+    rpc.call("schema", {}, function(obj, err) {
+      var msg = err ? ("Could not read the settings schema from the omaset engine at "
+          + omasetBin + ": " + err)
+        : schemaVersionError(obj ? obj.schemaVersion : undefined)
+      if (msg !== "") {
+        if (root.schemaError !== msg) console.warn("omaset: " + msg)
+        root.schemaError = msg
         return
       }
       root.schemaError = ""
@@ -258,20 +184,18 @@ Item {
   }
 
   function loadGroupValue(id, sub) {
-    exec([omasetBin, "get", id, sub, "--plain"], function(text) {
-      var v = coercePlain(text)
+    rpc.call("get", { id: id, sub: sub }, function(o) {
+      if (!o) return
       var n = cloneObj(root.effective)
-      n[Model.settingKey(id, sub)] = v
+      n[Model.settingKey(id, sub)] = o.value
       root.effective = n
       root.rebuildRows()
     })
   }
 
   function loadKeyed(id) {
-    exec([omasetBin, "keys", id, "--json"], function(text) {
-      var keys = []
-      var o = parseJson(text)
-      if (o && o.keys) keys = o.keys
+    rpc.call("keys", { id: id }, function(o) {
+      var keys = (o && o.keys) ? o.keys : []
       var n = cloneObj(root.keyed)
       n[id] = keys
       root.keyed = n
@@ -281,18 +205,17 @@ Item {
   }
 
   function loadKeyedValue(id, key) {
-    exec([omasetBin, "get", id, String(key), "--plain"], function(text) {
-      var v = coercePlain(text)
+    rpc.call("get", { id: id, key: String(key) }, function(o) {
+      if (!o) return
       var n = cloneObj(root.effective)
-      n[Model.settingKey(id, undefined, key)] = v
+      n[Model.settingKey(id, undefined, key)] = o.value
       root.effective = n
       root.rebuildRows()
     })
   }
 
   function refreshChanged() {
-    exec([omasetBin, "changed", "--json"], function(text) {
-      var o = parseJson(text)
+    rpc.call("changed", {}, function(o) {
       var list = (o && o.changed && Array.isArray(o.changed)) ? o.changed : []
       root.changedList = list
       root.changedCount = list.length
@@ -313,8 +236,7 @@ Item {
   // rule — that happens on window open and on explicit change, so re-opening
   // the preferences overlay can't re-apply a stale value and clobber a toggle.
   function loadPreferences(onDone) {
-    exec([omasetBin, "preferences", "--json"], function(text) {
-      var o = parseJson(text)
+    rpc.call("preferences", {}, function(o) {
       var list = (o && o.preferences && Array.isArray(o.preferences)) ? o.preferences : []
       root.omasetVersion = (o && o.version) ? String(o.version)
         : ((manifest && manifest.version) ? String(manifest.version) : "")
@@ -376,8 +298,8 @@ Item {
     }
     applyPrefValue(key, value)
 
-    exec([omasetBin, "preferences", "set", key, String(value)], function(text, err, code) {
-      if (code !== 0) {
+    rpc.call("preference_set", { key: key, value: value }, function(o, err) {
+      if (err) {
         for (var k = 0; k < prefsModel.count; k++) {
           if (prefsModel.get(k).key === key) prefsModel.setProperty(k, "value", oldValue)
         }
@@ -385,7 +307,6 @@ Item {
         if (onError) onError(String(err || "invalid value"))
         return
       }
-      var o = parseJson(text)
       if (o && o.value !== undefined && o.value !== null) {
         for (var j = 0; j < prefsModel.count; j++) {
           if (prefsModel.get(j).key === key) prefsModel.setProperty(j, "value", String(o.value))
@@ -400,7 +321,7 @@ Item {
   // window's float rule in the managed hypr-window block. Persistent, so it
   // also governs how the window opens next time.
   function applyLaunchFloating() {
-    exec([omasetBin, "ui-float", root.launchFloating ? "on" : "off"], function() {})
+    rpc.call("ui_float", { enabled: root.launchFloating }, function() {})
   }
 
   // Periodic refresh while the window is visible and idle, so values changed
@@ -412,7 +333,7 @@ Item {
     onTriggered: root.pollRefresh()
   }
   function pollRefresh() {
-    if (runningCmd || queue.length > 0) return   // never delay a user action
+    if (rpc.pendingCount() > 0) return   // never delay a user action
     loadSchema()
     loadPreferences()
     refreshChanged()
@@ -460,29 +381,26 @@ Item {
       root.nightlightDirty = true
   }
 
+  function rowKey(row) {
+    if (row.sub !== undefined && row.sub !== null) return row.sub
+    if (row.key !== undefined && row.key !== null) return row.key
+    return undefined
+  }
+
   function commit(row, v) {
     if (!row) return
-    if (row.sub !== undefined && row.sub !== null) {
-      var k1 = Model.settingKey(row.id, row.sub)
-      setEffective(k1, v)
-      exec([omasetBin, "set", row.id, row.sub, String(v)], function(text) {
-        var o = parseJson(text)
-        if (o && o.value !== undefined && o.value !== null) setEffective(k1, o.value)
-        root.scheduleChanged()
-      })
-    } else if (row.key !== undefined && row.key !== null) {
-      var k2 = Model.settingKey(row.id, undefined, row.key)
-      setEffective(k2, v)
-      exec([omasetBin, "set", row.id, String(row.key), String(v)], function(text) {
-        var o = parseJson(text)
-        if (o && o.value !== undefined && o.value !== null) setEffective(k2, o.value)
+    var key = rowKey(row)
+    if (key !== undefined) {
+      var k = Model.settingKey(row.id, row.sub, row.key)
+      setEffective(k, v)
+      rpc.call("set", { id: row.id, key: key, value: v }, function(o) {
+        if (o && o.value !== undefined && o.value !== null) setEffective(k, o.value)
         root.scheduleChanged()
       })
     } else {
       markNightlightDirty(row.id)
       setSchemaValue(row.id, v)
-      exec([omasetBin, "set", row.id, String(v)], function(text) {
-        var o = parseJson(text)
+      rpc.call("set", { id: row.id, value: v }, function(o) {
         if (o && o.value !== undefined && o.value !== null) setSchemaValue(row.id, o.value)
         root.scheduleChanged()
       })
@@ -493,11 +411,10 @@ Item {
     if (!row) return
     markNightlightDirty(row.id)
     var key = Model.settingKey(row.id, row.sub, row.key)
-    var args
-    if (row.sub !== undefined && row.sub !== null) args = [omasetBin, "reset", row.id, row.sub]
-    else if (row.key !== undefined && row.key !== null) args = [omasetBin, "reset", row.id, String(row.key)]
-    else args = [omasetBin, "reset", row.id]
-    exec(args, function(text) {
+    var keyArg = rowKey(row)
+    var params = { id: row.id }
+    if (keyArg !== undefined) params.key = keyArg
+    rpc.call("reset", params, function() {
       var n = {}
       for (var k in root.effective) if (k !== key) n[k] = root.effective[k]
       root.effective = n
@@ -707,9 +624,8 @@ Item {
     if (!searchMode) return
     var q = searchQuery
     if (q.replace(/\s+$/, "") === "") { searchResults = []; return }
-    exec([omasetBin, "search", q, "--json"], function(text) {
+    rpc.call("search", { query: q }, function(o) {
       if (!root.searchMode) return
-      var o = parseJson(text)
       root.searchResults = (o && o.results && Array.isArray(o.results)) ? o.results : []
       if (root.searchSel >= root.searchResults.length)
         root.searchSel = Math.max(0, root.searchResults.length - 1)
@@ -908,7 +824,7 @@ Item {
       if (!visible) {
         if (root.nightlightDirty) {
           root.nightlightDirty = false
-          exec([omasetBin, "hyprsunset-apply"], function() {})
+          rpc.call("hyprsunset_apply", {}, function() {})
         }
         if (!root.closingFromHost && root.shell && typeof root.shell.hide === "function")
           root.shell.hide("b2amedina.omaset")
