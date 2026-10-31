@@ -24,6 +24,8 @@ ln -s ~/.config/omarchy/plugins/b2amedina.omaset/bin/omaset ~/.local/bin/omaset
 | `omaset undo` | undo the most recent change (`--all` replays the journal) |
 | `omaset rollback` | restore every config file omaset touched |
 | `omaset preferences` | omaset's own settings (see below) |
+| `omaset ui-float <on|off>` | float/center the settings window |
+| `omaset hyprsunset-apply` | restart hyprsunset so a schedule takes effect |
 | `omaset mcp` | run the MCP server (see [agents.md](agents.md)) |
 | `omaset ui` | open the settings window |
 
@@ -64,6 +66,9 @@ settings panels, `search`, or `changed`.
   manages this by adding/removing an `o.window(... float/center ...)` rule for
   its own window in the managed block of `~/.config/hypr/hyprland.lua`, so no
   hand-written rule is needed. Takes effect on the next open.
+- `time_format` — how times are displayed in the settings window (`24h`, `12h`,
+  or `auto` to follow the bar clock's format in shell.json; default `auto`).
+  Storage is always 24-hour `HH:MM`.
 
 Edit them from the settings window with `p`, or from the CLI:
 

@@ -4,12 +4,16 @@ panel("input", "Input", function()
       id = "follow_mouse",
       type = "int",
       label = "Follow mouse",
-      description = "Move focus to the window under the cursor: 0 none, 1 full, 2 tight, 3 loose.",
+      description = "Move focus to the window under the cursor.",
       backend = "hypr-lua",
       file = "input",
       path = "input.follow_mouse",
-      min = 0,
-      max = 3,
+      options = {
+        { value = 0, label = "None" },
+        { value = 1, label = "Full" },
+        { value = 2, label = "Tight" },
+        { value = 3, label = "Loose" },
+      },
     })
 
     setting({

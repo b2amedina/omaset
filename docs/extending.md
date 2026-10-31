@@ -53,9 +53,14 @@ declares its shape and trusts the engine to enforce it:
 |---|---|---|
 | `bool` | — | toggle |
 | `int` / `float` | `min`, `max` (and `step` for floats) | slider |
+| `int` / `float` with choices | `options = { { value = 0, label = "None" }, ... }` | segmented control (stores the number) |
 | `enum` | `options = { "a", "b", "c" }` | segmented control |
+| `time` | — (stored `HH:MM`; accepts `HH:MM` or `h:mm AM/PM`) | time row |
 | `group` | `subsettings` with a shared `match` | header + a row each |
 | `keyed` | a key field (e.g. workspace number) | header + a row per key |
+
+A `time` setting may also declare `format` (the display pattern) and `hint`
+(the accepted input forms); both are passed through to `schema` and `help`.
 
 ## Writing a backend
 

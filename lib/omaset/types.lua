@@ -2,6 +2,60 @@
 
 local M = {}
 
+-- Parse a wall-clock time entered as 24-hour ("20:30", "7:30") or 12-hour
+-- ("8:30 PM", "8:30pm", "8:30 p.m.") and return it canonicalized to zero-padded
+-- 24-hour "HH:MM". Returns nil when the string is not a valid time. This is the
+-- single source of truth shared by coerce/validate/normalize and the hyprsunset
+-- backend, so every entry path stores the same canonical form.
+function M.parse_time(str)
+  local s = tostring(str):gsub("^%s+", ""):gsub("%s+$", "")
+  local h, m = s:match("^(%d%d?):(%d%d)$")
+  if h then
+    local hh, mm = tonumber(h), tonumber(m)
+    if hh and hh <= 23 and mm <= 59 then
+      return string.format("%02d:%02d", hh, mm)
+    end
+    return nil
+  end
+  local h12, m12, ap = s:match("^(%d%d?):(%d%d)%s*([AaPp])%.?[Mm]%.?$")
+  if h12 then
+    local hh, mm = tonumber(h12), tonumber(m12)
+    if hh and hh >= 1 and hh <= 12 and mm <= 59 then
+      local pm = (ap == "p" or ap == "P")
+      if hh == 12 then
+        hh = pm and 12 or 0
+      elseif pm then
+        hh = hh + 12
+      end
+      return string.format("%02d:%02d", hh, mm)
+    end
+    return nil
+  end
+  return nil
+end
+
+-- Canonicalize a value the way the backend will store it. For most types this
+-- is a no-op; for `time` it parses and zero-pads so the CLI, the MCP server,
+-- and the backend all agree on the same stored string.
+function M.normalize(value, setting)
+  if (setting.type or "string") == "time" then
+    return M.parse_time(value) or value
+  end
+  return value
+end
+
+-- Numeric settings may declare a fixed set of labelled choices, e.g.
+-- options = { { value = 0, label = "None" }, { value = 1, label = "Full" } }.
+-- Such a setting keeps its numeric type and stored value; the labels are UI
+-- and CLI metadata. Returns the option list, or nil for a plain setting.
+function M.choice_options(setting)
+  if setting and type(setting.options) == "table"
+    and type(setting.options[1]) == "table" then
+    return setting.options
+  end
+  return nil
+end
+
 -- Coerce a CLI string into the setting's declared type.
 -- Returns the coerced value, or nil plus an error message.
 function M.coerce(str, setting)
@@ -10,7 +64,19 @@ function M.coerce(str, setting)
     return str
   elseif t == "int" then
     local n = tonumber(str)
-    if not n or n % 1 ~= 0 then
+    if not n then
+      local choices = M.choice_options(setting)
+      if choices then
+        local needle = tostring(str):lower()
+        for _, opt in ipairs(choices) do
+          if tostring(opt.label):lower() == needle then
+            return opt.value
+          end
+        end
+      end
+      return nil, "expected an integer, got '" .. tostring(str) .. "'"
+    end
+    if n % 1 ~= 0 then
       return nil, "expected an integer, got '" .. tostring(str) .. "'"
     end
     return n
@@ -45,6 +111,12 @@ function M.coerce(str, setting)
       return nil, "'" .. tostring(str) .. "' is not a valid option"
     end
     return str
+  elseif t == "time" then
+    local canonical = M.parse_time(str)
+    if not canonical then
+      return nil, "expected HH:MM or h:mm AM/PM, got '" .. tostring(str) .. "'"
+    end
+    return canonical
   end
   return nil, "unknown type '" .. tostring(t) .. "'"
 end
@@ -82,6 +154,10 @@ function M.validate(value, setting)
   elseif t == "string" then
     if type(value) ~= "string" then
       return nil, "expected a string, got " .. tostring(value)
+    end
+  elseif t == "time" then
+    if type(value) ~= "string" or M.parse_time(value) == nil then
+      return nil, "expected HH:MM or h:mm AM/PM, got " .. tostring(value)
     end
   else
     return nil, "unknown type '" .. tostring(t) .. "'"
@@ -122,6 +198,19 @@ function M.check_range(value, setting)
   end
   if setting.max ~= nil and value > setting.max then
     return false, "value " .. value .. " above maximum " .. setting.max
+  end
+  local choices = M.choice_options(setting)
+  if choices then
+    local ok = false
+    local labels = {}
+    for _, opt in ipairs(choices) do
+      labels[#labels + 1] = tostring(opt.value) .. "=" .. tostring(opt.label)
+      if opt.value == value then ok = true end
+    end
+    if not ok then
+      return false, "value " .. value .. " is not one of: "
+        .. table.concat(labels, ", ")
+    end
   end
   return true
 end

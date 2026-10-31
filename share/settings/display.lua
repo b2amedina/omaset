@@ -13,6 +13,19 @@ panel("display", "Display", function()
     })
 
     setting({
+      id = "nightlight_temperature",
+      type = "int",
+      label = "Night light temperature",
+      description = "Color temperature (Kelvin) applied when the night light is on.",
+      backend = "hyprsunset",
+      path = "temperature",
+      min = 1000,
+      max = 6500,
+    })
+  end)
+
+  section("Schedule", function()
+    setting({
       id = "nightlight_schedule",
       type = "bool",
       label = "Night light schedule",
@@ -22,14 +35,25 @@ panel("display", "Display", function()
     })
 
     setting({
-      id = "nightlight_temperature",
-      type = "int",
-      label = "Night light temperature",
-      description = "Color temperature (Kelvin) applied when the night light is on.",
+      id = "nightlight_start",
+      type = "time",
+      label = "Starts at",
+      description = "Time the night light schedule starts (24h or AM/PM). Editing a time enables the schedule.",
       backend = "hyprsunset",
-      path = "temperature",
-      min = 1000,
-      max = 6500,
+      path = "start",
+      format = "HH:MM",
+      hint = "HH:MM or h:mm AM/PM",
+    })
+
+    setting({
+      id = "nightlight_stop",
+      type = "time",
+      label = "Ends at",
+      description = "Time the schedule ends and the screen returns to normal. Editing a time enables the schedule.",
+      backend = "hyprsunset",
+      path = "stop",
+      format = "HH:MM",
+      hint = "HH:MM or h:mm AM/PM",
     })
   end)
 end)

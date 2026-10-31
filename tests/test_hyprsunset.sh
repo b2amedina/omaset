@@ -18,14 +18,43 @@ assert_eq "$OUT" '{"id":"nightlight_schedule","value":false}' "schedule off by d
 # temperature falls back to the default when no schedule is set.
 capture_out get nightlight_temperature
 assert_eq "$OUT" '{"id":"nightlight_temperature","value":4000}' "temperature defaults to 4000"
+capture_out get nightlight_start
+assert_eq "$OUT" '{"id":"nightlight_start","value":"20:00"}' "start defaults to 20:00"
+capture_out get nightlight_stop
+assert_eq "$OUT" '{"id":"nightlight_stop","value":"07:00"}' "stop defaults to 07:00"
 
-# enabling the schedule adds a managed night profile.
+# enabling the schedule adds managed night + identity profiles.
 capture_out set nightlight_schedule true
 assert_contains "$(cat "$CFG")" "temperature = 4000" "managed profile written"
+assert_contains "$(cat "$CFG")" "identity = true" "identity profile written"
 assert_contains "$(cat "$CFG")" "time = 07:00" "user profile preserved"
 
 capture_out get nightlight_schedule
 assert_eq "$OUT" '{"id":"nightlight_schedule","value":true}' "schedule on after set"
+
+# start/stop times are written as their own profiles.
+capture_out set nightlight_start 21:30
+assert_contains "$(cat "$CFG")" "time = 21:30" "start time written"
+capture_out get nightlight_start
+assert_eq "$OUT" '{"id":"nightlight_start","value":"21:30"}' "start time read back"
+
+# 12-hour input is accepted and stored canonical.
+capture_out set nightlight_stop "6:45 AM"
+assert_contains "$(cat "$CFG")" "time = 06:45" "stop time canonicalized"
+capture_out get nightlight_stop
+assert_eq "$OUT" '{"id":"nightlight_stop","value":"06:45"}' "stop time read back"
+
+# a start equal to the stop is rejected.
+capture set nightlight_start 06:45
+assert_exit "$CODE" 1 "start == stop rejected"
+
+# reset start restores its default inside the existing block.
+capture_out reset nightlight_start
+assert_contains "$(cat "$CFG")" "time = 20:00" "start reset to default"
+
+# apply is a no-op under OMASET_NO_APPLY (tests) and reports ok.
+capture_out hyprsunset-apply
+assert_eq "$OUT" "ok" "hyprsunset-apply ok"
 
 # changing temperature updates the managed profile.
 capture_out set nightlight_temperature 3500

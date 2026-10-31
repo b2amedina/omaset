@@ -28,9 +28,18 @@ additive:
 | `int`   | `min`, `max` (optional)  |
 | `float` | `min`, `max` (optional)  |
 | `enum`  | `options` (array)        |
+| `time`  | —                        |
 | `bool`  | —                        |
 | `string`| —                        |
 | `group` | `subsettings` (object)   |
+
+A numeric `int`/`float` setting may declare `options` as an array of
+`{ "value", "label" }` objects instead of `min`/`max`. The stored value stays
+the number; the label is display and CLI metadata (for example `follow_mouse`
+maps `0=None`, `1=Full`, and so on).
+
+A `time` setting may carry `format` (display pattern) and `hint` (accepted
+input forms); both are informational.
 
 **Keyed settings** take a subject/key argument (e.g. a workspace number). They
 carry `keyed: true`, `key_label`, and `key_type` (`"int"` or `"string"`), and
@@ -141,6 +150,11 @@ journal. Backends without a snapshot (e.g. the `omarchy` passthrough and
 { "version": "0.1.0", "preferences": [ { "key", "type", "label", "description", "value", "default", ... } ] }
 ```
 
+Each preference carries its `type` (and `options`/`min`/`max` as applicable).
+The `time_format` preference additionally carries a `resolved` field — the
+`24h`/`12h` convention actually used, resolving the `auto` value against the
+bar clock's format in shell.json.
+
 omaset's **own** UI preferences, stored in `~/.config/omaset/preferences.json`
 (`OMASET_PREFERENCES` overrides the path). They are deliberately *not* Omarchy
 settings: they have no backend, they never appear in `schema`/`search`, and
@@ -181,5 +195,6 @@ Built-in backends:
   `~/.local/state/omarchy/workspace-layouts/` (like `omarchy hyprland workspace
   layout toggle`), and applies via `hl.workspace_rule`. Default is `"dwindle"`.
 - `hyprsunset` — night light schedule in `~/.config/hypr/hyprsunset.conf`; field
-  `path` (`"schedule"` or `"temperature"`). Manages one omaset-owned night
-  profile in a `# -- omaset:begin` block.
+  `path` (`"schedule"`, `"start"`, `"stop"`, or `"temperature"`). Manages two
+  omaset-owned profiles (warm at `start`, `identity` at `stop`) in a
+  `# -- omaset:begin` block.

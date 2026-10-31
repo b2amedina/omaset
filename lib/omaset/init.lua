@@ -806,6 +806,22 @@ local function cmd_ui_float(flags, pos)
   print("ok")
 end
 
+-- Restart hyprsunset so it re-reads hyprsunset.conf. Called by the settings
+-- window when it closes, so schedule edits are applied once rather than on
+-- every write.
+local function cmd_hyprsunset_apply(flags, pos)
+  M.load()
+  local b = backends.get("hyprsunset")
+  if not b or not b.apply then
+    die("hyprsunset backend does not support apply")
+  end
+  local ok, err = b.apply()
+  if not ok then
+    die(err)
+  end
+  print("ok")
+end
+
 local function cmd_mcp(flags, pos)
   local mcp = require("omaset.mcp")
   local sub = pos[1]
@@ -917,12 +933,18 @@ local COMMAND_HELP = {
   rollback = "omaset rollback [--json]\n  Restore the pre-omaset .bak snapshots of the config files omaset has written.",
   preferences = "omaset preferences [list|get <key>|set <key> <val>|reset <key>] [--json|--plain]\n  List or edit omaset's own UI preferences (not Omarchy settings).",
   ["ui-float"] = "omaset ui-float <on|off>\n  Add or remove the omaset window's float/center rule (driven by the launch_floating preference).",
+  ["hyprsunset-apply"] = "omaset hyprsunset-apply\n  Restart hyprsunset so a written night-light schedule takes effect.",
   mcp = "omaset mcp\n  Run the MCP server over stdio for agents.\nomaset mcp install [<agent>...]\n  Write the omaset MCP entry into the named agents' configs (all when none are named).\nomaset mcp doctor\n  Report which agents are wired to the omaset MCP server.",
 }
 
 local function value_hint(setting)
   local t = setting.type or "string"
-  if t == "enum" and setting.options then
+  local choices = types.choice_options(setting)
+  if choices then
+    local labels = {}
+    for _, opt in ipairs(choices) do labels[#labels + 1] = tostring(opt.label) end
+    return "<" .. table.concat(labels, "|") .. ">"
+  elseif t == "enum" and setting.options then
     return "<" .. table.concat(setting.options, "|") .. ">"
   elseif t == "int" or t == "float" then
     if setting.min ~= nil and setting.max ~= nil then
@@ -931,6 +953,8 @@ local function value_hint(setting)
     return t == "int" and "<int>" or "<float>"
   elseif t == "bool" then
     return "<true|false>"
+  elseif t == "time" then
+    return "<HH:MM|h:mm AM/PM>"
   end
   return "<value>"
 end
@@ -983,7 +1007,16 @@ local function setting_help(setting)
   lines[#lines + 1] = type_line
 
   if setting.options then
-    lines[#lines + 1] = "  options: " .. table.concat(setting.options, ", ")
+    local choices = types.choice_options(setting)
+    if choices then
+      local parts = {}
+      for _, opt in ipairs(choices) do
+        parts[#parts + 1] = tostring(opt.value) .. "=" .. tostring(opt.label)
+      end
+      lines[#lines + 1] = "  options: " .. table.concat(parts, ", ")
+    else
+      lines[#lines + 1] = "  options: " .. table.concat(setting.options, ", ")
+    end
   end
 
   if setting.keyed then
@@ -1106,6 +1139,8 @@ function M.main(arg)
     cmd_preferences(flags, pos)
   elseif cmd == "ui-float" then
     cmd_ui_float(flags, pos)
+  elseif cmd == "hyprsunset-apply" then
+    cmd_hyprsunset_apply(flags, pos)
   elseif cmd == "mcp" then
     cmd_mcp(flags, pos)
   else

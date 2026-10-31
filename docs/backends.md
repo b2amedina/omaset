@@ -59,15 +59,24 @@ The *Bar* panel (position, transparency) is the main user of this.
 
 ## `hyprsunset`
 
-Manages a single omaset-owned night profile (`time` + `temperature`) in a
+Manages an omaset-owned night-light schedule in a
 `# -- omaset:begin` / `# -- omaset:end` block inside
 `~/.config/hypr/hyprsunset.conf`, so your own profiles and comments are never
 touched.
 
-- Exposes two settings: `schedule` (whether the night profile is active) and
-  `temperature` (its color temperature in Kelvin, default 4000). Writing the
-  temperature creates the profile if it does not exist; resetting the schedule
-  removes the block entirely.
+- hyprsunset has no on/off window: it applies whichever profile has the latest
+  activation time. So the schedule is two profiles — a warm `temperature`
+  profile at the start time and an `identity = true` (no tint) profile at the
+  stop time.
+- Exposes four settings: `schedule` (whether the schedule is active), `start`
+  (`HH:MM`, default 20:00), `stop` (`HH:MM`, default 07:00), and `temperature`
+  (Kelvin, default 4000). Enabling the schedule writes the defaults; writing any
+  schedule field fills the other fields with defaults. Because the block's
+  presence is the schedule's state, writing a time also enables the schedule.
+  Start and stop may not be equal.
+- `apply()` restarts the running hyprsunset so a written schedule takes effect —
+  hyprsunset parses its config only at startup. The settings window calls this
+  once on close, not on every write.
 - Keeps a `<file>.omaset.bak` snapshot before its first write, so `rollback`
   restores the original file like the other file-writing backends.
 
