@@ -30,6 +30,7 @@ local root = dirname(dirname(script))
 package.path = root .. "/lib/?.lua;" .. root .. "/lib/?/init.lua;" .. package.path
 
 local omaset = require("omaset")
+local cli = require("omaset.cli")
 omaset.bootstrap({
   root = root,
   user_settings_dir = os.getenv("OMASET_SETTINGS_DIR")
@@ -37,4 +38,4 @@ omaset.bootstrap({
   user_backends_dir = os.getenv("OMASET_BACKENDS_DIR")
     or (os.getenv("HOME") or "") .. "/.config/omaset/backends",
 })
-omaset.main(arg)
+cli.main(arg)
