@@ -30,7 +30,11 @@ The server is `omaset mcp` (JSON-RPC over stdio) and exposes these tools:
 | `help` | one setting's spec |
 | `keys` | enumerate a keyed/grouped setting's keys (value + default each) |
 | `undo` | undo the last change |
+| `history` | recent changes omaset has made, oldest first |
+| `ui` | open/close/toggle/reload the settings window |
 | `open_ui` | summon the settings window for the user |
+| `ui_float` | apply the launch_floating window rule |
+| `hyprsunset_apply` | restart hyprsunset so a night-light schedule takes effect |
 | `preferences` | list omaset's own preferences (type, options, value, default) |
 | `preference_get` | read one preference |
 | `preference_set` | write a preference (validated like a setting) |

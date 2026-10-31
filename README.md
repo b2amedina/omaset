@@ -76,9 +76,9 @@ without any change to the core.
   browsable, searchable, and changeable in one window and one command, over the
   dotfiles you already have.
 - **One engine, pluggable backends.** Each area is a small backend on a shared
-  core, and everything speaks one plain JSON interface — so the window, the CLI,
-  and agents are just different faces on the same settings. New areas plug in
-  without touching the engine.
+  core, and one operation layer serves the CLI, the window, and agents — so they
+  are just different faces on the same settings. New areas plug in without
+  touching the engine.
 - **Agent-friendly.** An MCP server exposes settings as typed tools, so your
   agent can widen the gaps or toggle blur in-session — and every change lands in
   the same journal you can undo.
@@ -100,8 +100,8 @@ without any change to the core.
 ## How to use
 
 **The window.** `omaset ui` opens a keyboard-first settings window that renders
-`omaset schema` and drives `get`/`set`/`reset` — so it always reflects the same
-settings the CLI does.
+the schema and drives `get`/`set`/`reset` through one long-lived `omaset rpc`
+process — so it always reflects the same settings the CLI does.
 
 | Key | Action |
 |---|---|

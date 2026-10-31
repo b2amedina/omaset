@@ -1,11 +1,17 @@
 # omaset settings UI
 
 A keyboard-first, schema-driven settings window for omaset, built as an
-Omarchy Quickshell plugin. It renders whatever `omaset schema` returns, so
-adding or removing a setting in Lua needs no QML changes. The reply carries a
+Omarchy Quickshell plugin. It renders whatever the schema returns, so adding or
+removing a setting in Lua needs no QML changes. The schema carries a
 `schemaVersion`, and the window only renders a version it supports: a mismatch
 (an engine older or newer than the window) shows an error naming both versions
 rather than a partial list of settings.
+
+The window talks to one long-lived `omaset rpc` process over newline-delimited
+JSON-RPC 2.0 (see [the protocol](../docs/protocol.md#rpc-omaset-rpc)). Requests
+are matched by id, so values can load in parallel without spawning a process
+per setting. A `snapshot` call fetches a panel's schema, preferences, changed
+list, and its keyed/grouped values together.
 
 ## Launch
 
@@ -93,10 +99,11 @@ pinned at its bottom.
 
 - `manifest.json` (at the repo root) — plugin metadata (`panel` + `bar-widget`
   kinds).
-- `Panel.qml` — the window: sidebar, content, footer, process runner, cursor
-  model, search.
+- `Panel.qml` — the window: sidebar, content, footer, cursor model, search.
+- `RpcClient.qml` — persistent `omaset rpc` process, request ids, response
+  dispatch, and start-up queue.
 - `BarWidget.qml` — optional bar icon that toggles the window.
-- `model.js` — pure transforms from `omaset schema` JSON to renderable rows.
+- `model.js` — pure transforms from schema JSON to renderable rows.
 - `components/` — row renderers built on `qs.Ui` (`Toggle`, `PanelSlider`,
   `ButtonGroup`, `BorderSurface`), so theme/colors/shape come from the active
   Omarchy theme automatically (under Ristretto, toggles are square and
@@ -114,5 +121,5 @@ pinned at its bottom.
 | `group` | header + one row per sub-setting |
 | `keyed` | header + one row per key (workspaces) |
 
-Values are read via `omaset schema`/`get` and written via `omaset set`/`reset`;
-`omaset changed` drives the footer badge.
+Values are read via `schema`/`snapshot`/`get` and written via `set`/`reset`
+RPC calls; `changed` drives the footer badge.

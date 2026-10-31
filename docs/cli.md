@@ -1,8 +1,8 @@
 # The omaset CLI
 
-The CLI is the heart of omaset — the settings window and the MCP server are both
-thin faces over the same calls. Link the bundled binary onto your PATH to drive
-settings from a terminal, a script, or an agent:
+The CLI, the settings window, and the MCP server are all thin faces over the
+same operation layer (`lib/omaset/service.lua`). Link the bundled binary onto
+your PATH to drive settings from a terminal, a script, or an agent:
 
 ```sh
 ln -s ~/.config/omarchy/plugins/b2amedina.omaset/bin/omaset ~/.local/bin/omaset
@@ -27,6 +27,7 @@ ln -s ~/.config/omarchy/plugins/b2amedina.omaset/bin/omaset ~/.local/bin/omaset
 | `omaset ui-float <on|off>` | float/center the settings window |
 | `omaset hyprsunset-apply` | restart hyprsunset so a schedule takes effect |
 | `omaset mcp` | run the MCP server (see [agents.md](agents.md)) |
+| `omaset rpc` | run the JSON-RPC server the settings window uses |
 | `omaset ui` | open the settings window |
 
 Every command prints JSON; add `--json` where a command defaults to human text,

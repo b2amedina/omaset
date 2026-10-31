@@ -171,6 +171,54 @@ they are never reported by `changed`.
 
 Human text by default; `--json` is identical to `schema`.
 
+## RPC (`omaset rpc`)
+
+The settings window talks to one long-lived `omaset rpc` process over
+newline-delimited JSON-RPC 2.0. There is no handshake: each request names one
+operation, and the response carries the same JSON the CLI emits.
+
+```
+{"jsonrpc":"2.0","id":1,"method":"get","params":{"id":"gaps_in"}}
+{"jsonrpc":"2.0","id":1,"result":{"id":"gaps_in","value":5,"default":5}}
+```
+
+Operations are the shared service operations: `schema`, `get`, `set`, `reset`,
+`changed`, `search`, `help`, `keys`, `history`, `undo`, `rollback`,
+`preferences`, `preference_get`, `preference_set`, `preference_reset`, `ui`,
+`open_ui`, `ui_float`, `hyprsunset_apply`, and `snapshot`. `ping` and `version`
+are transport-level conveniences.
+
+Parameters use the same names as the MCP tools: `id`, `key` (for keyed and
+grouped settings), `value`, `query`, `all`, `detail`, `panel`, `action`, and
+`enabled`. Values may be JSON-typed (`true`, `3500`, `"20:30"`) or strings the
+CLI would accept; validation is identical either way.
+
+Errors use standard JSON-RPC codes: `-32601` for an unknown method, `-32602`
+for invalid parameters or a rejected value, `-32700` for an unparseable line,
+and `-32603` for an internal handler failure.
+
+### `snapshot`
+
+`snapshot` bundles everything the window needs for one render, so opening a
+panel does not fan out into a process per setting:
+
+```
+{
+  "version": "0.1.0",
+  "schemaVersion": 1,
+  "schema": { ... },
+  "preferences": { ... },
+  "changed": [ ... ],
+  "panel": "layout",
+  "keys": { "workspace_layout": ["1", "2"] },
+  "keyed": { "workspace_layout": { "1": "dwindle", "2": "scrolling" } },
+  "groups": { "fullwidth_style": { "border_size": 2, "rounding": 0 } }
+}
+```
+
+`keys`, `keyed`, and `groups` describe the requested `panel` only; pass no
+panel to leave them empty. `panel` is `null` when no panel was requested.
+
 ## Backends
 
 A setting names a `backend`, and each backend implements `read`, `read_default`,

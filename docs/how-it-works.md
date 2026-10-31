@@ -2,18 +2,23 @@
 
 omaset is a small engine plus a set of pluggable **backends**. The engine owns
 one idea — a settings *schema* — and everything else is a face on top of it: the
-CLI, the settings window, and the MCP server all read and write the same schema.
+CLI, the settings window, and the MCP server all read and write the same schema
+through one shared operation layer.
 
 The layering is the whole design:
 
 ```
 bin/omaset              CLI entry (sets up package.path); `omaset ui` opens the window
 lib/omaset/
-  init.lua              registry + schema + command dispatch
+  init.lua              core: registry, schema, loading, read/write/reset
+  service.lua           one operation layer (get/set/reset/changed/...); CLI,
+                        MCP, and RPC all call this
+  cli.lua               argv parsing + human/JSON formatting + dispatch
+  rpc.lua               JSON-RPC 2.0 over stdio for the settings window
+  mcp.lua               MCP wire adapter over service + agent registration
   dsl.lua               panel()/section()/setting() declarative DSL
   discovery.lua         loads share/settings/*.lua (and ~/.config/omaset/settings/)
   types.lua             int/float/bool/enum/time coercion + range checks
-  mcp.lua               MCP server (JSON-RPC over stdio) + agent registration
   json.lua              minimal JSON encoder + decoder (journal, preferences)
   journal.lua           append-only change log for history/undo
   preferences.lua       omaset's own UI preferences (separate from settings)
@@ -65,7 +70,7 @@ it does not understand instead of rendering a partial or wrong list. The setting
 window checks it against the version it supports and shows an error when the
 engine and the window are out of step.
 
-## One interface, three faces
+## One operation layer, four faces
 
 Everything the engine knows is reachable as JSON:
 
@@ -78,12 +83,13 @@ omaset changed      settings differing from stock
 omaset search <q>   find by id or label
 ```
 
-That JSON is the contract, so the CLI is a thin formatter, the
-[settings window](../ui/README.md) is a renderer, and the
-[MCP server](agents.md) is a wrapper over the exact same calls. Adding a setting
-changes what all three offer at once; there is nothing to keep in sync.
+`service.lua` implements those operations once. The CLI calls it in-process and
+formats the result; the [settings window](../ui/README.md) calls it through
+`omaset rpc`; the [MCP server](agents.md) exposes it as tools. Adding a setting
+changes what all of them offer at once; there is nothing to keep in sync.
 
-See [docs/protocol.md](protocol.md) for the shapes each command returns.
+See [docs/protocol.md](protocol.md) for the shapes each command returns, and
+[the UI README](../ui/README.md) for the RPC transport.
 
 ## Change tracking
 
