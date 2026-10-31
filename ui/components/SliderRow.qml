@@ -19,6 +19,33 @@ BorderSurface {
   readonly property string fontFamily: panel ? panel.fontFamily : Style.font.family
   readonly property bool hasCursor: panel ? (panel.focusPane === "content" && panel.selectedRow === rowIndex) : false
   readonly property bool hot: hasCursor
+  readonly property bool editing: panel ? (panel.editingRow === rowIndex) : false
+
+  function editingText() {
+    var v = root.row.value
+    if (v === undefined || v === null) v = root.row.min !== undefined ? root.row.min : 0
+    return root.row.integer ? String(Math.round(v)) : String(v)
+  }
+
+  function commitEditing() {
+    if (!root.panel) return
+    var s = String(valueField.text).replace(/^\s+|\s+$/g, "")
+    if (!/^-?(?:\d+(?:\.\d*)?|\.\d+)$/.test(s)) {
+      valueField.selectAll()
+      return
+    }
+    var n = Number(s)
+    if (!isFinite(n)) {
+      valueField.selectAll()
+      return
+    }
+    if (root.row.integer) n = Math.round(n)
+    else n = Math.round(n * 1000) / 1000
+    if (root.row.min !== undefined && n < root.row.min) n = root.row.min
+    if (root.row.max !== undefined && n > root.row.max) n = root.row.max
+    root.panel.endEdit()
+    if (n !== root.row.value) root.panel.commit(root.row, n)
+  }
 
   onHasCursorChanged: {
     if (root.hasCursor && root.visible && root.panel)
@@ -96,8 +123,9 @@ BorderSurface {
 
       PanelSlider {
         id: slider
+        enabled: !root.editing
         anchors.left: parent.left
-        anchors.right: valueText.left
+        anchors.right: valueBox.left
         anchors.rightMargin: Style.spacing.md
         anchors.verticalCenter: parent.verticalCenter
         bar: root.sliderBar
@@ -121,17 +149,66 @@ BorderSurface {
         }
       }
 
-      Text {
-        id: valueText
+      Item {
+        id: valueBox
+        width: root.editing ? Style.space(64) : valueText.implicitWidth
+        height: Style.space(22)
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        textFormat: Text.PlainText
-        text: root.row.integer
-          ? String(Math.round(slider.liveValue))
-          : slider.liveValue.toFixed(2)
-        color: root.accent
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.body
+
+        Text {
+          id: valueText
+          anchors.fill: parent
+          visible: !root.editing
+          textFormat: Text.PlainText
+          text: root.row.integer
+            ? String(Math.round(slider.liveValue))
+            : slider.liveValue.toFixed(2)
+          horizontalAlignment: Text.AlignRight
+          verticalAlignment: Text.AlignVCenter
+          color: root.accent
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.body
+        }
+
+        TextField {
+          id: valueField
+          visible: root.editing
+          anchors.fill: parent
+          horizontalAlignment: Text.AlignRight
+          foreground: root.fg
+          accent: root.accent
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.body
+          horizontalPadding: Style.spacing.controlGap
+          verticalPadding: 0
+          inputMethodHints: root.row.integer ? Qt.ImhDigitsOnly : Qt.ImhFormattedNumbersOnly
+
+          onVisibleChanged: if (visible) {
+            text = root.editingText()
+            Qt.callLater(function() {
+              if (!valueField) return
+              valueField.selectAll()
+              valueField.forceActiveFocus()
+            })
+          }
+
+          onAccepted: root.commitEditing()
+
+          Keys.onPressed: function(event) {
+            if (event.key === Qt.Key_Escape) {
+              if (root.panel) root.panel.endEdit()
+              event.accepted = true
+            }
+          }
+        }
+
+        MouseArea {
+          anchors.fill: parent
+          visible: !root.editing
+          cursorShape: Qt.IBeamCursor
+          onClicked: if (root.panel) root.panel.beginEdit(root.rowIndex)
+        }
       }
     }
   }

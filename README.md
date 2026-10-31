@@ -67,7 +67,7 @@ without any change to the core.
 | Input | mouse, trackpad, key repeat, numlock |
 | Windows | full-width & tiled-fullscreen styles, single-window square |
 | Power & Idle | screen and lock timeouts |
-| Display | night light on/off, schedule, temperature |
+| Display | night light on/off, schedule (start & end), temperature |
 | Behavior | focus, tearing, cursor hiding |
 
 ## Why omaset
@@ -108,7 +108,7 @@ settings the CLI does.
 | `j` / `k` (or `↑` / `↓`) | move between settings (or sidebar panels) |
 | `h` / `l` (or `←` / `→`) | adjust the focused slider or cycle a segmented control |
 | `Tab` / `Shift+Tab` | switch sidebar / content pane |
-| `Space` / `Enter` | activate the focused row, or open one from a list |
+| `Space` / `Enter` | activate the focused row, or edit a slider/time value |
 | `/` | search any setting |
 | `c` | open the Changed list — what differs from stock |
 | `p` | open Preferences |
@@ -116,7 +116,8 @@ settings the CLI does.
 | `Esc` | close (or leave search / changed / preferences) |
 
 Vim keys throughout — `h` `j` `k` `l` — or the arrow keys; the mouse is
-optional.
+optional. On a slider or time row, `Enter` (or clicking its value) opens an
+inline editor: type an exact number or time and press `Enter`; `Esc` cancels.
 
 The footer shows these hints plus a contextual badge — `N changed` when settings
 differ from stock, `N settings found` while searching. See

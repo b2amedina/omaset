@@ -71,12 +71,18 @@ Hyprland rule is required.
 | `j` / `k` (or `↑` / `↓`) | move between settings (or sidebar panels) |
 | `h` / `l` (or `←` / `→`) | adjust the focused slider or cycle a segmented control |
 | `Tab` / `Shift+Tab` | switch sidebar/content pane |
-| `Space` / `Enter` | activate the current row (toggle / select / nudge) |
+| `Space` / `Enter` | activate the current row (toggle / select / edit a value) |
 | `x` | reset the current setting to its default |
 | `/` | search (`↑`/`↓` move, `Enter` opens, `Esc` clears) |
 | `c` | open the Changed list (`↑`/`↓` move, `Enter` jumps, `Esc` closes) |
 | `p` | open Preferences (`↑`/`↓` move, `Space`/`Enter` toggle, `h`/`l` step, `Esc` closes) |
 | `Esc` | close (or leave search / changed / preferences) |
+
+A slider can also be set exactly: with it focused, press `Enter` (or click its
+value), type the number, and press `Enter` again. `Esc` cancels, and `h`/`l`
+still step by one. A time row works the same way: type `HH:MM` or
+`h:mm AM/PM`, or use `h`/`l` to step by 15 minutes. Times are shown in the
+`time_format` preference's convention (24h, 12h, or follow the bar clock).
 
 The footer shows keyboard hints plus a contextual badge — `N changed` when
 settings differ from Omarchy stock, `N settings found` while searching. The
@@ -102,7 +108,9 @@ pinned at its bottom.
 |------|---------|
 | `bool` | `Toggle` |
 | `int`/`float` (bounded) | `PanelSlider` |
+| `int`/`float` with choices | segmented `ButtonGroup` (stores the number) |
 | `enum` | segmented `ButtonGroup` |
+| `time` | inline time field (`HH:MM`, shown per `time_format`) |
 | `group` | header + one row per sub-setting |
 | `keyed` | header + one row per key (workspaces) |
 

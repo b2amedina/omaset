@@ -67,14 +67,27 @@ Item {
   property var queue: []
   property var pendingCb: null
   property bool runningCmd: false
+  property string lastErr: ""   // stderr of the last command
+  property int lastCode: 0      // exit code of the last command
 
   Process {
     id: cmd
     stdout: StdioCollector {
       waitForEnd: true
-      onStreamFinished: root.onCmdDone(text)
+      onStreamFinished: { root.cmdOutText = text; root.cmdOutDone = true; root.maybeFinishCmd() }
     }
+    stderr: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: { root.cmdErrText = text; root.cmdErrDone = true; root.maybeFinishCmd() }
+    }
+    onExited: function(code) { root.lastCode = code; root.cmdExited = true; root.maybeFinishCmd() }
   }
+
+  property string cmdOutText: ""
+  property string cmdErrText: ""
+  property bool cmdOutDone: false
+  property bool cmdErrDone: false
+  property bool cmdExited: false
 
   function exec(args, cb) {
     queue.push({ args: args, cb: cb })
@@ -86,15 +99,35 @@ Item {
     runningCmd = true
     var job = queue.shift()
     pendingCb = job.cb
+    cmdOutText = ""
+    cmdErrText = ""
+    cmdOutDone = false
+    cmdErrDone = false
+    cmdExited = false
+    lastErr = ""
+    lastCode = 0
     cmd.command = job.args
     cmd.running = true
   }
 
-  function onCmdDone(text) {
+  // A command is only finished once stdout, stderr, and the exit signal have
+  // all arrived; their order is not guaranteed. This keeps the queue from
+  // handing the previous command's output to the next callback.
+  function maybeFinishCmd() {
+    if (!runningCmd || !cmdOutDone || !cmdErrDone || !cmdExited) return
+    onCmdDone(lastCode)
+  }
+
+  function onCmdDone(code) {
     runningCmd = false
+    lastCode = code
+    lastErr = cmdErrText
+    cmdOutDone = false
+    cmdErrDone = false
+    cmdExited = false
     var cb = pendingCb
     pendingCb = null
-    if (cb) cb(text)
+    if (cb) cb(cmdOutText, cmdErrText, code)
     pump()
   }
 
@@ -138,6 +171,7 @@ Item {
   property int selectedSidebar: 0
   property int selectedRow: -1
   property string focusPane: "content"
+  property int editingRow: -1
 
   // search
   property bool searchMode: false
@@ -152,8 +186,12 @@ Item {
   // preferences (omaset's own config — not Omarchy settings, never in changed)
   property bool prefsMode: false
   property int prefsSel: 0
+  property int prefEditing: -1
+  property string prefError: ""
   property int refreshIntervalSec: 2
   property bool launchFloating: true
+  property string timeFormat: "24h"   // resolved from the time_format preference
+  property bool nightlightDirty: false // a night-light setting changed this session
   property bool interacting: false
   property string omasetVersion: ""   // engine version, shown under Preferences
 
@@ -281,6 +319,7 @@ Item {
       root.omasetVersion = (o && o.version) ? String(o.version)
         : ((manifest && manifest.version) ? String(manifest.version) : "")
       prefsModel.clear()
+      var newTimeFormat = root.timeFormat
       for (var i = 0; i < list.length; i++) {
         var p = list[i]
         prefsModel.append({
@@ -292,34 +331,67 @@ Item {
           def: String(p.default),
           min: (p.min !== undefined) ? p.min : 0,
           max: (p.max !== undefined) ? p.max : 0,
+          options: (p.options && Array.isArray(p.options)) ? p.options.join(",") : "",
+          resolved: (p.resolved !== undefined && p.resolved !== null) ? String(p.resolved) : "",
         })
         if (p.key === "refresh_interval_sec") root.refreshIntervalSec = Number(p.value)
         else if (p.key === "launch_floating") root.launchFloating = (p.value === true)
+        else if (p.key === "time_format") {
+          var r = (p.resolved !== undefined && p.resolved !== null) ? String(p.resolved) : String(p.value)
+          newTimeFormat = (r === "12h") ? "12h" : "24h"
+        }
+      }
+      if (newTimeFormat !== root.timeFormat) {
+        root.timeFormat = newTimeFormat
+        root.rebuildRows()
       }
       if (onDone) onDone()
     })
   }
 
   function applyPrefValue(key, value) {
-    if (key === "refresh_interval_sec") root.refreshIntervalSec = Number(value)
+    if (key === "refresh_interval_sec") {
+      var n = Number(value)
+      if (isFinite(n)) root.refreshIntervalSec = n
+    }
     else if (key === "launch_floating") { root.launchFloating = (value === true); applyLaunchFloating() }
+    else if (key === "time_format" && value !== "auto") {
+      // "auto" needs the engine's resolved value, so it is applied through
+      // loadPreferences() after the write round-trips.
+      root.timeFormat = (value === "12h") ? "12h" : "24h"
+      rebuildRows()
+    }
   }
 
-  function setPreference(key, value) {
+  function setPreference(key, value, onError) {
     // Optimistic local update so controls respond immediately; the backend
-    // round-trip reconciles with the canonical value.
+    // round-trip reconciles with the canonical value, and on an engine
+    // rejection the optimistic value is rolled back and the error surfaced.
+    var oldValue = ""
     for (var i = 0; i < prefsModel.count; i++) {
-      if (prefsModel.get(i).key === key) prefsModel.setProperty(i, "value", String(value))
+      if (prefsModel.get(i).key === key) {
+        oldValue = String(prefsModel.get(i).value)
+        prefsModel.setProperty(i, "value", String(value))
+      }
     }
     applyPrefValue(key, value)
 
-    exec([omasetBin, "preferences", "set", key, String(value)], function(text) {
+    exec([omasetBin, "preferences", "set", key, String(value)], function(text, err, code) {
+      if (code !== 0) {
+        for (var k = 0; k < prefsModel.count; k++) {
+          if (prefsModel.get(k).key === key) prefsModel.setProperty(k, "value", oldValue)
+        }
+        applyPrefValue(key, oldValue)
+        if (onError) onError(String(err || "invalid value"))
+        return
+      }
       var o = parseJson(text)
       if (o && o.value !== undefined && o.value !== null) {
         for (var j = 0; j < prefsModel.count; j++) {
           if (prefsModel.get(j).key === key) prefsModel.setProperty(j, "value", String(o.value))
         }
-        applyPrefValue(key, o.value)
+        if (key === "time_format" && o.value === "auto") loadPreferences()
+        else applyPrefValue(key, o.value)
       }
     })
   }
@@ -336,18 +408,19 @@ Item {
   property Timer refreshTimer: Timer {
     interval: root.refreshIntervalSec * 1000
     repeat: true
-    running: window.visible && !root.searchMode && !root.changedMode && !root.prefsMode && !root.interacting
+    running: window.visible && !root.searchMode && !root.changedMode && !root.prefsMode && !root.interacting && root.editingRow < 0
     onTriggered: root.pollRefresh()
   }
   function pollRefresh() {
     if (runningCmd || queue.length > 0) return   // never delay a user action
     loadSchema()
+    loadPreferences()
     refreshChanged()
   }
 
   // ---- row model -------------------------------------------------------
   function rebuildRows() {
-    root.rows = Model.rowsFor(activePanel(), effective, keyed)
+    root.rows = Model.rowsFor(activePanel(), effective, keyed, root.timeFormat)
     clampRow()
     applyPendingSelect()
   }
@@ -378,6 +451,15 @@ Item {
     rebuildRows()
   }
 
+  // Schedule settings are read by hyprsunset only at startup, so the app
+  // restarts it once on close — not on every write. Remember that one of
+  // them changed this session.
+  function markNightlightDirty(id) {
+    if (id === "nightlight_schedule" || id === "nightlight_start"
+        || id === "nightlight_stop" || id === "nightlight_temperature")
+      root.nightlightDirty = true
+  }
+
   function commit(row, v) {
     if (!row) return
     if (row.sub !== undefined && row.sub !== null) {
@@ -397,6 +479,7 @@ Item {
         root.scheduleChanged()
       })
     } else {
+      markNightlightDirty(row.id)
       setSchemaValue(row.id, v)
       exec([omasetBin, "set", row.id, String(v)], function(text) {
         var o = parseJson(text)
@@ -408,6 +491,7 @@ Item {
 
   function resetRow(row) {
     if (!row) return
+    markNightlightDirty(row.id)
     var key = Model.settingKey(row.id, row.sub, row.key)
     var args
     if (row.sub !== undefined && row.sub !== null) args = [omasetBin, "reset", row.id, row.sub]
@@ -447,8 +531,24 @@ Item {
     if (panels.length > 0 && selectedSidebar >= panels.length) selectedSidebar = panels.length - 1
   }
 
-  function cursorTo(i) { focusPane = "content"; selectedRow = i }
+  function cursorTo(i) {
+    if (editingRow >= 0 && editingRow !== i) endEdit()
+    focusPane = "content"; selectedRow = i
+  }
   function cursorToSidebar(i) { focusPane = "sidebar"; selectedSidebar = i }
+
+  function beginEdit(i) {
+    if (i < 0 || i >= rows.length) return
+    selectedRow = i
+    focusPane = "content"
+    editingRow = i
+  }
+
+  function endEdit() {
+    if (editingRow < 0) return
+    editingRow = -1
+    Qt.callLater(function() { if (keyCatcher) keyCatcher.forceActiveFocus() })
+  }
 
   function moveV(dy) {
     if (searchMode) {
@@ -474,7 +574,8 @@ Item {
     if (focusPane === "sidebar") return
     var row = currentRow()
     if (row && row.kind === "slider") { stepSlider(row, dx); return }
-    if (row && row.kind === "enum") { cycleEnum(row, dx) }
+    if (row && row.kind === "enum") { cycleEnum(row, dx); return }
+    if (row && row.kind === "time") { stepTime(row, dx) }
   }
 
   function switchPane(dir) {
@@ -495,14 +596,26 @@ Item {
     commit(row, nv)
   }
 
+  function stepTime(row, dx) {
+    var nv = Model.stepTime(row.value, dx * 15)
+    if (nv !== null && nv !== undefined) commit(row, nv)
+  }
+
   function cycleEnum(row, dx) {
     var opts = row.options || []
     if (opts.length === 0) return
-    var v = row.value
-    var pos = opts.indexOf(v)
+    var mapped = row.values && row.values.length > 0
+    var vals = mapped ? row.values : opts
+    var pos = -1
+    if (mapped) {
+      for (var i = 0; i < vals.length; i++)
+        if (Number(vals[i]) === Number(row.value)) { pos = i; break }
+    } else {
+      pos = opts.indexOf(row.value)
+    }
     if (pos < 0) pos = 0
     var np = (pos + dx + opts.length) % opts.length
-    commit(row, opts[np])
+    commit(row, vals[np])
   }
 
   function activate() {
@@ -517,7 +630,8 @@ Item {
     if (!row) return
     if (row.kind === "bool") commit(row, !row.value)
     else if (row.kind === "enum") cycleEnum(row, 1)
-    else if (row.kind === "slider") stepSlider(row, row.step)
+    else if (row.kind === "slider") beginEdit(selectedRow)
+    else if (row.kind === "time") beginEdit(selectedRow)
   }
 
   function resetCurrent() {
@@ -528,6 +642,9 @@ Item {
   // ---- panel switching -------------------------------------------------
   function selectPanel(i) {
     if (i < 0 || i >= panels.length) return
+    if (prefsMode) exitPrefs()
+    if (changedMode) exitChanged()
+    if (editingRow >= 0) endEdit()
     selectedSidebar = i
     if (panels[i].id === activePanelId) { rebuildRows(); return }
     activePanelId = panels[i].id
@@ -684,12 +801,27 @@ Item {
   function enterPrefs() {
     prefsMode = true
     prefsSel = 0
+    prefEditing = -1
+    prefError = ""
     focusPane = "content"
     loadPreferences()
   }
 
   function exitPrefs() {
     prefsMode = false
+    prefEditing = -1
+    prefError = ""
+  }
+
+  function beginPrefEdit(i) {
+    if (i < 0 || i >= prefsModel.count) return
+    prefsSel = i
+    prefEditing = i
+    prefError = ""
+  }
+
+  function endPrefEdit() {
+    prefEditing = -1
   }
 
   function movePrefs(dy) {
@@ -705,21 +837,25 @@ Item {
     var p = currentPref()
     if (!p) return
     if (p.type === "bool") setPreference(p.key, p.value !== "true")
-    else if (p.type === "int" || p.type === "float") {
-      var v = (p.value === "") ? p.def : p.value
-      setPreference(p.key, Math.round(Number(v) + 1))
-    }
+    else if (p.type === "enum") stepPref(1)
+    else if (p.type === "int" || p.type === "float") beginPrefEdit(prefsSel)
   }
 
   function stepPref(dx) {
     var p = currentPref()
     if (!p) return
-    if (p.type === "int" || p.type === "float") {
+    if (p.type === "enum") {
+      var opts = p.options || []
+      if (opts.length === 0) return
+      var pos = opts.indexOf(p.value !== "" ? p.value : p.def)
+      if (pos < 0) pos = 0
+      setPreference(p.key, opts[(pos + dx + opts.length) % opts.length])
+    } else if (p.type === "int" || p.type === "float") {
       var v = (p.value === "") ? p.def : p.value
       var nv = Number(v) + dx
       if (p.min !== undefined && nv < p.min) nv = p.min
       if (p.max !== undefined && nv > p.max) nv = p.max
-      setPreference(p.key, Math.round(nv))
+      setPreference(p.key, p.type === "int" ? Math.round(nv) : nv)
     }
   }
 
@@ -747,7 +883,7 @@ Item {
     ? "\u2191\u2193 move · \u23ce open · esc close"
     : prefsMode
     ? "\u2191\u2193 move · \u23ce/\u2423 toggle · h l step · esc close"
-    : "j k move · h l adjust · \u2423/\u23ce select · tab pane · x reset · / search · c changed · p prefs · esc close"
+    : "j k move · h l adjust · \u2423/\u23ce select/edit · tab pane · x reset · / search · c changed · p prefs · esc close"
   readonly property string footerContext: schemaError !== ""
     ? "schema mismatch"
     : searchMode
@@ -755,9 +891,9 @@ Item {
     : changedMode
     ? (changedList.length > 0 ? changedList.length + " changed" : "no changes")
     : prefsMode
-    ? "preferences"
+    ? (prefError !== "" ? prefError : "preferences")
     : (changedCount > 0 ? changedCount + " changed" : "")
-  readonly property color footerContextColor: (searchMode || changedMode || prefsMode) ? accent : urgent
+  readonly property color footerContextColor: (searchMode || changedMode || prefsMode) ? (prefError !== "" ? urgent : accent) : urgent
 
   // ---- window ----------------------------------------------------------
   FloatingWindow {
@@ -769,8 +905,14 @@ Item {
     minimumSize: Qt.size(480, 360)
 
     onVisibleChanged: {
-      if (!visible && !root.closingFromHost && root.shell && typeof root.shell.hide === "function")
-        root.shell.hide("b2amedina.omaset")
+      if (!visible) {
+        if (root.nightlightDirty) {
+          root.nightlightDirty = false
+          exec([omasetBin, "hyprsunset-apply"], function() {})
+        }
+        if (!root.closingFromHost && root.shell && typeof root.shell.hide === "function")
+          root.shell.hide("b2amedina.omaset")
+      }
     }
 
     FocusScope {
@@ -791,6 +933,8 @@ Item {
           event.accepted = true
           return
         }
+        if (root.editingRow >= 0) return
+        if (root.prefEditing >= 0) return
         if (root.searchMode) {
           if (event.key === Qt.Key_Escape) { root.exitSearch(); event.accepted = true; return }
           if (event.key === Qt.Key_Backspace) {
@@ -835,7 +979,7 @@ Item {
         PanelKeyCatcher {
           id: keyCatcher
           anchors.fill: parent
-          blocked: root.schemaError !== "" || root.searchMode || root.changedMode || root.prefsMode
+          blocked: root.schemaError !== "" || root.searchMode || root.changedMode || root.prefsMode || root.editingRow >= 0 || root.prefEditing >= 0
 
         onMoveRequested: function(dx, dy) {
           if (dy !== 0) root.moveV(dy)
@@ -1022,6 +1166,11 @@ Item {
                         }
                         EnumRow {
                           visible: modelData.kind === "enum"
+                          panel: root; row: modelData; rowIndex: index
+                          width: parent.width
+                        }
+                        TimeRow {
+                          visible: modelData.kind === "time"
                           panel: root; row: modelData; rowIndex: index
                           width: parent.width
                         }
@@ -1236,6 +1385,14 @@ Item {
                       required property string def
                       required property int min
                       required property int max
+                      required property string options
+                      required property string resolved
+
+                      readonly property bool editing: root.prefEditing === index
+                      readonly property string displayDescription:
+                        (prefRow.key === "time_format" && prefRow.resolved !== "")
+                        ? ((prefRow.description || "") + " (now " + prefRow.resolved + ")")
+                        : (prefRow.description || "")
 
                       width: prefsResultsList.width - Style.space(12)
                       height: Style.space(64)
@@ -1276,8 +1433,8 @@ Item {
                           }
                           Text {
                             textFormat: Text.PlainText
-                            text: prefRow.description || ""
-                            visible: prefRow.description !== ""
+                            text: prefRow.displayDescription || ""
+                            visible: prefRow.displayDescription !== ""
                             color: Qt.darker(root.foreground, 1.5)
                             font.family: root.fontFamily
                             font.pixelSize: Style.font.caption
@@ -1304,10 +1461,29 @@ Item {
                             }
                           }
 
+                          ButtonGroup {
+                            visible: prefRow.type === "enum"
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.right: parent.right
+                            options: prefRow.options !== "" ? prefRow.options.split(",") : []
+                            value: prefRow.value !== "" ? prefRow.value : prefRow.def
+                            cursorIndex: -1
+                            foreground: root.foreground
+                            background: root.background
+                            accent: root.accent
+                            fontFamily: root.fontFamily
+                            onChanged: function(v) {
+                              root.prefsSel = index
+                              root.setPreference(prefRow.key, v)
+                            }
+                          }
+
                           PanelSlider {
+                            id: prefSlider
                             visible: prefRow.type === "int" || prefRow.type === "float"
+                            enabled: !prefRow.editing
                             anchors.left: parent.left
-                            anchors.right: valueText.left
+                            anchors.right: valueBox.left
                             anchors.rightMargin: Style.spacing.md
                             anchors.verticalCenter: parent.verticalCenter
                             bar: QtObject {
@@ -1330,16 +1506,98 @@ Item {
                             }
                           }
 
-                          Text {
-                            id: valueText
+                          Item {
+                            id: valueBox
                             visible: prefRow.type === "int" || prefRow.type === "float"
+                            width: prefRow.editing ? Style.space(64) : valueText.implicitWidth
+                            height: Style.space(22)
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            textFormat: Text.PlainText
-                            text: prefRow.value !== "" ? prefRow.value : prefRow.def
-                            color: root.accent
-                            font.family: root.fontFamily
-                            font.pixelSize: Style.font.body
+
+                            Text {
+                              id: valueText
+                              anchors.fill: parent
+                              visible: !prefRow.editing
+                              textFormat: Text.PlainText
+                              text: prefSlider.liveValue !== undefined
+                                ? (prefRow.type === "int"
+                                   ? String(Math.round(prefSlider.liveValue))
+                                   : prefSlider.liveValue.toFixed(2))
+                                : ""
+                              horizontalAlignment: Text.AlignRight
+                              verticalAlignment: Text.AlignVCenter
+                              color: root.accent
+                              font.family: root.fontFamily
+                              font.pixelSize: Style.font.body
+                            }
+
+                            TextField {
+                              id: valueField
+                              visible: prefRow.editing
+                              anchors.fill: parent
+                              horizontalAlignment: Text.AlignRight
+                              foreground: root.foreground
+                              accent: root.accent
+                              font.family: root.fontFamily
+                              font.pixelSize: Style.font.body
+                              horizontalPadding: Style.spacing.controlGap
+                              verticalPadding: 0
+                              inputMethodHints: prefRow.type === "int"
+                                ? Qt.ImhDigitsOnly : Qt.ImhFormattedNumbersOnly
+
+                              onVisibleChanged: if (visible) {
+                                text = prefRow.value !== "" ? prefRow.value : prefRow.def
+                                Qt.callLater(function() {
+                                  if (!valueField) return
+                                  valueField.selectAll()
+                                  valueField.forceActiveFocus()
+                                })
+                              }
+
+                              onAccepted: {
+                                var s = String(valueField.text).replace(/^\s+|\s+$/g, "")
+                                // Reject obviously non-numeric input locally so
+                                // the field stays open; the engine is still the
+                                // authority for type + range validation on set.
+                                if (!/^-?(?:\d+(?:\.\d*)?|\.\d+)$/.test(s)) {
+                                  root.prefError = "enter a number"
+                                  valueField.selectAll()
+                                  return
+                                }
+                                var n = Number(s)
+                                if (!isFinite(n)) {
+                                  root.prefError = "enter a number"
+                                  valueField.selectAll()
+                                  return
+                                }
+                                if (prefRow.type === "int") n = Math.round(n)
+                                else n = Math.round(n * 1000) / 1000
+                                root.prefsSel = index
+                                root.setPreference(prefRow.key, n, function(errMsg) {
+                                  var hint = (prefRow.min !== undefined && prefRow.max !== undefined)
+                                    ? "must be " + prefRow.min + ".." + prefRow.max : "invalid value"
+                                  root.prefError = hint + " (" + errMsg + ")"
+                                  root.beginPrefEdit(index)
+                                  Qt.callLater(function() {
+                                    if (valueField) { valueField.selectAll(); valueField.forceActiveFocus() }
+                                  })
+                                })
+                              }
+
+                              Keys.onPressed: function(event) {
+                                if (event.key === Qt.Key_Escape) {
+                                  root.prefEditing = -1
+                                  event.accepted = true
+                                }
+                              }
+                            }
+
+                            MouseArea {
+                              anchors.fill: parent
+                              visible: !prefRow.editing
+                              cursorShape: Qt.IBeamCursor
+                              onClicked: root.beginPrefEdit(index)
+                            }
                           }
                         }
                       }

@@ -20,6 +20,18 @@ BorderSurface {
   readonly property bool hasCursor: panel ? (panel.focusPane === "content" && panel.selectedRow === rowIndex) : false
   readonly property bool hot: hasCursor
 
+  // Numeric settings with labelled choices carry parallel `options` (labels)
+  // and `values` (stored ints). The segment shows the label; commits write the
+  // underlying numeric value so the setting keeps its declared int type.
+  readonly property bool mapped: !!row.values && row.values.length > 0
+  readonly property string displayValue: {
+    if (!mapped) return (row.value !== undefined && row.value !== null) ? String(row.value) : ""
+    var opts = row.options || []
+    for (var i = 0; i < row.values.length; i++)
+      if (Number(row.values[i]) === Number(row.value)) return String(opts[i])
+    return ""
+  }
+
   onHasCursorChanged: {
     if (root.hasCursor && root.visible && root.panel)
       root.panel.ensureRowVisible(root)
@@ -82,7 +94,7 @@ BorderSurface {
       id: group
       anchors.verticalCenter: parent.verticalCenter
       options: root.row.options || []
-      value: root.row.value !== undefined && root.row.value !== null ? String(root.row.value) : ""
+      value: root.displayValue
       cursorIndex: -1
       foreground: root.fg
       background: root.panel ? root.panel.background : Commons.Color.background
@@ -91,7 +103,12 @@ BorderSurface {
       onChanged: function(v) {
         if (!root.panel) return
         root.panel.cursorTo(root.rowIndex)
-        root.panel.commit(root.row, v)
+        var val = v
+        if (root.mapped) {
+          var i = (root.row.options || []).indexOf(v)
+          if (i >= 0) val = root.row.values[i]
+        }
+        root.panel.commit(root.row, val)
       }
     }
   }
