@@ -64,13 +64,29 @@ function M.load_chunk(str, chunkname, env)
 end
 
 -- Run a command, capturing combined stdout+stderr and the exit code.
+--
+-- Output is redirected through a temp file rather than read straight off the
+-- popen pipe: a command that daemonizes (e.g. `omarchy toggle nightlight`
+-- cold-starting hyprsunset) leaves a background child holding the pipe's write
+-- end open, which would make read("*a") block forever. Redirecting to a file
+-- means only the foreground shell holds the pipe, so it EOFs as soon as the
+-- command finishes and the daemon's stray output goes to the file instead.
 function M.run_capture(cmd)
-  local p = io.popen(cmd .. " 2>&1")
+  local tmp = os.tmpname()
+  local p = io.popen(cmd .. " > " .. M.shell_quote(tmp) .. " 2>&1")
   if not p then
+    os.remove(tmp)
     return nil, nil, "cannot run: " .. cmd
   end
-  local out = p:read("*a")
+  p:read("*a")
   local ok, why, code = p:close()
+  local out = ""
+  local f = io.open(tmp, "rb")
+  if f then
+    out = f:read("*a")
+    f:close()
+  end
+  os.remove(tmp)
   local exit_code
   if ok then
     exit_code = 0
