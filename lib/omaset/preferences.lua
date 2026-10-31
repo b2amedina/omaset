@@ -6,13 +6,14 @@
 local util = require("omaset.util")
 local json = require("omaset.json")
 local types = require("omaset.types")
+local clock_format = require("omaset.clock_format")
 
 local M = {}
 
 M.VERSION = 1
 
--- Ordered schema. `type` is one of types.lua's (int/float/bool), plus optional
--- min/max for numbers.
+-- Ordered schema. `type` is one of types.lua's (int/float/bool/enum), plus
+-- optional min/max for numbers and options for enums.
 M.SCHEMA = {
   {
     key = "refresh_interval_sec",
@@ -29,6 +30,14 @@ M.SCHEMA = {
     label = "Launch floating",
     description = "Open the settings window floating so it can be moved and resized.",
     default = true,
+  },
+  {
+    key = "time_format",
+    type = "enum",
+    label = "Time format",
+    description = "How times are shown (storage is always 24-hour).",
+    options = { "24h", "12h", "auto" },
+    default = "auto",
   },
 }
 
@@ -105,6 +114,9 @@ function M.list()
     entry.value = overrides[s.key]
     if entry.value == nil then
       entry.value = s.default
+    end
+    if s.key == "time_format" then
+      entry.resolved = (entry.value == "auto") and clock_format.detect() or entry.value
     end
     out[#out + 1] = entry
   end

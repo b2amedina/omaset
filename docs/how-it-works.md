@@ -12,11 +12,12 @@ lib/omaset/
   init.lua              registry + schema + command dispatch
   dsl.lua               panel()/section()/setting() declarative DSL
   discovery.lua         loads share/settings/*.lua (and ~/.config/omaset/settings/)
-  types.lua             int/float/bool/enum coercion + range checks
+  types.lua             int/float/bool/enum/time coercion + range checks
   mcp.lua               MCP server (JSON-RPC over stdio) + agent registration
   json.lua              minimal JSON encoder + decoder (journal, preferences)
   journal.lua           append-only change log for history/undo
   preferences.lua       omaset's own UI preferences (separate from settings)
+  clock_format.lua      resolves the bar clock's 12h/24h format from shell.json
   util.lua              deep merge/get/set, serializer, shell helpers
   backends/             pluggable backends (self-register via load_dir)
     hypr_lua.lua         reads/writes Hyprland Lua config (looknfeel.lua etc.)

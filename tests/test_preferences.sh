@@ -10,9 +10,9 @@ assert_eq "$OUT" '{"key":"refresh_interval_sec","value":2}' "default refresh int
 capture_out preferences get launch_floating
 assert_eq "$OUT" '{"key":"launch_floating","value":true}' "default launch floating"
 
-# list reports both, in schema order, plus the engine version.
+# list reports all, in schema order, plus the engine version.
 capture_out preferences --json
-assert_eq "$(echo "$OUT" | jq -r '.preferences | length')" "2" "two preferences"
+assert_eq "$(echo "$OUT" | jq -r '.preferences | length')" "3" "three preferences"
 assert_eq "$(echo "$OUT" | jq -r '.preferences[0].key')" "refresh_interval_sec" "ordered first"
 assert_eq "$(echo "$OUT" | jq -r '.preferences[0].default')" "2" "default surfaced"
 assert_eq "$(echo "$OUT" | jq -r '.version')" "0.1.0" "engine version surfaced"
@@ -48,6 +48,31 @@ capture preferences set refresh_interval_sec 999
 assert_exit "$CODE" 1 "out-of-range value rejected"
 capture preferences set refresh_interval_sec notanumber
 assert_exit "$CODE" 1 "non-integer value rejected"
+
+# time_format is an enum defaulting to auto, which resolves against the
+# (absent) test shell.json to 24h.
+capture_out preferences get time_format
+assert_eq "$OUT" '{"key":"time_format","value":"auto"}' "time_format defaults to auto"
+capture_out preferences --json
+assert_eq "$(echo "$OUT" | jq -r '.preferences[] | select(.key=="time_format") | .resolved')" "24h" "auto resolves to 24h without a bar clock"
+assert_eq "$(echo "$OUT" | jq -r '.preferences[] | select(.key=="time_format") | .options | join(",")')" "24h,12h,auto" "time_format lists options"
+
+capture_out preferences set time_format 12h
+assert_eq "$OUT" '{"key":"time_format","ok":true,"value":"12h"}' "set time_format"
+capture preferences set time_format bogus
+assert_exit "$CODE" 1 "invalid enum value rejected"
+
+# A clock format carrying the AM/PM token resolves auto to 12h.
+mkdir -p "$TESTDIR"
+cat > "$OMASET_SHELL_CONFIG" <<'EOF'
+{ "bar": { "position": "top", "layout": { "center": [ { "id": "omarchy.clock", "format": "ddd d MMM h:mm AP" } ] } } }
+EOF
+capture_out preferences set time_format auto
+capture_out preferences --json
+assert_eq "$(echo "$OUT" | jq -r '.preferences[] | select(.key=="time_format") | .resolved')" "12h" "auto resolves 12h from bar clock"
+
+capture_out preferences reset time_format
+assert_eq "$OUT" '{"key":"time_format","ok":true,"value":"auto"}' "reset time_format"
 
 # --plain prints bare values.
 capture_out preferences get launch_floating --plain
