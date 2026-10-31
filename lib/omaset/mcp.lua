@@ -17,6 +17,7 @@ local util = require("omaset.util")
 local json = require("omaset.json")
 local types = require("omaset.types")
 local journal = require("omaset.journal")
+local preferences = require("omaset.preferences")
 
 local M = {}
 
@@ -185,18 +186,19 @@ local function tool_set(core, args)
   if not vok then
     return nil, verr
   end
+  local value = types.normalize(args.value, spec)
   local old = core.read_value(s, key)
   local def = core.read_default(s, key)
-  local wok, werr = core.write_value(s, key, args.value)
+  local wok, werr = core.write_value(s, key, value)
   if not wok then
     return nil, werr
   end
-  record_change(core, "set", s, key, old, def, args.value)
+  record_change(core, "set", s, key, old, def, value)
   local out = { id = s.id }
   if key ~= nil then
     if s.keyed then out.key = key else out.sub = key end
   end
-  out.value = args.value
+  out.value = value
   out.ok = true
   return tool_result(out)
 end
@@ -293,6 +295,8 @@ local function tool_help(core, args)
   if s.options then out.options = json.array(s.options) end
   if s.min ~= nil then out.min = s.min end
   if s.max ~= nil then out.max = s.max end
+  if s.format then out.format = s.format end
+  if s.hint then out.hint = s.hint end
   if s.keyed then
     out.keyed = true
     if s.key_label then out.key_label = s.key_label end
@@ -395,6 +399,72 @@ local function tool_open_ui(core, args)
   return tool_result({ ok = true })
 end
 
+-- ---- preferences (omaset's own config) ---------------------------------
+-- Exposed so agents get the same validation contract for preferences as for
+-- settings: type/options/range are declared in the engine and enforced here.
+
+local function pref_spec(key)
+  for _, s in ipairs(preferences.SCHEMA) do
+    if s.key == key then
+      return s
+    end
+  end
+  return nil
+end
+
+local function tool_preferences(core)
+  local list = preferences.list()
+  return tool_result({ version = preferences.VERSION, preferences = json.array(list) })
+end
+
+local function tool_preference_get(core, args)
+  local spec = pref_spec(args.key)
+  if not spec then
+    return nil, "unknown preference: " .. tostring(args.key)
+  end
+  local v, err = preferences.get(args.key)
+  if v == nil and err then
+    return nil, err
+  end
+  local out = { key = args.key, value = jnull(v), default = jnull(spec.default) }
+  if spec.type then out.type = spec.type end
+  if spec.options then out.options = json.array(spec.options) end
+  if spec.min ~= nil then out.min = spec.min end
+  if spec.max ~= nil then out.max = spec.max end
+  return tool_result(out)
+end
+
+local function tool_preference_set(core, args)
+  local spec = pref_spec(args.key)
+  if not spec then
+    return nil, "unknown preference: " .. tostring(args.key)
+  end
+  if args.value == nil then
+    return nil, "missing value for preference: " .. tostring(args.key)
+  end
+  local str = tostring(args.value)
+  if type(args.value) == "boolean" then
+    str = args.value and "true" or "false"
+  end
+  local v, err = preferences.set(args.key, str)
+  if v == nil then
+    return nil, err
+  end
+  return tool_result({ key = args.key, value = v, ok = true })
+end
+
+local function tool_preference_reset(core, args)
+  local spec = pref_spec(args.key)
+  if not spec then
+    return nil, "unknown preference: " .. tostring(args.key)
+  end
+  local v, err = preferences.reset(args.key)
+  if v == nil and err then
+    return nil, err
+  end
+  return tool_result({ key = args.key, value = v, ok = true })
+end
+
 local TOOLS = {
   {
     name = "schema",
@@ -455,6 +525,30 @@ local TOOLS = {
     description = "Open the omaset settings window so the user can see or verify changes.",
     inputSchema = { type = "object", properties = {} },
     run = tool_open_ui,
+  },
+  {
+    name = "preferences",
+    description = "List omaset's own preferences (not Omarchy settings) with their type, options, range, default, and current value.",
+    inputSchema = { type = "object", properties = {} },
+    run = tool_preferences,
+  },
+  {
+    name = "preference_get",
+    description = "Read one omaset preference's current value and default.",
+    inputSchema = { type = "object", properties = { key = { type = "string" } }, required = { "key" } },
+    run = tool_preference_get,
+  },
+  {
+    name = "preference_set",
+    description = "Write an omaset preference (validated against its type, options, and range).",
+    inputSchema = { type = "object", properties = { key = { type = "string" }, value = {} }, required = { "key", "value" } },
+    run = tool_preference_set,
+  },
+  {
+    name = "preference_reset",
+    description = "Reset an omaset preference to its default.",
+    inputSchema = { type = "object", properties = { key = { type = "string" } }, required = { "key" } },
+    run = tool_preference_reset,
   },
 }
 

@@ -20,6 +20,13 @@ OUT="$(printf '%s\n' \
   '{"jsonrpc":"2.0","id":13,"method":"ping"}' \
   '{"jsonrpc":"2.0","id":14,"method":"tools/call","params":{"name":"keys","arguments":{"id":"fullwidth_style"}}}' \
   '{"jsonrpc":"2.0","id":15,"method":"tools/call","params":{"name":"keys","arguments":{"id":"gaps_in"}}}' \
+  '{"jsonrpc":"2.0","id":16,"method":"tools/call","params":{"name":"preferences"}}' \
+  '{"jsonrpc":"2.0","id":17,"method":"tools/call","params":{"name":"preference_get","arguments":{"key":"time_format"}}}' \
+  '{"jsonrpc":"2.0","id":18,"method":"tools/call","params":{"name":"preference_set","arguments":{"key":"time_format","value":"12h"}}}' \
+  '{"jsonrpc":"2.0","id":19,"method":"tools/call","params":{"name":"preference_reset","arguments":{"key":"time_format"}}}' \
+  '{"jsonrpc":"2.0","id":20,"method":"tools/call","params":{"name":"preference_set","arguments":{"key":"time_format","value":"bogus"}}}' \
+  '{"jsonrpc":"2.0","id":21,"method":"tools/call","params":{"name":"set","arguments":{"id":"nightlight_start","value":"8:30 PM"}}}' \
+  '{"jsonrpc":"2.0","id":22,"method":"tools/call","params":{"name":"get","arguments":{"id":"nightlight_start"}}}' \
   | lua5.1 "$OMASET" mcp 2>/dev/null)"
 
 assert_contains "$OUT" '"protocolVersion":"2025-11-25"' "initialize echoes version"
@@ -60,5 +67,20 @@ assert_contains "$OUT" '"grouped":true,"id":"fullwidth_style"' "keys reports gro
 assert_contains "$OUT" '"sub":"border_size"' "keys lists border_size"
 assert_contains "$OUT" '"sub":"rounding"' "keys lists rounding"
 assert_contains "$OUT" '"message":"setting is not keyed or grouped: gaps_in"' "keys rejects non-keyed setting"
+
+# preferences: the MCP tools expose omaset's own config with the same
+# validation contract, and an invalid enum value is rejected.
+assert_contains "$OUT" '"name":"preferences"' "tools/list has preferences"
+assert_contains "$OUT" '"name":"preference_set"' "tools/list has preference_set"
+assert_contains "$OUT" '"key":"time_format"' "preferences lists time_format"
+assert_contains "$OUT" '"default":"auto","key":"time_format","options":["24h","12h","auto"],"type":"enum","value":"auto"' "preference_get reports value + type"
+assert_contains "$OUT" '"options":["24h","12h","auto"]' "preference_get reports options"
+assert_contains "$OUT" '"key":"time_format","ok":true,"value":"12h"' "preference_set writes"
+assert_contains "$OUT" '"key":"time_format","ok":true,"value":"auto"' "preference_reset restores default"
+assert_contains "$OUT" '"code":-32602' "invalid preference value is an error"
+
+# time values are normalized to canonical 24-hour form on the way in.
+assert_contains "$OUT" '"id":"nightlight_start","ok":true,"value":"20:30"' "set normalizes time"
+assert_contains "$OUT" '"default":"20:00","id":"nightlight_start","value":"20:30"' "get reflects normalized time"
 
 echo "ok"

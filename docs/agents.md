@@ -31,6 +31,10 @@ The server is `omaset mcp` (JSON-RPC over stdio) and exposes these tools:
 | `keys` | enumerate a keyed/grouped setting's keys (value + default each) |
 | `undo` | undo the last change |
 | `open_ui` | summon the settings window for the user |
+| `preferences` | list omaset's own preferences (type, options, value, default) |
+| `preference_get` | read one preference |
+| `preference_set` | write a preference (validated like a setting) |
+| `preference_reset` | reset a preference to its default |
 
 Clients namespace tools as `<server>_<tool>` (e.g. `omaset_get`). Each tool
 returns the data as JSON in the text content (and again as `structuredContent`),
@@ -80,8 +84,9 @@ omaset changed --json
    default re-emerges, instead of hardcoding a value that will later look
    "changed".
 3. **Check the value contract first.** `omaset set <id> --help` prints the
-   `<a|b|c>` enum form or `<min..max>` range; `omaset help <id>` lists options.
-   An invalid enum lists its valid options in the error.
+   `<a|b|c>` enum form, `<min..max>` range, or the `<HH:MM|h:mm AM/PM>` time
+   form; `omaset help <id>` lists options. An invalid value lists the valid
+   choices in the error.
 4. **Use `--plain` in scripts.** It prints just the value/`ok`, so you don't
    parse JSON for the common cases.
 
