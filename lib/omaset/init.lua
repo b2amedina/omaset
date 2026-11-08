@@ -230,6 +230,14 @@ function M.schema()
         entry.value = json.null
         if grouped(s) then
           entry.grouped = true
+          -- Group sub-values are cheap to read (file-based backends), so carry
+          -- them in the schema: the UI can render them at their real values
+          -- instead of flashing the declared default and then jumping.
+          local subvalues = {}
+          for _, k in ipairs(sub_keys(s)) do
+            subvalues[k] = jnull(M.read_value(s, k))
+          end
+          entry.subvalues = subvalues
         end
       else
         entry.value = jnull(M.read_value(s))

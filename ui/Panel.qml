@@ -167,6 +167,22 @@ Item {
         if (root.activePanelId === "")
           root.activePanelId = obj.panels[0].id
       }
+      // Seed group sub-values synchronously from the schema so their rows
+      // render at the real value (not the declared default) on first paint.
+      var eff = cloneObj(root.effective)
+      if (obj && obj.panels) {
+        for (var pi = 0; pi < obj.panels.length; pi++) {
+          var settings = obj.panels[pi].settings || []
+          for (var si = 0; si < settings.length; si++) {
+            var s = settings[si]
+            if (s.subvalues) {
+              for (var sub in s.subvalues)
+                eff[Model.settingKey(s.id, sub)] = s.subvalues[sub]
+            }
+          }
+        }
+      }
+      root.effective = eff
       root.rebuildRows()
       root.loadPanelExtras()
     })
@@ -189,25 +205,11 @@ Item {
     }
     for (var i = 0; i < p.settings.length; i++) {
       var s = p.settings[i]
-      if (s.type === "group") {
-        var subs = s.subsettings || {}
-        for (var sub in subs) { pending++; loadGroupValue(s.id, sub, done) }
-      } else if (s.keyed) {
+      if (s.keyed) {
         pending++; loadKeyed(s.id, done)
       }
     }
     if (pending === 0) root.rebuildRows()
-  }
-
-  function loadGroupValue(id, sub, onDone) {
-    rpc.call("get", { id: id, key: sub }, function(o) {
-      if (o) {
-        var n = cloneObj(root.effective)
-        n[Model.settingKey(id, sub)] = o.value
-        root.effective = n
-      }
-      if (onDone) onDone()
-    })
   }
 
   function loadKeyed(id, onDone) {
