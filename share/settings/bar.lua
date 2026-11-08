@@ -19,7 +19,7 @@ panel("bar", "Bar", function()
         id = "bar_background",
         type = "enum",
         label = "Bar background",
-        description = "How the bar background renders (opaque, glassy, or none).",
+        description = "How the bar background renders.",
         backend = "omarchy",
         mode = "value",
         default = "opaque",
