@@ -248,6 +248,6 @@ Built-in backends:
   on older hosts it uses `hl.workspace_rule` + `hyprctl workspaces`. Default is
   `"dwindle"`.
 - `hyprsunset` — night light schedule in `~/.config/hypr/hyprsunset.conf`; field
-  `path` (`"schedule"`, `"start"`, `"stop"`, or `"temperature"`). Manages two
-  omaset-owned profiles (warm at `start`, `identity` at `stop`) in a
-  `# -- omaset:begin` block.
+  `path` (`"schedule"`, `"start"`, `"stop"`, or `"temperature"`). Edits the
+  warm `temperature` profile (at `start`) and the `identity` profile (at `stop`)
+  in place.

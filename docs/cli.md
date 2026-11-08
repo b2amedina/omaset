@@ -67,8 +67,8 @@ settings panels, `search`, or `changed`.
   visible (default 2, range 1..60).
 - `launch_floating` — whether the window opens floating (default true). omaset
   manages this by adding/removing an `o.window(... float/center ...)` rule for
-  its own window in the managed block of `~/.config/hypr/hyprland.lua`, so no
-  hand-written rule is needed. Takes effect on the next open.
+  its own window in `~/.config/hypr/hyprland.lua`, so no hand-written rule is
+  needed. Takes effect on the next open.
 - `time_format` — how times are displayed in the settings window (`24h`, `12h`,
   or `auto` to follow the bar clock's format in shell.json; default `auto`).
   Storage is always 24-hour `HH:MM`.

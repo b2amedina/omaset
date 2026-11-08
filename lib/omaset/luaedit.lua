@@ -96,13 +96,14 @@ end
 
 -- Parse a table constructor beginning at token index i (toks[i].text == "{").
 -- Appends leaf records { path = "a.b.c", s = <value start>, e = <value end> }
--- to `leaves` and returns the index just past the matching "}".
+-- to `leaves` and returns the index just past the matching "}" plus that "}"'s
+-- byte offset (so callers can add fields before it).
 local function parse_table(toks, i, prefix, leaves)
   local j = i + 1
   while j <= #toks do
     local tk = toks[j]
     if tk.text == "}" then
-      return j + 1
+      return j + 1, tk.s
     end
 
     -- Read the key (identifier or quoted string). Bracket keys are skipped.
@@ -159,7 +160,7 @@ local function parse_table(toks, i, prefix, leaves)
       j = j + 1
     end
   end
-  return j
+  return j, nil
 end
 
 -- Find every hl.config(<table>) call in the token stream and collect, in source
@@ -240,5 +241,15 @@ function M.reset_value(src, path, value)
   if replaced == src then return src, false end
   return replaced, true
 end
+
+-- Lower-level primitives for backends that edit a different call shape
+-- (hypr-window's o.window(match, rules)):
+--   M.lex(src)                     -> code tokens with byte spans
+--   M.parse_table(toks, i, prefix) -> appends leaves to `leaves`, returns
+--                                     (next index, closing-brace offset)
+--   M.splice(src, s, e, text)      -> replace bytes [s,e] with text
+M.lex = lex
+M.parse_table = parse_table
+M.splice = splice
 
 return M

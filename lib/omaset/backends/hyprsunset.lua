@@ -1,14 +1,15 @@
 -- Backend for ~/.config/hypr/hyprsunset.conf (night light schedule).
 --
--- Manages an omaset-owned schedule inside a block delimited by
--- "# -- omaset:begin" / "# -- omaset:end" comments, so the user's own profiles
--- and comments are never touched. hyprsunset has no on/off window: it applies
--- whichever profile has the latest activation time, so the schedule is two
--- profiles — a warm `temperature` profile at the start time and an `identity`
--- (no tint) profile at the stop time. Four settings are exposed via `path`:
---   schedule    (bool)  whether the schedule is active
---   start       (time)  the schedule's start time (HH:MM)
---   stop        (time)  the schedule's end time (HH:MM)
+-- hyprsunset has no on/off window: it applies whichever profile has the latest
+-- activation time, so the schedule is two profiles — a warm `temperature`
+-- profile at the start time and an `identity` (no tint) profile at the stop
+-- time. omaset edits these in place: the night profile is the one carrying a
+-- `temperature`, the stop is the `identity` profile, and the whole file is
+-- scanned so a hand-edited profile outside anything omaset wrote is still what
+-- `get`/`changed`/the UI report. Four settings are exposed via `path`:
+--   schedule    (bool)  whether a night (temperature) profile exists
+--   start       (time)  the night profile's start time (HH:MM)
+--   stop        (time)  the identity profile's stop time (HH:MM)
 --   temperature (int)   the night profile's color temperature in Kelvin
 
 local util = require("omaset.util")
@@ -16,9 +17,6 @@ local types = require("omaset.types")
 local registry = require("omaset.backends")
 
 local M = {}
-
-local BEGIN_MARK = "# -- omaset:begin"
-local END_MARK = "# -- omaset:end"
 
 local DEFAULT_START = "20:00"
 local DEFAULT_STOP = "07:00"
@@ -29,90 +27,82 @@ local function config_file()
     or (os.getenv("HOME") or "") .. "/.config/hypr/hyprsunset.conf"
 end
 
--- Parse the managed block (between the markers) into a schedule table
--- { start, stop, temperature }, or nil when there is no managed block. The
--- night profile is the one carrying a `temperature`; the identity profile is
--- the one carrying `identity = true`. A legacy single-profile block (night
--- only) leaves `stop` unset, which callers fill with DEFAULT_STOP.
-local function managed_profile(content)
-  local start = content:find(BEGIN_MARK, 1, true)
-  if not start then
-    return nil
+local function splice(src, s, e, text)
+  return src:sub(1, s - 1) .. text .. src:sub(e + 1)
+end
+
+-- Find "field = <value>" within [from, to] and return the value's byte span and
+-- text, or nil.
+local function find_field(content, from, to, field, pat)
+  local ws, _, prefix, value = content:find("(" .. field .. "%s*=%s*)(" .. pat .. ")", from)
+  if not ws or ws > to then return nil end
+  local vs = ws + #prefix
+  local ve = vs + #value - 1
+  if ve > to then return nil end
+  return { s = vs, e = ve, text = value }
+end
+
+-- Scan every `profile { ... }` block in the whole file, in order, with the byte
+-- span of the block and of each field it contains.
+local function scan_profiles(content)
+  local profiles = {}
+  local pos = 1
+  while true do
+    local bs, be = content:find("profile%s*{", pos)
+    if not bs then break end
+    local ce = content:find("}", be + 1, true)
+    if not ce then break end
+    profiles[#profiles + 1] = {
+      block_s = bs, block_e = ce,
+      time = find_field(content, be + 1, ce - 1, "time", "[%d:]+"),
+      temperature = find_field(content, be + 1, ce - 1, "temperature", "%d+"),
+      identity = find_field(content, be + 1, ce - 1, "identity", "%w+"),
+    }
+    pos = ce + 1
   end
-  local finish = content:find(END_MARK, start + #BEGIN_MARK, true)
-  if not finish then
-    return nil
+  return profiles
+end
+
+local function night_profile(profiles)
+  local night
+  for _, p in ipairs(profiles) do
+    if p.temperature then night = p end
   end
-  local body = content:sub(start + #BEGIN_MARK, finish - 1)
-  local prof = {}
-  for pblock in body:gmatch("profile%s*{([^}]*)}") do
-    local time = pblock:match("time%s*=%s*([%d:]+)")
-    local temp = pblock:match("temperature%s*=%s*(%d+)")
-    local idv = pblock:match("identity%s*=%s*(%w+)")
-    local identity = idv ~= nil and (idv == "true" or idv == "1")
-    if temp then
-      prof.temperature = tonumber(temp)
-      if time then prof.start = time end
-    elseif identity then
-      if time then prof.stop = time end
+  return night
+end
+
+local function identity_profile(profiles)
+  local id
+  for _, p in ipairs(profiles) do
+    if p.identity and (p.identity.text == "true" or p.identity.text == "1") then
+      id = p
     end
   end
-  return prof
+  return id
 end
 
-local function build_block(prof)
-  local lines = {
-    BEGIN_MARK,
-    "profile {",
-    "    time = " .. (prof.start or DEFAULT_START),
-    "    temperature = " .. tostring(prof.temperature or DEFAULT_TEMP),
-    "}",
-    "profile {",
-    "    time = " .. (prof.stop or DEFAULT_STOP),
-    "    identity = true",
-    "}",
-    END_MARK,
-    "",
-  }
-  return table.concat(lines, "\n")
+local function night_lines(start, temperature)
+  return "profile {\n    time = " .. start .. "\n    temperature = " .. tostring(temperature) .. "\n}"
 end
 
-local function replace_or_append(content, block)
-  local start = content:find(BEGIN_MARK, 1, true)
-  if not start then
-    local base = content
-    if base ~= "" and base:sub(-1) ~= "\n" then
-      base = base .. "\n"
-    end
-    return base .. "\n" .. block
-  end
-  local finish = content:find(END_MARK, start, true)
-  local line_end = content:find("\n", finish, true)
-  if not line_end then
-    line_end = #content
-  end
-  return content:sub(1, start - 1) .. block .. content:sub(line_end + 1)
+local function identity_lines(stop)
+  return "profile {\n    time = " .. stop .. "\n    identity = true\n}"
 end
 
-local function remove_block(content)
-  local start = content:find(BEGIN_MARK, 1, true)
-  if not start then
-    return content
-  end
-  local finish = content:find(END_MARK, start, true)
-  if not finish then
-    return content
-  end
-  local line_end = content:find("\n", finish, true)
-  if not line_end then
-    line_end = #content
-  end
-  return content:sub(1, start - 1) .. content:sub(line_end + 1)
+local function append_profile(content, block)
+  if content == "" then return block .. "\n" end
+  if content:sub(-1) ~= "\n" then return content .. "\n\n" .. block .. "\n" end
+  return content .. "\n" .. block .. "\n"
 end
 
--- Snapshot the original config once, before omaset's first write, so
--- `rollback` can restore it — the same .omaset.bak convention the hypr-lua and
--- hypr-window backends use.
+local function remove_profile(content, prof)
+  local nl = content:find("\n", prof.block_e, true)
+  if nl and content:sub(prof.block_e + 1, nl - 1):match("^%s*$") then
+    return content:sub(1, prof.block_s - 1) .. content:sub(nl + 1)
+  end
+  return content:sub(1, prof.block_s - 1) .. content:sub(prof.block_e + 1)
+end
+
 local function snapshot_once(file)
   if util.read_file(file .. ".omaset.bak") == nil then
     util.write_file(file .. ".omaset.bak", util.read_file(file) or "")
@@ -126,18 +116,18 @@ end
 
 function M.read(setting, key)
   local content = util.read_file(config_file()) or ""
-  local prof = managed_profile(content) or {}
+  local profiles = scan_profiles(content)
+  local night = night_profile(profiles)
+  local identity = identity_profile(profiles)
+
   if setting.path == "schedule" then
-    return prof.temperature ~= nil
-  end
-  if setting.path == "start" then
-    return prof.start or DEFAULT_START
-  end
-  if setting.path == "stop" then
-    return prof.stop or DEFAULT_STOP
-  end
-  if setting.path == "temperature" then
-    return prof.temperature or DEFAULT_TEMP
+    return night ~= nil
+  elseif setting.path == "start" then
+    return (night and night.time and night.time.text) or DEFAULT_START
+  elseif setting.path == "stop" then
+    return (identity and identity.time and identity.time.text) or DEFAULT_STOP
+  elseif setting.path == "temperature" then
+    return (night and night.temperature and tonumber(night.temperature.text)) or DEFAULT_TEMP
   end
   return nil
 end
@@ -145,103 +135,109 @@ end
 function M.read_default(setting, key)
   if setting.path == "schedule" then
     return false
-  end
-  if setting.path == "start" then
+  elseif setting.path == "start" then
     return DEFAULT_START
-  end
-  if setting.path == "stop" then
+  elseif setting.path == "stop" then
     return DEFAULT_STOP
-  end
-  if setting.path == "temperature" then
+  elseif setting.path == "temperature" then
     return DEFAULT_TEMP
   end
   return nil
 end
 
--- The time that must not collide with the one being written: changing the
--- start may not equal the stop, and vice versa. Missing halves fall back to
--- their defaults so a fresh or legacy block still validates.
-local function opposite_time(prof, path)
-  if path == "start" then
-    return prof.stop or DEFAULT_STOP
-  end
-  return prof.start or DEFAULT_START
-end
-
 function M.write(setting, key, value)
   local file = config_file()
   local content = util.read_file(file) or ""
-  local prof = managed_profile(content)
-    or { start = DEFAULT_START, stop = DEFAULT_STOP, temperature = DEFAULT_TEMP }
+  local profiles = scan_profiles(content)
+  local night = night_profile(profiles)
+  local identity = identity_profile(profiles)
+  local path = setting.path
 
-  if setting.path == "schedule" then
+  if path == "schedule" then
     if value then
-      return commit(file, replace_or_append(content, build_block(prof)))
+      if night then return true end
+      local new_content = append_profile(content, night_lines(DEFAULT_START, DEFAULT_TEMP))
+      if not identity then
+        new_content = append_profile(new_content, identity_lines(DEFAULT_STOP))
+      end
+      return commit(file, new_content)
     end
-    if managed_profile(content) == nil then
-      return true
-    end
-    return commit(file, remove_block(content))
+    if not night then return true end
+    return commit(file, remove_profile(content, night))
   end
 
-  if setting.path == "start" or setting.path == "stop" then
+  if path == "temperature" then
+    if night and night.temperature then
+      return commit(file, splice(content, night.temperature.s, night.temperature.e, tostring(value)))
+    end
+    return commit(file, append_profile(content, night_lines(DEFAULT_START, value)))
+  end
+
+  if path == "start" then
     local t = types.parse_time(value) or value
-    if t == opposite_time(prof, setting.path) then
+    if t == ((identity and identity.time and identity.time.text) or DEFAULT_STOP) then
       return nil, "start and stop times must differ"
     end
-    if setting.path == "start" then
-      prof.start = t
-    else
-      prof.stop = t
+    if night and night.time then
+      return commit(file, splice(content, night.time.s, night.time.e, t))
     end
-    return commit(file, replace_or_append(content, build_block(prof)))
+    local temp = (night and night.temperature and tonumber(night.temperature.text)) or DEFAULT_TEMP
+    return commit(file, append_profile(content, night_lines(t, temp)))
   end
 
-  if setting.path == "temperature" then
-    prof.temperature = value
-    return commit(file, replace_or_append(content, build_block(prof)))
+  if path == "stop" then
+    local t = types.parse_time(value) or value
+    if t == ((night and night.time and night.time.text) or DEFAULT_START) then
+      return nil, "start and stop times must differ"
+    end
+    if identity and identity.time then
+      return commit(file, splice(content, identity.time.s, identity.time.e, t))
+    end
+    return commit(file, append_profile(content, identity_lines(t)))
   end
 
-  return nil, "unknown hyprsunset path: " .. tostring(setting.path)
+  return nil, "unknown hyprsunset path: " .. tostring(path)
 end
 
 function M.reset(setting, key)
   local file = config_file()
   local content = util.read_file(file) or ""
-  local prof = managed_profile(content)
+  local profiles = scan_profiles(content)
+  local night = night_profile(profiles)
+  local identity = identity_profile(profiles)
+  local path = setting.path
 
-  if setting.path == "schedule" then
-    if prof == nil then
-      return true
-    end
-    return commit(file, remove_block(content))
+  if path == "schedule" then
+    if not night then return true end
+    return commit(file, remove_profile(content, night))
   end
 
-  if setting.path == "start" or setting.path == "stop" then
-    if prof == nil then
-      return true
-    end
-    local def = (setting.path == "start") and DEFAULT_START or DEFAULT_STOP
-    if def == opposite_time(prof, setting.path) then
-      return nil, "cannot reset: the other end is already " .. def
-    end
-    if setting.path == "start" then
-      prof.start = def
-    else
-      prof.stop = def
-    end
-    return commit(file, replace_or_append(content, build_block(prof)))
-  end
-
-  if setting.path == "temperature" then
-    if prof and prof.temperature then
-      prof.temperature = DEFAULT_TEMP
-      return commit(file, replace_or_append(content, build_block(prof)))
+  if path == "temperature" then
+    if night and night.temperature then
+      return commit(file, splice(content, night.temperature.s, night.temperature.e, tostring(DEFAULT_TEMP)))
     end
     return true
   end
 
-  return nil, "unknown hyprsunset path: " .. tostring(setting.path)
+  if path == "start" then
+    if not night or not night.time then return true end
+    local stop = (identity and identity.time and identity.time.text) or DEFAULT_STOP
+    if DEFAULT_START == stop then
+      return nil, "cannot reset: the other end is already " .. DEFAULT_START
+    end
+    return commit(file, splice(content, night.time.s, night.time.e, DEFAULT_START))
+  end
+
+  if path == "stop" then
+    if not identity or not identity.time then return true end
+    local start = (night and night.time and night.time.text) or DEFAULT_START
+    if DEFAULT_STOP == start then
+      return nil, "cannot reset: the other end is already " .. DEFAULT_STOP
+    end
+    return commit(file, splice(content, identity.time.s, identity.time.e, DEFAULT_STOP))
+  end
+
+  return nil, "unknown hyprsunset path: " .. tostring(path)
 end
 
 -- Restart the running hyprsunset so it re-reads hyprsunset.conf. hyprsunset

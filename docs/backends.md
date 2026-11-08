@@ -7,10 +7,8 @@ can point at any of them — or at a new one — without the core changing.
 
 Every file-writing backend keeps a one-time `<file>.omaset.bak` snapshot before
 its first write, validates after writing, and restores the previous content if
-validation fails. Where a value already lives in the file, a backend edits it in
-place (`hypr-lua`); where it does not, it appends a minimal override (`hypr-lua`)
-or manages a marked block (`hypr-window`, `hyprsunset`). Details in
-[safety.md](safety.md).
+validation fails. Each edits the value in place where it already lives, and
+appends a minimal override when it does not. Details in [safety.md](safety.md).
 
 ## `hypr-lua`
 
@@ -35,15 +33,19 @@ shadow, groupbar).
 
 ## `hypr-window`
 
-Manages `o.window(match, rules)` window rules (Omarchy's own helper) in a
-`-- omaset:begin` / `-- omaset:end` block inside `~/.config/hypr/hyprland.lua`,
-with the same write/validate/revert behaviour as `hypr-lua`.
+Manages `o.window(match, rules)` window rules (Omarchy's own helper) in
+`~/.config/hypr/hyprland.lua`.
 
 - Each setting is a **group**: it declares a `match` and named `subsettings`
   (e.g. `border_size`, `rounding`). Sub-settings sharing a `match` compose into
   a single rule.
-- `reset <id> <sub>` drops one field; `reset <id> --all` removes the whole rule,
-  so the base `border_size`/`rounding` apply again.
+- **Read** scans the whole file for the *last* `o.window()` call whose match
+  equals the setting's match — Hyprland applies window rules in order, so the
+  later call wins — and reads the field from its rules table.
+- **Write** rebuilds that one call with the field changed (or adds a new call at
+  EOF when no matching rule exists). **Reset** drops one field, or the whole
+  rule when it becomes empty (`reset --all`), so the base `border_size`/`rounding`
+  apply again.
 - Defaults are declared in the DSL (there is no Omarchy stock window rule to
   read), so `changed` compares against those declared defaults.
 
@@ -65,21 +67,20 @@ The *Bar* panel (position, transparency) is the main user of this.
 
 ## `hyprsunset`
 
-Manages an omaset-owned night-light schedule in a
-`# -- omaset:begin` / `# -- omaset:end` block inside
-`~/.config/hypr/hyprsunset.conf`, so your own profiles and comments are never
-touched.
+Manages the night-light schedule in `~/.config/hypr/hyprsunset.conf`, editing
+the relevant `profile { ... }` block in place.
 
 - hyprsunset has no on/off window: it applies whichever profile has the latest
   activation time. So the schedule is two profiles — a warm `temperature`
   profile at the start time and an `identity = true` (no tint) profile at the
   stop time.
-- Exposes four settings: `schedule` (whether the schedule is active), `start`
-  (`HH:MM`, default 20:00), `stop` (`HH:MM`, default 07:00), and `temperature`
-  (Kelvin, default 4000). Enabling the schedule writes the defaults; writing any
-  schedule field fills the other fields with defaults. Because the block's
-  presence is the schedule's state, writing a time also enables the schedule.
-  Start and stop may not be equal.
+- Exposes four settings: `schedule` (whether a night `temperature` profile
+  exists), `start` (`HH:MM`, default 20:00), `stop` (`HH:MM`, default 07:00),
+  and `temperature` (Kelvin, default 4000). Enabling the schedule adds a night
+  profile (and an identity profile when none exists); writing any schedule field
+  edits the matching profile in place and thereby enables the schedule. The
+  whole file is scanned, so a hand-edited profile is what `get` reports. Start
+  and stop may not be equal.
 - `apply()` restarts the running hyprsunset so a written schedule takes effect —
   hyprsunset parses its config only at startup. The settings window calls this
   once on close, not on every write.

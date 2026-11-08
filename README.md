@@ -47,7 +47,7 @@ install. Click the omaset icon in your bar, or run `omaset ui` once you
 [link the CLI](docs/cli.md).
 
 On open the window also applies its own launch rule — floating and centered —
-by writing an `o.window(...)` rule for itself into the managed block of
+by writing an `o.window(...)` rule for itself into
 `~/.config/hypr/hyprland.lua`. It is on by default and can be turned off in
 Preferences (`p`).
 
