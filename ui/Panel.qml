@@ -1207,9 +1207,9 @@ Item {
                   anchors.margins: Style.spacing.panelPadding
                   anchors.topMargin: 0
                   clip: true
-                  visible: !root.searchMode && !root.changedMode && !root.prefsMode
+                  visible: !root.searchMode && !root.changedMode && !root.prefsMode && !root.helpMode
                   ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                  ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                  ScrollBar.vertical.policy: rowsColumn.implicitHeight > scrollArea.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
 
                   Column {
                     id: rowsColumn
@@ -1703,46 +1703,53 @@ Item {
                   anchors.topMargin: 0
                   visible: root.helpMode
 
-                  Column {
+                  Flickable {
                     anchors.fill: parent
-                    anchors.leftMargin: Style.spacing.panelPadding
-                    anchors.rightMargin: Style.spacing.panelPadding
-                    spacing: Style.space(10)
+                    contentWidth: width
+                    contentHeight: helpColumn.implicitHeight
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
 
-                    Text {
-                      textFormat: Text.PlainText
-                      text: root.tr.t("ui.keybindings", "Keybindings")
-                      color: root.foreground
-                      font.family: root.fontFamily
-                      font.pixelSize: Style.font.heading
-                      font.bold: true
-                    }
+                    Column {
+                      id: helpColumn
+                      width: parent.width
+                      spacing: Style.space(10)
 
-                    Repeater {
-                      model: root.helpRows
-                      delegate: Row {
-                        required property var modelData
-                        width: parent.width
-                        spacing: Style.spacing.lg
+                      Text {
+                        textFormat: Text.PlainText
+                        text: root.tr.t("ui.keybindings", "Keybindings")
+                        color: root.foreground
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.heading
+                        font.bold: true
+                      }
 
-                        Text {
-                          width: Style.space(140)
-                          horizontalAlignment: Text.AlignRight
-                          textFormat: Text.PlainText
-                          text: modelData.keys
-                          color: root.accent
-                          font.family: root.fontFamily
-                          font.pixelSize: Style.font.body
-                          font.bold: true
-                        }
-                        Text {
-                          width: parent.width - Style.space(140) - Style.spacing.lg
-                          textFormat: Text.PlainText
-                          text: root.tr.t(modelData.ak, modelData.af)
-                          color: root.foreground
-                          font.family: root.fontFamily
-                          font.pixelSize: Style.font.body
-                          wrapMode: Text.WordWrap
+                      Repeater {
+                        model: root.helpRows
+                        delegate: Row {
+                          required property var modelData
+                          width: parent.width
+                          spacing: Style.spacing.lg
+
+                          Text {
+                            width: Style.space(140)
+                            horizontalAlignment: Text.AlignRight
+                            textFormat: Text.PlainText
+                            text: modelData.keys
+                            color: root.accent
+                            font.family: root.fontFamily
+                            font.pixelSize: Style.font.body
+                            font.bold: true
+                          }
+                          Text {
+                            width: parent.width - Style.space(140) - Style.spacing.lg
+                            textFormat: Text.PlainText
+                            text: root.tr.t(modelData.ak, modelData.af)
+                            color: root.foreground
+                            font.family: root.fontFamily
+                            font.pixelSize: Style.font.body
+                            wrapMode: Text.WordWrap
+                          }
                         }
                       }
                     }
