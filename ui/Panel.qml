@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import Quickshell
+import Quickshell.Hyprland
 import qs.Ui
 import qs.Commons
 import qs.Commons as Commons
@@ -139,6 +140,50 @@ Item {
     id: i18n
     directory: Qt.resolvedUrl("i18n")
   }
+
+  // ---- window sizing ----------------------------------------------------
+  // The window sizes to its content (widest footer hint + widest sidebar
+  // title), scaled by the text size/display scale via Style.space(), and
+  // capped at 90% of the focused monitor so a long translation ellipsizes
+  // rather than outgrowing the screen. Logical DIP = physical / scale.
+  readonly property int maxWindowWidth: {
+    var m = Hyprland.focusedMonitor
+    if (m && m.width && m.scale) return Math.round((m.width / m.scale) * 0.9)
+    return Style.space(960)
+  }
+  readonly property int maxWindowHeight: {
+    var m = Hyprland.focusedMonitor
+    if (m && m.height && m.scale) return Math.round((m.height / m.scale) * 0.9)
+    return Style.space(900)
+  }
+
+  // Natural width of the longest footer hint, at the footer's font.
+  TextMetrics {
+    id: footerMetrics
+    font.family: root.fontFamily
+    font.pixelSize: Style.font.bodySmall
+    text: tr.t("footer.normal", "j k move · h l adjust · \u2423/\u23ce select/edit · tab pane · x reset · / search · c changed · p prefs · esc close")
+  }
+
+  // Widest sidebar title, measured without elision (implicitWidth of a Column
+  // is its widest child).
+  Column {
+    id: titleMeasure
+    visible: false
+    Repeater {
+      model: root.panels
+      delegate: Text {
+        required property var modelData
+        text: root.tr.t("panel." + modelData.id, modelData.title)
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.body
+      }
+    }
+  }
+
+  // Sidebar width: the scale-aware default, grown to fit the widest title.
+  readonly property int sidebarWidth: Math.max(Style.space(190),
+    Style.space(30) + titleMeasure.implicitWidth + Style.spacing.md)
 
   ListModel {
     id: prefsModel
@@ -909,9 +954,15 @@ Item {
     id: window
     title: "omaset Settings"
     color: root.background
-    implicitWidth: 720
-    implicitHeight: 560
-    minimumSize: Qt.size(480, 360)
+    // Size to the content (footer hint and sidebar titles), scale-aware, and
+    // capped at 90% of the focused monitor.
+    implicitWidth: Math.min(root.maxWindowWidth,
+      Math.max(Style.space(720),
+        root.sidebarWidth + Style.space(530),
+        footerMetrics.width + Style.space(32)))
+    implicitHeight: Math.min(root.maxWindowHeight, Style.space(560))
+    minimumSize: Qt.size(Style.space(480), Style.space(360))
+    maximumSize: Qt.size(root.maxWindowWidth, root.maxWindowHeight)
 
     onVisibleChanged: {
       if (!visible) {
@@ -1011,7 +1062,7 @@ Item {
             // ---- sidebar ------------------------------------------------
             Rectangle {
               id: sidebar
-              width: Style.space(190)
+              width: root.sidebarWidth
               height: parent.height
               color: root.sidebarColor
 
