@@ -91,6 +91,7 @@ Item {
   property var keyed: ({})       // id -> [keys]
   property var keyedMonitors: ({})    // id -> [monitor descriptors] (4.5 workspace layouts)
   property var selectedMonitor: ({})  // id -> connector name
+  property var keyedLoaded: ({})      // id -> true once its keys/values are fetched
   property var rows: []
   property int changedCount: -1
   property var changedList: []     // `omaset changed --json` entries
@@ -196,23 +197,29 @@ Item {
   }
 
   function loadPanelExtras() {
-    var p = activePanel()
-    if (!p) return
+    if (!root.schema || !root.schema.panels) return
     var pending = 0
     function done() {
       pending--
       if (pending <= 0) root.rebuildRows()
     }
-    for (var i = 0; i < p.settings.length; i++) {
-      var s = p.settings[i]
-      if (s.keyed) {
-        pending++; loadKeyed(s.id, done)
+    // Prefetch every keyed setting (not just the active panel) once, so
+    // switching to a panel does not "fill in" its workspace rows later.
+    for (var pi = 0; pi < root.schema.panels.length; pi++) {
+      var settings = root.schema.panels[pi].settings || []
+      for (var si = 0; si < settings.length; si++) {
+        var s = settings[si]
+        if (s.keyed) {
+          pending++; loadKeyed(s.id, done)
+        }
       }
     }
     if (pending === 0) root.rebuildRows()
   }
 
   function loadKeyed(id, onDone) {
+    if (root.keyedLoaded[id]) { if (onDone) onDone(); return }
+    root.keyedLoaded[id] = true
     rpc.call("keys", { id: id }, function(o) {
       var keys = (o && o.keys) ? o.keys : []
       var mons = (o && o.monitors) ? o.monitors : []
