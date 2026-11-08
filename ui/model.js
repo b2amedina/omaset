@@ -203,7 +203,6 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
   var fmt = (timeFormat === "12h") ? "12h" : "24h"
   var rows = []
   if (!panel) return rows
-  rows.push({ kind: "title", id: panel.id, title: L(tr, "panel." + panel.id, panel.title) })
   var settings = panel.settings || []
   var currentSection = ""
   // "Workspace N" label, localized through the passed-in tr.

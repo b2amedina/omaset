@@ -1065,7 +1065,7 @@ Item {
                       anchors.right: parent.right
                       anchors.verticalCenter: parent.verticalCenter
                       textFormat: Text.PlainText
-                      text: modelData.title
+                      text: root.tr.t("panel." + modelData.id, modelData.title)
                       color: active ? root.foreground : Qt.darker(root.foreground, 1.3)
                       font.family: root.fontFamily
                       font.pixelSize: Style.font.body
@@ -1116,7 +1116,7 @@ Item {
                     textFormat: Text.PlainText
                     text: root.searchMode ? root.tr.t("ui.search", "Search")
                       : (root.changedMode ? root.tr.t("ui.changed", "Changed")
-                      : (root.prefsMode ? root.tr.t("ui.preferences", "Preferences") : (root.activePanel() ? root.activePanel().title : "")))
+                      : (root.prefsMode ? root.tr.t("ui.preferences", "Preferences") : (root.activePanel() ? root.tr.t("panel." + root.activePanel().id, root.activePanel().title) : "")))
                     color: root.foreground
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.heading
