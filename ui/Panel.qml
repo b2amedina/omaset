@@ -120,6 +120,10 @@ Item {
   property bool nightlightDirty: false // a night-light setting changed this session
   property bool interacting: false
   property string omasetVersion: ""   // engine version, shown under Preferences
+  // Timestamp of the last completed write, used to let slow backends (the
+  // nightlight toggle cold-starts hyprsunset) settle before the periodic
+  // refresh re-reads their status and briefly shows a stale value.
+  property double lastWrite: 0
 
   ListModel {
     id: prefsModel
@@ -184,7 +188,7 @@ Item {
   }
 
   function loadGroupValue(id, sub) {
-    rpc.call("get", { id: id, sub: sub }, function(o) {
+    rpc.call("get", { id: id, key: sub }, function(o) {
       if (!o) return
       var n = cloneObj(root.effective)
       n[Model.settingKey(id, sub)] = o.value
@@ -334,6 +338,7 @@ Item {
   }
   function pollRefresh() {
     if (rpc.pendingCount() > 0) return   // never delay a user action
+    if (Date.now() - root.lastWrite < 3000) return  // let a slow write settle
     loadSchema()
     loadPreferences()
     refreshChanged()
@@ -394,6 +399,7 @@ Item {
       var k = Model.settingKey(row.id, row.sub, row.key)
       setEffective(k, v)
       rpc.call("set", { id: row.id, key: key, value: v }, function(o) {
+        root.lastWrite = Date.now()
         if (o && o.value !== undefined && o.value !== null) setEffective(k, o.value)
         root.scheduleChanged()
       })
@@ -401,6 +407,7 @@ Item {
       markNightlightDirty(row.id)
       setSchemaValue(row.id, v)
       rpc.call("set", { id: row.id, value: v }, function(o) {
+        root.lastWrite = Date.now()
         if (o && o.value !== undefined && o.value !== null) setSchemaValue(row.id, o.value)
         root.scheduleChanged()
       })
@@ -415,6 +422,7 @@ Item {
     var params = { id: row.id }
     if (keyArg !== undefined) params.key = keyArg
     rpc.call("reset", params, function() {
+      root.lastWrite = Date.now()
       var n = {}
       for (var k in root.effective) if (k !== key) n[k] = root.effective[k]
       root.effective = n
