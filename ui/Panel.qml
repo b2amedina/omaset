@@ -1220,7 +1220,7 @@ Item {
 
                   Column {
                     id: rowsColumn
-                    width: scrollArea.availableWidth - Style.space(12)
+                    width: scrollArea.availableWidth - Style.space(24)
                     spacing: Style.space(8)
 
                     Repeater {
@@ -1721,15 +1721,6 @@ Item {
                       id: helpColumn
                       width: parent.width
                       spacing: Style.space(10)
-
-                      Text {
-                        textFormat: Text.PlainText
-                        text: root.tr.t("ui.keybindings", "Keybindings")
-                        color: root.foreground
-                        font.family: root.fontFamily
-                        font.pixelSize: Style.font.heading
-                        font.bold: true
-                      }
 
                       Repeater {
                         model: root.helpRows
