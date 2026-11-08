@@ -462,8 +462,41 @@ function M.keys(core, args)
   end
 
   if s.keyed then
-    local names = (args.all and core.keys_all(s) or core.keys(s)) or {}
-    local out = { id = s.id, keyed = true, keys = json.array(names) }
+    local monitors = core.monitors(s)
+    local names
+    local has_monitor_arg = args.monitor ~= nil and args.monitor ~= json.null
+
+    if has_monitor_arg then
+      local mon = nil
+      if monitors then
+        for _, m in ipairs(monitors) do
+          if m.name == args.monitor then
+            mon = m
+            break
+          end
+        end
+      end
+      if not mon then
+        local avail = {}
+        if monitors then
+          for _, m in ipairs(monitors) do
+            avail[#avail + 1] = m.name
+          end
+        end
+        return nil, "unknown monitor '" .. tostring(args.monitor) .. "'"
+          .. (#avail > 0 and (" (choose from: " .. table.concat(avail, ", ") .. ")") or "")
+      end
+      names = mon.workspaces
+    else
+      names = (args.all and core.keys_all(s) or core.keys(s)) or {}
+    end
+
+    local out = { id = s.id, keyed = true }
+    if monitors then
+      out.monitors = json.array(monitors)
+      if has_monitor_arg then out.monitor = args.monitor end
+    end
+    out.keys = json.array(names)
     if detail then
       local entries = {}
       for _, k in ipairs(names) do
@@ -759,14 +792,18 @@ local OPS = {
   },
   {
     name = "keys",
-    description = "Enumerate a keyed or grouped setting's keys with each key's current value and default. For keyed settings, all=true also lists persisted keys (e.g. workspaces that are not currently open).",
+    description = "Enumerate a keyed or grouped setting's keys with each key's current value and default. For keyed settings, all=true also lists persisted keys (e.g. workspaces that are not currently open). Monitor-grouped keyed settings (4.5 workspace layouts) also return a monitors array, and a monitor (connector name) filters keys to that monitor's block.",
     inputSchema = {
       type = "object",
-      properties = { id = { type = "string" }, all = { type = "boolean" } },
+      properties = {
+        id = { type = "string" },
+        all = { type = "boolean" },
+        monitor = { type = "string", description = "Filter a monitor-grouped keyed setting to one monitor's workspaces, by connector name." },
+      },
       required = { "id" },
     },
     run = function(core, args)
-      return M.keys(core, { id = args.id, all = args.all, detail = true })
+      return M.keys(core, { id = args.id, all = args.all, monitor = args.monitor, detail = true })
     end,
   },
   {

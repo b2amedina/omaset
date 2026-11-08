@@ -131,7 +131,7 @@ function fieldRow(id, sub, key, label, type, spec, effective, timeFormat) {
   }
 }
 
-function rowsFor(panel, effective, keyedMap, timeFormat) {
+function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMonitor) {
   var fmt = (timeFormat === "12h") ? "12h" : "24h"
   var rows = []
   if (!panel) return rows
@@ -159,15 +159,36 @@ function rowsFor(panel, effective, keyedMap, timeFormat) {
 
     if (s.keyed) {
       rows.push({ kind: "keyed", id: s.id, label: s.label })
-      var keys = (keyedMap && keyedMap[s.id]) || []
-      for (var k = 0; k < keys.length; k++) {
-        var key = keys[k]
-        rows.push({
-          kind: "enum", id: s.id, key: key,
-          label: "Workspace " + key,
-          options: s.options || [], segmented: true,
-          value: valueOf(effective, s.id, undefined, key)
-        })
+      var mons = (monitorMap && monitorMap[s.id]) || []
+      if (mons.length > 0) {
+        // Monitor-grouped: pick a monitor, then show its workspaces 1..10
+        // (labelled by slot; the stored key is the global id).
+        var sel = (selectedMonitor && selectedMonitor[s.id]) || mons[0].name
+        rows.push({ kind: "monitor", id: s.id, monitors: mons, selected: sel })
+        var mon = null
+        for (var m = 0; m < mons.length; m++)
+          if (mons[m].name === sel) { mon = mons[m]; break }
+        if (!mon) mon = mons[0]
+        for (var w = 0; w < mon.workspaces.length; w++) {
+          var gid = mon.workspaces[w]
+          rows.push({
+            kind: "enum", id: s.id, key: gid, slot: w + 1,
+            label: "Workspace " + (w + 1),
+            options: s.options || [], segmented: true,
+            value: valueOf(effective, s.id, undefined, gid)
+          })
+        }
+      } else {
+        var keys = (keyedMap && keyedMap[s.id]) || []
+        for (var k = 0; k < keys.length; k++) {
+          var key = keys[k]
+          rows.push({
+            kind: "enum", id: s.id, key: key,
+            label: "Workspace " + key,
+            options: s.options || [], segmented: true,
+            value: valueOf(effective, s.id, undefined, key)
+          })
+        }
       }
       continue
     }
@@ -204,5 +225,5 @@ function rowsFor(panel, effective, keyedMap, timeFormat) {
 function isInteractive(row) {
   return row && (row.kind === "bool" || row.kind === "slider"
               || row.kind === "number" || row.kind === "enum"
-              || row.kind === "time")
+              || row.kind === "time" || row.kind === "monitor")
 }

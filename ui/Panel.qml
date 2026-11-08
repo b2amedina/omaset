@@ -89,6 +89,8 @@ Item {
   property string activePanelId: ""
   property var effective: ({})   // group sub-fields + keyed values (schema can't express them)
   property var keyed: ({})       // id -> [keys]
+  property var keyedMonitors: ({})    // id -> [monitor descriptors] (4.5 workspace layouts)
+  property var selectedMonitor: ({})  // id -> connector name
   property var rows: []
   property int changedCount: -1
   property var changedList: []     // `omaset changed --json` entries
@@ -200,12 +202,42 @@ Item {
   function loadKeyed(id) {
     rpc.call("keys", { id: id }, function(o) {
       var keys = (o && o.keys) ? o.keys : []
+      var mons = (o && o.monitors) ? o.monitors : []
       var n = cloneObj(root.keyed)
       n[id] = keys
       root.keyed = n
-      for (var i = 0; i < keys.length; i++) loadKeyedValue(id, keys[i])
+      var nm = cloneObj(root.keyedMonitors)
+      nm[id] = mons
+      root.keyedMonitors = nm
+      var sm = cloneObj(root.selectedMonitor)
+      if (!sm[id] && mons.length > 0) sm[id] = mons[0].name
+      root.selectedMonitor = sm
+      if (mons.length > 0) {
+        var mon = null
+        for (var i = 0; i < mons.length; i++)
+          if (mons[i].name === root.selectedMonitor[id]) { mon = mons[i]; break }
+        if (!mon) mon = mons[0]
+        for (var i = 0; i < mon.workspaces.length; i++) loadKeyedValue(id, mon.workspaces[i])
+      } else {
+        for (var i = 0; i < keys.length; i++) loadKeyedValue(id, keys[i])
+      }
       root.rebuildRows()
     })
+  }
+
+  function selectMonitor(id, name) {
+    var sm = cloneObj(root.selectedMonitor)
+    sm[id] = name
+    root.selectedMonitor = sm
+    var mons = root.keyedMonitors[id] || []
+    for (var i = 0; i < mons.length; i++) {
+      if (mons[i].name === name) {
+        for (var w = 0; w < mons[i].workspaces.length; w++) loadKeyedValue(id, mons[i].workspaces[w])
+        break
+      }
+    }
+    root.rebuildRows()
+    root.clampRow()
   }
 
   function loadKeyedValue(id, key) {
@@ -346,7 +378,7 @@ Item {
 
   // ---- row model -------------------------------------------------------
   function rebuildRows() {
-    root.rows = Model.rowsFor(activePanel(), effective, keyed, root.timeFormat)
+    root.rows = Model.rowsFor(activePanel(), effective, keyed, root.timeFormat, root.keyedMonitors, root.selectedMonitor)
     clampRow()
     applyPendingSelect()
   }
@@ -500,6 +532,7 @@ Item {
     var row = currentRow()
     if (row && row.kind === "slider") { stepSlider(row, dx); return }
     if (row && row.kind === "enum") { cycleEnum(row, dx); return }
+    if (row && row.kind === "monitor") { cycleMonitor(row, dx); return }
     if (row && row.kind === "time") { stepTime(row, dx) }
   }
 
@@ -543,6 +576,17 @@ Item {
     commit(row, vals[np])
   }
 
+  function cycleMonitor(row, dx) {
+    var mons = row.monitors || []
+    if (mons.length === 0) return
+    var idx = -1
+    for (var i = 0; i < mons.length; i++)
+      if (mons[i].name === row.selected) { idx = i; break }
+    if (idx < 0) idx = 0
+    var ni = (idx + dx + mons.length) % mons.length
+    selectMonitor(row.id, mons[ni].name)
+  }
+
   function activate() {
     if (searchMode) { openSearchResult(); return }
     if (focusPane === "sidebar") {
@@ -555,6 +599,7 @@ Item {
     if (!row) return
     if (row.kind === "bool") commit(row, !row.value)
     else if (row.kind === "enum") cycleEnum(row, 1)
+    else if (row.kind === "monitor") cycleMonitor(row, 1)
     else if (row.kind === "slider") beginEdit(selectedRow)
     else if (row.kind === "time") beginEdit(selectedRow)
   }
@@ -1090,6 +1135,11 @@ Item {
                         }
                         EnumRow {
                           visible: modelData.kind === "enum"
+                          panel: root; row: modelData; rowIndex: index
+                          width: parent.width
+                        }
+                        MonitorRow {
+                          visible: modelData.kind === "monitor"
                           panel: root; row: modelData; rowIndex: index
                           width: parent.width
                         }

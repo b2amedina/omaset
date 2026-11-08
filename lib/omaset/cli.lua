@@ -188,17 +188,35 @@ local function cmd_keys(flags, pos)
   local result, err = service.keys(core, {
     id = pos[1],
     all = flags["--all"],
+    monitor = pos[2],
     detail = false,
   })
   if not result then
     die(err)
   end
   if flags["--json"] then
-    print(json.encode({ id = result.id, keys = result.keys }))
+    local out = { id = result.id, keys = result.keys }
+    if result.monitors then out.monitors = result.monitors end
+    if result.monitor then out.monitor = result.monitor end
+    print(json.encode(out))
     return
   end
-  for _, k in ipairs(result.keys) do
-    print(k)
+  if result.monitors then
+    -- Monitor-grouped: no monitor arg lists the monitors; one filters to its
+    -- workspaces.
+    if result.monitor then
+      for _, k in ipairs(result.keys) do
+        print(k)
+      end
+    else
+      for _, m in ipairs(result.monitors) do
+        print(string.format("%-12s %s", m.name, m.label))
+      end
+    end
+  else
+    for _, k in ipairs(result.keys) do
+      print(k)
+    end
   end
 end
 
@@ -480,7 +498,7 @@ local COMMAND_HELP = {
   changed = "omaset changed [--json]\n  List settings whose effective value differs from the Omarchy default.",
   search = "omaset search <query> [--json]\n  Find settings by id or label substring.",
   help = "omaset help <id>\n  Show one setting's full spec (type, options, value, default).",
-  keys = "omaset keys <id> [--all] [--json]\n  List the keys of a keyed or grouped setting (e.g. workspace numbers). --all includes persisted keys for workspaces not currently open.",
+  keys = "omaset keys <id> [<monitor>] [--all] [--json]\n  List the keys of a keyed or grouped setting (e.g. workspace numbers). --all includes persisted keys for workspaces not currently open. For monitor-grouped settings (4.5 workspace layouts), a monitor connector name filters to that monitor's workspaces.",
   ui = "omaset ui [open|close|toggle|reload]\n  Open the keyboard settings window (toggle by default). reload restarts the shell and reopens (development). Requires the Omarchy shell plugin to be installed.",
   history = "omaset history [--json] [N]\n  List recent changes omaset has made, oldest first (N limits to the most recent).",
   undo = "omaset undo [--all] [--plain]\n  Undo the most recent change, or --all to revert every change in reverse order.",

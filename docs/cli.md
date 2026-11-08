@@ -41,6 +41,8 @@ argument after the id:
 ```sh
 omaset get workspace_layout 2                 # read workspace 2's layout
 omaset set workspace_layout 3 scrolling       # set workspace 3
+omaset keys workspace_layout                  # list monitors (4.5: per-monitor workspaces)
+omaset keys workspace_layout DP-10            # that monitor's workspaces (global ids)
 omaset keys workspace_layout --all            # every persisted key
 ```
 

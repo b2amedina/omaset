@@ -107,10 +107,13 @@ never reported as changed.
 { "results": [ { "id", "panel", "label", "value" }, ... ] }
 ```
 
-### `keys <id> [--json]`
+### `keys <id> [<monitor>] [--all] [--json]`
 
 Lists the keys of a keyed setting (e.g. open workspace numbers), one per line.
-`--json` returns `{ "id", "keys": [...] }`.
+`--json` returns `{ "id", "keys": [...] }`. A monitor-grouped keyed setting
+(4.5 workspace layouts) also returns `"monitors": [ { "name", "label", "block",
+"workspaces": [...] } ]`, and passing a monitor connector name filters `keys`
+to that monitor's block.
 
 ### `history [--json] [N]`
 

@@ -162,13 +162,102 @@ function M.keys(setting)
   local out = util.run_capture("hyprctl workspaces -j | jq -r '.[].id'")
   local keys = {}
   for line in (out or ""):gmatch("[^\n]+") do
-    local trimmed = trim(line)
-    if trimmed ~= "" then
-      keys[#keys + 1] = trimmed
+    local text = trim(line)
+    local n = tonumber(text)
+    -- Special and named workspaces report negative ids; layout only applies to
+    -- positive-numbered workspaces (mirrors the bar and workspace-modes.lua).
+    if n and n > 0 then
+      keys[#keys + 1] = tostring(n)
     end
   end
   sort_keys(keys)
   return keys
+end
+
+-- Per-monitor workspaces (workspace modes only). Each monitor owns a block of
+-- SLOTS global workspace ids, numbered block*SLOTS+1 .. block*SLOTS+SLOTS, the
+-- same scheme Omarchy's monitor-workspaces.lua and the bar use.
+local SLOTS = 10
+
+local function state_home()
+  return os.getenv("XDG_STATE_HOME") or (os.getenv("HOME") or "") .. "/.local/state"
+end
+
+local function monitor_workspaces_file()
+  return os.getenv("OMASET_MONITOR_WORKSPACES_FILE")
+    or state_home() .. "/omarchy/monitor-workspaces"
+end
+
+-- A monitor's block from its open workspaces, for when the state file has no
+-- connector entry yet (first config load after a plug-in).
+local function active_block(monitor_name)
+  local out = util.run_capture("hyprctl workspaces -j | jq -r --arg m "
+    .. util.shell_quote(monitor_name) .. " '.[] | select(.monitor == $m and .id > 0) | .id'")
+  local ids = {}
+  for line in (out or ""):gmatch("[^\n]+") do
+    local text = trim(line)
+    local n = tonumber(text)
+    if n then ids[#ids + 1] = n end
+  end
+  if #ids == 0 then
+    return nil
+  end
+  table.sort(ids)
+  return math.floor((ids[1] - 1) / SLOTS)
+end
+
+-- Connected monitors with their workspace blocks, ordered by block.
+-- Returns nil when the setting has no monitor dimension (not workspace modes).
+function M.monitors(setting)
+  if not modes() or not apply_enabled() then
+    return nil
+  end
+
+  -- connector -> block, from the file Omarchy's monitor-workspaces.lua writes.
+  local connector_to_block = {}
+  local content = util.read_file(monitor_workspaces_file()) or ""
+  for line in content:gmatch("[^\n]+") do
+    local block, connector = line:match("^(%d+)\t([^\t]*)")
+    if block and connector and connector ~= "" then
+      connector_to_block[connector] = tonumber(block)
+    end
+  end
+
+  local out = util.run_capture(
+    "hyprctl monitors -j | jq -r '.[] | [.name, (.make // \"\"), (.model // \"\")] | @tsv'")
+  local monitors = {}
+  local used = {}
+  for line in (out or ""):gmatch("[^\n]+") do
+    local name, make, model = line:match("^([^\t]*)\t([^\t]*)\t([^\t]*)$")
+    if name and name ~= "" then
+      local block = connector_to_block[name] or active_block(name)
+      if block == nil then
+        block = 0
+        while used[block] do block = block + 1 end
+      end
+      used[block] = true
+
+      local label = trim((make ~= "" and make .. " " or "") .. model)
+      if label == "" then label = name end
+
+      local workspaces = {}
+      for slot = 1, SLOTS do
+        workspaces[#workspaces + 1] = tostring(block * SLOTS + slot)
+      end
+
+      monitors[#monitors + 1] = {
+        name = name,
+        label = label,
+        block = block,
+        workspaces = workspaces,
+      }
+    end
+  end
+  table.sort(monitors, function(a, b) return a.block < b.block end)
+  if #monitors == 0 then
+    return nil
+  end
+  return monitors
 end
 
 -- All persisted keys (state files), including workspaces that are not

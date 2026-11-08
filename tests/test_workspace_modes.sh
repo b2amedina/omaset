@@ -6,7 +6,8 @@ export OMASET_WORKSPACE_MODES=1
 
 FAKE="$(mktemp -d)"
 ST="$(mktemp -d)"
-trap 'rm -rf "$TESTDIR" "$FAKE" "$ST"' EXIT
+MW="$(mktemp -d)"
+trap 'rm -rf "$TESTDIR" "$FAKE" "$ST" "$MW"' EXIT
 
 # Fake `omarchy-hyprland-workspace-layout-current`: read the mode from the
 # persisted state file, falling back to the default file, then to dwindle.
@@ -33,21 +34,54 @@ else
 fi
 EOF
 
+# Fake hyprctl: open workspaces (with a negative special id and monitor names)
+# and the connected monitors.
 cat > "$FAKE/hyprctl" <<'EOF'
 #!/bin/bash
 if [[ "$1" == "workspaces" && "$2" == "-j" ]]; then
-  echo '[{"id":3,"tiledLayout":"dwindle"},{"id":10,"tiledLayout":"dwindle"},{"id":2,"tiledLayout":"dwindle"},{"id":1,"tiledLayout":"dwindle"}]'
+  echo '[{"id":3,"monitor":"eDP-1"},{"id":-98,"monitor":"eDP-1"},{"id":12,"monitor":"DP-10"},{"id":11,"monitor":"DP-10"},{"id":1,"monitor":"eDP-1"}]'
+fi
+if [[ "$1" == "monitors" && "$2" == "-j" ]]; then
+  echo '[{"name":"eDP-1","make":"Lenovo","model":"Panel"},{"name":"DP-10","make":"LG","model":"Ultrawide"}]'
 fi
 exit 0
 EOF
 chmod +x "$FAKE"/*
 
+# Monitor -> block state file (what Omarchy's monitor-workspaces writes).
+printf '0\teDP-1\tLenovo Panel\n1\tDP-10\tLG Ultrawide\n' > "$MW/monitor-workspaces"
+
 export PATH="$FAKE:$PATH"
 export OMASET_WORKSPACE_LAYOUTS_DIR="$ST"
+export OMASET_MONITOR_WORKSPACES_FILE="$MW/monitor-workspaces"
 
-# keys lists the open workspace ids, numerically sorted.
+# keys lists open workspace ids numerically sorted, dropping negative (special)
+# ids, and carries the monitor grouping.
+OUT="$(run keys workspace_layout --json)"
+assert_eq "$(echo "$OUT" | jq -r '.keys | join(",")')" "1,3,11,12" "keys drops negative ids"
+assert_not_contains "$OUT" "-98" "special workspace excluded"
+assert_contains "$OUT" '"monitors":[' "keys reports monitors"
+
+# Monitors carry name, label, block, and their ten global workspaces.
+assert_eq "$(echo "$OUT" | jq -r '[.monitors[].name] | join(",")')" "eDP-1,DP-10" "monitor names"
+assert_eq "$(echo "$OUT" | jq -r '[.monitors[].label] | join(",")')" "Lenovo Panel,LG Ultrawide" "monitor labels"
+assert_eq "$(echo "$OUT" | jq -r '.monitors[] | select(.name=="eDP-1") | .block')" "0" "eDP-1 block"
+assert_eq "$(echo "$OUT" | jq -r '.monitors[] | select(.name=="DP-10") | .workspaces | join(",")')" \
+  "11,12,13,14,15,16,17,18,19,20" "DP-10 workspaces"
+
+# A monitor filter returns that monitor's workspaces.
+OUT="$(run keys workspace_layout DP-10 --json)"
+assert_eq "$(echo "$OUT" | jq -r '.monitor')" "DP-10" "monitor filter echoed"
+assert_eq "$(echo "$OUT" | jq -r '.keys | join(",")')" "11,12,13,14,15,16,17,18,19,20" "monitor filter keys"
+
+# Unknown monitor is rejected.
+capture keys workspace_layout NOPE
+assert_exit "$CODE" 1 "unknown monitor rejected"
+
+# Human output lists monitors (name + label) when grouped.
 OUT="$(run keys workspace_layout)"
-assert_eq "$OUT" $'1\n2\n3\n10' "keys lists workspace ids numerically sorted"
+assert_contains "$OUT" "eDP-1" "human lists monitor names"
+assert_contains "$OUT" "Lenovo Panel" "human lists monitor labels"
 
 # get reads via the -current command (falls back to dwindle).
 capture_out get workspace_layout 2

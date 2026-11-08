@@ -198,6 +198,16 @@ function M.keys_all(setting)
   return nil
 end
 
+-- A keyed setting's monitor grouping (e.g. per-monitor workspace layouts on
+-- Omarchy 4.5+), or nil when the setting has no monitor dimension.
+function M.monitors(setting)
+  local backend = M.backend_for(setting)
+  if not backend or not backend.monitors then
+    return nil
+  end
+  return backend.monitors(setting)
+end
+
 -- Version of the settings schema that `schema` emits, independent of the
 -- engine version (M.VERSION): a consumer that renders the schema checks it and
 -- refuses a version it does not understand, so an engine and a frontend can
