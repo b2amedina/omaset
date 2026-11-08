@@ -1,5 +1,5 @@
 panel("input", "Input", 0xf11c, function()
-  section("Mouse", function()
+  section("Mouse", "mouse", function()
     setting({
       id = "follow_mouse",
       type = "int",
@@ -29,7 +29,7 @@ panel("input", "Input", 0xf11c, function()
     })
   end)
 
-  section("Keyboard", function()
+  section("Keyboard", "keyboard", function()
     setting({
       id = "key_repeat_rate",
       type = "int",
@@ -65,7 +65,7 @@ panel("input", "Input", 0xf11c, function()
     })
   end)
 
-  section("Touchpad", function()
+  section("Touchpad", "touchpad", function()
     setting({
       id = "natural_scroll",
       type = "bool",

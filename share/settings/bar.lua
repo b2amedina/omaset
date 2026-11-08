@@ -1,5 +1,5 @@
 panel("bar", "Bar", 0xf0c9, function()
-  section("Placement", function()
+  section("Placement", "placement", function()
     setting({
       id = "bar_position",
       type = "enum",
@@ -11,7 +11,7 @@ panel("bar", "Bar", 0xf0c9, function()
     })
   end)
 
-  section("Style", function()
+  section("Style", "style", function()
     -- The bar model changed with workspace modes (Omarchy 4.5+): the old
     -- `bar.transparent` bool became `bar.background` (opaque/glassy/none).
     if feature.workspace_modes() then

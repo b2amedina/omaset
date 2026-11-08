@@ -885,14 +885,14 @@ Item {
 
   // ---- footer ----------------------------------------------------------
   readonly property string footerHints: schemaError !== ""
-    ? "esc close"
+    ? tr.t("footer.close", "esc close")
     : searchMode
-    ? "\u2191\u2193 move · \u23ce open · esc clear"
+    ? tr.t("footer.search", "\u2191\u2193 move · \u23ce open · esc clear")
     : changedMode
-    ? "\u2191\u2193 move · \u23ce open · esc close"
+    ? tr.t("footer.changed", "\u2191\u2193 move · \u23ce open · esc close")
     : prefsMode
-    ? "\u2191\u2193 move · \u23ce/\u2423 toggle · h l step · esc close"
-    : "j k move · h l adjust · \u2423/\u23ce select/edit · tab pane · x reset · / search · c changed · p prefs · esc close"
+    ? tr.t("footer.prefs", "\u2191\u2193 move · \u23ce/\u2423 toggle · h l step · esc close")
+    : tr.t("footer.normal", "j k move · h l adjust · \u2423/\u23ce select/edit · tab pane · x reset · / search · c changed · p prefs · esc close")
   readonly property string footerContext: schemaError !== ""
     ? tr.t("ui.schemaMismatch", "schema mismatch")
     : searchMode

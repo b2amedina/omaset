@@ -14,12 +14,22 @@
 //   number   int with a wide range (coarse slider fallback: still a slider)
 //   enum     enum (segmented ButtonGroup)
 //   time     time-of-day (HH:MM stored, shown per the time format preference)
+//
+// `tr(key, fallback)` localizes user-facing text: the key is a stable catalog
+// id, the fallback is the English string from the schema. It is threaded
+// through every function that emits a label.
 
 // A numeric setting may declare labelled choices (options = [{value,label}]),
 // which the UI renders as a segmented control while storing the numeric value.
 function hasChoices(spec) {
   return !!spec && Array.isArray(spec.options) && spec.options.length > 0
     && spec.options[0] !== null && typeof spec.options[0] === "object"
+}
+
+// Look up a catalog key, falling back to the English string when `tr` is
+// absent (engine-side use) or the key is untranslated.
+function L(tr, key, fallback) {
+  return tr ? tr(key, fallback) : fallback
 }
 
 function settingKey(id, sub, key) {
@@ -80,19 +90,22 @@ function stepTime(value, minutes) {
 
 // A human duration for a seconds value that is not one of the clean presets
 // (e.g. 150 -> "2 min 30 sec"), so a legacy value still reads clearly.
-function formatDuration(seconds) {
+function formatDuration(seconds, tr) {
   var s = Number(seconds)
   if (!isFinite(s)) return ""
-  if (s <= 0) return "Never"
-  if (s < 60) return s + " sec"
+  if (s <= 0) return L(tr, "unit.never", "Never")
+  if (s < 60) return L(tr, "unit.sec", "%1 sec").replace("%1", String(s))
   if (s < 3600) {
     var m = Math.floor(s / 60)
     var r = s % 60
-    return r === 0 ? (m + " min") : (m + " min " + r + " sec")
+    if (r === 0) return L(tr, "unit.min", "%1 min").replace("%1", String(m))
+    return L(tr, "unit.minSec", "%1 min %2 sec").replace("%1", String(m)).replace("%2", String(r))
   }
   var h = Math.floor(s / 3600)
   var m = Math.round((s % 3600) / 60)
-  return m === 0 ? (h + (h === 1 ? " hour" : " hours")) : (h + " hr " + m + " min")
+  if (m === 0)
+    return L(tr, h === 1 ? "unit.hour" : "unit.hours", h === 1 ? "%1 hour" : "%1 hours").replace("%1", String(h))
+  return L(tr, "unit.hrMin", "%1 hr %2 min").replace("%1", String(h)).replace("%2", String(m))
 }
 
 // `effective` maps settingKey(...) -> value for group sub-fields and keyed
@@ -107,14 +120,15 @@ function valueOf(effective, id, sub, key, fallback) {
 }
 
 // Split a setting's `options` into parallel label/value arrays, handling both
-// plain strings (label == value) and { value, label } objects.
-function choiceLists(spec) {
+// plain strings (label == value) and { value, label } objects. The label is
+// localized against `setting.<id>.option.<value>`.
+function choiceLists(spec, id, tr) {
   var labels = [], values = []
   var opts = spec.options || []
   for (var i = 0; i < opts.length; i++) {
     var o = opts[i]
     if (o && typeof o === "object" && o.label !== undefined) {
-      labels.push(String(o.label))
+      labels.push(L(tr, "setting." + id + ".option." + o.value, String(o.label)))
       values.push(o.value)
     } else {
       labels.push(String(o))
@@ -124,8 +138,8 @@ function choiceLists(spec) {
   return { labels: labels, values: values }
 }
 
-function choiceRow(id, sub, key, label, spec, value) {
-  var lists = choiceLists(spec)
+function choiceRow(id, sub, key, label, spec, value, tr) {
+  var lists = choiceLists(spec, id, tr)
   var labels = lists.labels
   var values = lists.values
   // A short list reads as a segmented row; many discrete choices read better
@@ -141,41 +155,43 @@ function choiceRow(id, sub, key, label, spec, value) {
       for (var i = 0; i < values.length; i++)
         if (String(values[i]) === String(value)) { isPreset = true; break }
       if (!isPreset) {
-        labels.unshift("Custom · " + formatDuration(value))
+        labels.unshift(L(tr, "ui.custom", "Custom · %1").replace("%1", formatDuration(value, tr)))
         values.unshift(value)
       }
     }
   }
 
   return { kind: kind, id: id, sub: sub, label: label,
-           description: spec.description, segmented: kind === "enum",
+           description: L(tr, "setting." + id + ".description", spec.description),
+           segmented: kind === "enum",
            options: labels, values: values, value: value }
 }
 
-function fieldRow(id, sub, key, label, type, spec, effective, timeFormat) {
+function fieldRow(id, sub, key, label, type, spec, effective, timeFormat, tr) {
+  var desc = L(tr, "setting." + id + "." + sub + ".description", spec.description)
   if (type === "bool")
     return { kind: "bool", id: id, sub: sub, label: label,
-             description: spec.description,
+             description: desc,
              value: valueOf(effective, id, sub, key, spec.default) }
   if (type === "enum")
     return { kind: "enum", id: id, sub: sub, label: label,
-             description: spec.description,
+             description: desc,
              options: spec.options || [], segmented: true,
              value: valueOf(effective, id, sub, key, spec.default) }
   if (type === "time")
     return { kind: "time", id: id, sub: sub, label: label,
-             description: spec.description, timeFormat: timeFormat,
+             description: desc, timeFormat: timeFormat,
              value: valueOf(effective, id, sub, key, spec.default) }
   if ((type === "int" || type === "float") && hasChoices(spec))
     return choiceRow(id, sub, key, label, spec,
-                     valueOf(effective, id, sub, key, spec.default))
+                     valueOf(effective, id, sub, key, spec.default), tr)
   var min = spec.min !== undefined ? spec.min : 0
   var max = spec.max !== undefined ? spec.max : 100
   var range = max - min
   return {
     kind: "slider",
     id: id, sub: sub, label: label, type: type,
-    description: spec.description,
+    description: desc,
     value: valueOf(effective, id, sub, key, spec.default),
     min: min, max: max,
     integer: type === "int",
@@ -187,13 +203,12 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
   var fmt = (timeFormat === "12h") ? "12h" : "24h"
   var rows = []
   if (!panel) return rows
-  rows.push({ kind: "title", id: panel.id, title: panel.title })
+  rows.push({ kind: "title", id: panel.id, title: L(tr, "panel." + panel.id, panel.title) })
   var settings = panel.settings || []
   var currentSection = ""
-  // "Workspace N" label, localised through the passed-in t(key, fallback).
+  // "Workspace N" label, localized through the passed-in tr.
   function workspaceLabel(n) {
-    if (tr) return tr("ui.workspace", "Workspace %1").replace("%1", String(n))
-    return "Workspace " + n
+    return L(tr, "ui.workspace", "Workspace %1").replace("%1", String(n))
   }
   for (var i = 0; i < settings.length; i++) {
     var s = settings[i]
@@ -202,21 +217,25 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
     var sec = (s.section !== undefined && s.section !== null) ? s.section : ""
     if (sec !== currentSection) {
       currentSection = sec
-      if (sec !== "")
-        rows.push({ kind: "section", label: sec })
+      if (sec !== "") {
+        var secKey = "section." + panel.id + (s.section_key ? "." + s.section_key : "")
+        rows.push({ kind: "section", label: L(tr, secKey, sec) })
+      }
     }
 
     if (s.type === "group") {
-      rows.push({ kind: "group", id: s.id, label: s.label })
+      rows.push({ kind: "group", id: s.id, label: L(tr, "setting." + s.id, s.label) })
       var subs = s.subsettings || {}
       for (var sub in subs)
-        rows.push(fieldRow(s.id, sub, undefined, subs[sub].label, subs[sub].type, subs[sub], effective, fmt))
+        rows.push(fieldRow(s.id, sub, undefined,
+          L(tr, "setting." + s.id + "." + sub, subs[sub].label),
+          subs[sub].type, subs[sub], effective, fmt, tr))
       continue
     }
 
     if (s.keyed) {
-      rows.push({ kind: "keyed", id: s.id, label: s.label })
-      var lists = choiceLists(s)
+      rows.push({ kind: "keyed", id: s.id, label: L(tr, "setting." + s.id, s.label) })
+      var lists = choiceLists(s, s.id, tr)
       var optLabels = lists.labels
       var optValues = lists.values
       // Default to the first option while the value loads, so rows do not
@@ -257,29 +276,29 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
     }
 
     if (s.type === "bool") {
-      rows.push({ kind: "bool", id: s.id, label: s.label,
-                  description: s.description, value: s.value })
+      rows.push({ kind: "bool", id: s.id, label: L(tr, "setting." + s.id, s.label),
+                  description: L(tr, "setting." + s.id + ".description", s.description), value: s.value })
     } else if (s.type === "enum") {
       if (hasChoices(s)) {
-        rows.push(choiceRow(s.id, undefined, undefined, s.label, s, s.value))
+        rows.push(choiceRow(s.id, undefined, undefined, L(tr, "setting." + s.id, s.label), s, s.value, tr))
       } else {
-        rows.push({ kind: "enum", id: s.id, label: s.label,
-                    description: s.description,
+        rows.push({ kind: "enum", id: s.id, label: L(tr, "setting." + s.id, s.label),
+                    description: L(tr, "setting." + s.id + ".description", s.description),
                     options: s.options || [], segmented: true, value: s.value })
       }
     } else if (s.type === "time") {
-      rows.push({ kind: "time", id: s.id, label: s.label,
-                  description: s.description, timeFormat: fmt, value: s.value })
+      rows.push({ kind: "time", id: s.id, label: L(tr, "setting." + s.id, s.label),
+                  description: L(tr, "setting." + s.id + ".description", s.description), timeFormat: fmt, value: s.value })
     } else if ((s.type === "int" || s.type === "float") && hasChoices(s)) {
-      rows.push(choiceRow(s.id, undefined, undefined, s.label, s, s.value))
+      rows.push(choiceRow(s.id, undefined, undefined, L(tr, "setting." + s.id, s.label), s, s.value, tr))
     } else if (s.type === "int" || s.type === "float") {
       var min = s.min !== undefined ? s.min : 0
       var max = s.max !== undefined ? s.max : 100
       var range = max - min
       rows.push({
         kind: "slider",
-        id: s.id, label: s.label, type: s.type, value: s.value,
-        description: s.description,
+        id: s.id, label: L(tr, "setting." + s.id, s.label), type: s.type, value: s.value,
+        description: L(tr, "setting." + s.id + ".description", s.description),
         min: min, max: max,
         integer: s.type === "int",
         step: s.type === "int" ? (range > 200 ? 5 : 1) : 0.01

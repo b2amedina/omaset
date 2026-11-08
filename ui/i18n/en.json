@@ -7,5 +7,18 @@
   "ui.schemaMismatch": "schema mismatch",
   "ui.settingsFound": "%1 settings found",
   "ui.changedCount": "%1 changed",
-  "ui.noChanges": "no changes"
+  "ui.noChanges": "no changes",
+  "ui.custom": "Custom · %1",
+  "unit.never": "Never",
+  "unit.sec": "%1 sec",
+  "unit.min": "%1 min",
+  "unit.minSec": "%1 min %2 sec",
+  "unit.hour": "%1 hour",
+  "unit.hours": "%1 hours",
+  "unit.hrMin": "%1 hr %2 min",
+  "footer.close": "esc close",
+  "footer.search": "↑↓ move · ⏎ open · esc clear",
+  "footer.changed": "↑↓ move · ⏎ open · esc close",
+  "footer.prefs": "↑↓ move · ⏎/␣ toggle · h l step · esc close",
+  "footer.normal": "j k move · h l adjust · ⏎/␣ select/edit · tab pane · x reset · / search · c changed · p prefs · esc close"
 }

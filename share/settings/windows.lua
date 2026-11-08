@@ -1,5 +1,5 @@
 panel("windows", "Windows", 0xf0c8, function()
-  section("Fullscreen styles", function()
+  section("Fullscreen styles", "fullscreen", function()
     setting({
       id = "fullwidth_style",
       type = "group",
@@ -28,7 +28,7 @@ panel("windows", "Windows", 0xf0c8, function()
     })
   end)
 
-  section("Tiling", function()
+  section("Tiling", "tiling", function()
     setting({
       id = "window_no_gaps",
       type = "bool",

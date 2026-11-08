@@ -7,5 +7,18 @@
   "ui.schemaMismatch": "incompatibilidad de esquema",
   "ui.settingsFound": "%1 ajustes encontrados",
   "ui.changedCount": "%1 cambiados",
-  "ui.noChanges": "sin cambios"
+  "ui.noChanges": "sin cambios",
+  "ui.custom": "Personalizado · %1",
+  "unit.never": "Nunca",
+  "unit.sec": "%1 s",
+  "unit.min": "%1 min",
+  "unit.minSec": "%1 min %2 s",
+  "unit.hour": "%1 hora",
+  "unit.hours": "%1 horas",
+  "unit.hrMin": "%1 h %2 min",
+  "footer.close": "esc cerrar",
+  "footer.search": "↑↓ mover · ⏎ abrir · esc limpiar",
+  "footer.changed": "↑↓ mover · ⏎ abrir · esc cerrar",
+  "footer.prefs": "↑↓ mover · ⏎/␣ cambiar · h l paso · esc cerrar",
+  "footer.normal": "j k mover · h l ajustar · ⏎/␣ seleccionar/editar · tab panel · x restablecer · / buscar · c cambiados · p preferencias · esc cerrar"
 }

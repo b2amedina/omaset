@@ -1,5 +1,5 @@
 panel("appearance", "Appearance", 0xf1fc, function()
-  section("Gaps & borders", function()
+  section("Gaps & borders", "gaps", function()
     setting({
       id = "gaps_in",
       type = "int",
@@ -49,7 +49,7 @@ panel("appearance", "Appearance", 0xf1fc, function()
     })
   end)
 
-  section("Effects", function()
+  section("Effects", "effects", function()
     setting({
       id = "blur",
       type = "bool",
@@ -90,7 +90,7 @@ panel("appearance", "Appearance", 0xf1fc, function()
 
   -- Window corner policy (Omarchy 4.5+).
   if feature.workspace_modes() then
-    section("Corners", function()
+    section("Corners", "corners", function()
       setting({
         id = "corners",
         type = "enum",
@@ -107,7 +107,7 @@ panel("appearance", "Appearance", 0xf1fc, function()
     end)
   end
 
-  section("Groupbar", function()
+  section("Groupbar", "groupbar", function()
     setting({
       id = "groupbar_gaps_in",
       type = "int",
@@ -179,7 +179,7 @@ panel("appearance", "Appearance", 0xf1fc, function()
     })
   end)
 
-  section("Animations", function()
+  section("Animations", "animations", function()
     setting({
       id = "animations_enabled",
       type = "bool",

@@ -1,5 +1,5 @@
 panel("behavior", "Behavior", 0xf013, function()
-  section("Windows & focus", function()
+  section("Windows & focus", "windows", function()
     setting({
       id = "resize_on_border",
       type = "bool",
@@ -31,7 +31,7 @@ panel("behavior", "Behavior", 0xf013, function()
     })
   end)
 
-  section("Cursor & workspace", function()
+  section("Cursor & workspace", "cursor", function()
     setting({
       id = "hide_on_key_press",
       type = "bool",

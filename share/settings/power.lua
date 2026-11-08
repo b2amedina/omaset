@@ -1,5 +1,5 @@
 panel("power", "Power & Idle", 0xf011, function()
-  section("Idle", function()
+  section("Idle", "idle", function()
     -- Friendly discrete time presets (macOS-style), so a raw-seconds slider
     -- is never shown. The stored value stays seconds in shell.json; the UI and
     -- CLI accept the labels too ("omaset set idle_lock '5 min'").

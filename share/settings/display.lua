@@ -1,5 +1,5 @@
 panel("display", "Display", 0xf108, function()
-  section("Night light", function()
+  section("Night light", "nightlight", function()
     setting({
       id = "nightlight",
       type = "bool",
@@ -24,7 +24,7 @@ panel("display", "Display", 0xf108, function()
     })
   end)
 
-  section("Schedule", function()
+  section("Schedule", "schedule", function()
     setting({
       id = "nightlight_schedule",
       type = "bool",

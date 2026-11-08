@@ -23,15 +23,25 @@ local function panel(id, title, icon, fn)
 end
 
 -- A purely presentational grouping: settings declared inside a section()
--- block are tagged with that label and rendered under a header. The section
--- does not change how any setting is stored or how its default is computed.
-local function section(title, fn)
+-- block are tagged with that label (and an optional stable key for i18n) and
+-- rendered under a header. The section does not change how any setting is
+-- stored or how its default is computed.
+local function section(title, key, fn)
+  -- The key is optional; a second argument that is a function is the body
+  -- (older settings files wrote section(title, fn)).
+  if type(key) == "function" then
+    fn = key
+    key = nil
+  end
   local prev = M._current_section
+  local prev_key = M._current_section_key
   M._current_section = title
+  M._current_section_key = key
   if fn then
     fn()
   end
   M._current_section = prev
+  M._current_section_key = prev_key
 end
 
 local function setting(t)
@@ -41,6 +51,9 @@ local function setting(t)
   end
   if M._current_section then
     t.section = M._current_section
+  end
+  if M._current_section_key then
+    t.section_key = M._current_section_key
   end
   current.settings[#current.settings + 1] = t
   return t

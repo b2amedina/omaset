@@ -1,5 +1,5 @@
 panel("layout", "Tiling Layout", 0xf009, function()
-  section("Workspaces", function()
+  section("Workspaces", "workspaces", function()
     -- Workspace modes (Omarchy 4.5+): per-workspace mode, with "floating" as
     -- a real option and no "master". Omarchy's user-facing term for Hyprland's
     -- "dwindle" layout is "Tiling", so the label follows it while the stored
@@ -68,7 +68,7 @@ panel("layout", "Tiling Layout", 0xf009, function()
     end
   end)
 
-  section("Tiling", function()
+  section("Tiling", "tiling", function()
     setting({
       id = "dwindle_force_split",
       type = "int",
@@ -92,7 +92,7 @@ panel("layout", "Tiling Layout", 0xf009, function()
     })
   end)
 
-  section("Scrolling", function()
+  section("Scrolling", "scrolling", function()
     setting({
       id = "scrolling_column_width",
       type = "float",
@@ -108,7 +108,7 @@ panel("layout", "Tiling Layout", 0xf009, function()
 
   -- The master layout exists only before workspace modes (4.5).
   if not feature.workspace_modes() then
-    section("Master", function()
+    section("Master", "master", function()
       setting({
         id = "master_new_status",
         type = "enum",
@@ -124,7 +124,7 @@ panel("layout", "Tiling Layout", 0xf009, function()
 
   -- Floating workspaces are arranged by the mode; the dock shows there.
   if feature.workspace_modes() then
-    section("Dock", function()
+    section("Dock", "dock", function()
       setting({
         id = "dock_position",
         type = "enum",
