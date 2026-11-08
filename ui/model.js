@@ -78,6 +78,23 @@ function stepTime(value, minutes) {
   return pad2(Math.floor(total / 60)) + ":" + pad2(total % 60)
 }
 
+// A human duration for a seconds value that is not one of the clean presets
+// (e.g. 150 -> "2 min 30 sec"), so a legacy value still reads clearly.
+function formatDuration(seconds) {
+  var s = Number(seconds)
+  if (!isFinite(s)) return ""
+  if (s <= 0) return "Never"
+  if (s < 60) return s + " sec"
+  if (s < 3600) {
+    var m = Math.floor(s / 60)
+    var r = s % 60
+    return r === 0 ? (m + " min") : (m + " min " + r + " sec")
+  }
+  var h = Math.floor(s / 3600)
+  var m = Math.round((s % 3600) / 60)
+  return m === 0 ? (h + (h === 1 ? " hour" : " hours")) : (h + " hr " + m + " min")
+}
+
 // `effective` maps settingKey(...) -> value for group sub-fields and keyed
 // values (which `schema` can't express). Top-level values live on the schema
 // setting's own `value` and are mutated by the panel.
@@ -91,13 +108,29 @@ function valueOf(effective, id, sub, key, fallback) {
 
 function choiceRow(id, sub, key, label, spec, value) {
   var labels = [], values = []
+  // A short list reads as a segmented row; many discrete choices read better
+  // as a dropdown (macOS-style), e.g. idle timeouts.
+  var kind = spec.options.length > 5 ? "dropdown" : "enum"
+
+  // A value that is not one of the presets (a legacy stock default like 150s,
+  // or anything hand-set) stays selectable as a labelled "custom" entry, so the
+  // current value is never hidden or silently rounded.
+  if (kind === "dropdown") {
+    var isPreset = false
+    if (value !== undefined && value !== null) {
+      for (var i = 0; i < spec.options.length; i++)
+        if (Number(spec.options[i].value) === Number(value)) { isPreset = true; break }
+      if (!isPreset) {
+        labels.push("Custom · " + formatDuration(value))
+        values.push(value)
+      }
+    }
+  }
+
   for (var i = 0; i < spec.options.length; i++) {
     labels.push(String(spec.options[i].label))
     values.push(spec.options[i].value)
   }
-  // A short list reads as a segmented row; many discrete choices read better
-  // as a dropdown (macOS-style), e.g. idle timeouts.
-  var kind = spec.options.length > 5 ? "dropdown" : "enum"
   return { kind: kind, id: id, sub: sub, label: label,
            description: spec.description, segmented: kind === "enum",
            options: labels, values: values, value: value }
