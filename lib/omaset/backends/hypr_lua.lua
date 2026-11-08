@@ -4,12 +4,9 @@
 --       capturing every hl.config() call into one merged table. Later calls
 --       win, mirroring how Hyprland applies config in order.
 --
--- WRITE/RESET: edit the value in place (see omaset.luaedit). The old
---       "-- omaset:begin" managed block is gone: Omarchy's user files are
---       hand-edited templates where a value sits next to the comment that
---       explains it, so omaset now splices the winning hl.config() occurrence
---       (or appends a minimal hl.config({ path = value }) when the value is not
---       yet present) instead of flattening a block at EOF.
+-- WRITE/RESET: edit the value in place (see omaset.luaedit) — splice the winning
+--       hl.config() occurrence, or append a minimal hl.config({ path = value })
+--       when the value is not yet present.
 
 local util = require("omaset.util")
 local luaedit = require("omaset.luaedit")

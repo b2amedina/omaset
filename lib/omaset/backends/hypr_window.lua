@@ -9,7 +9,7 @@
 --       the setting's match — Hyprland applies window rules in order, so the
 --       later call wins — and read the requested field from its rules table.
 -- WRITE/RESET: rebuild that one call with the field changed; add a new call at
---       EOF when no matching rule exists. No managed block.
+--       EOF when no matching rule exists.
 
 local util = require("omaset.util")
 local types = require("omaset.types")

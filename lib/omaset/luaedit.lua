@@ -1,9 +1,8 @@
 -- Minimal, comment-preserving editor for Hyprland Lua config files.
 --
--- The "managed block" approach was dropped: Omarchy's user files are hand-edited
--- templates where a setting's value sits next to the comment explaining it, so
--- omaset now edits the value where it already lives instead of dumping a block
--- of flattened hl.config() at EOF.
+-- Omarchy's user files are hand-edited templates where a setting's value sits
+-- next to the comment explaining it, so omaset edits the value where it already
+-- lives instead of dumping flattened hl.config() at EOF.
 --
 -- Guarantees:
 --   * read stays effective: the caller evaluates default + user file in order,

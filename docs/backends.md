@@ -10,6 +10,15 @@ its first write, validates after writing, and restores the previous content if
 validation fails. Each edits the value in place where it already lives, and
 appends a minimal override when it does not. Details in [safety.md](safety.md).
 
+## Migrating from 0.1.0
+
+0.1.0 wrote omaset's changes into `-- omaset:begin` / `-- omaset:end` blocks
+(`# -- omaset:begin` / `# -- omaset:end` in `hyprsunset.conf`). 0.2.0 edits
+values in place instead. Existing blocks keep working — reads evaluate the whole
+file, so the values inside them are still read and edited in place — but the
+marker lines are now inert comments. To tidy your files, delete the marker
+lines and leave the values between them as they are.
+
 ## `hypr-lua`
 
 Reads and writes Hyprland's Lua config.
@@ -21,7 +30,7 @@ Reads and writes Hyprland's Lua config.
   (the last uncommented one — the value that is actually in effect), keeping the
   surrounding comments and keys untouched. If the value has no occurrence yet, a
   minimal `hl.config({ path = value })` override is appended at the end of the
-  file. There is no `-- omaset:begin` block for this backend.
+  file.
 - **Reset** writes the stock default back in place using the same rule, and is a
   no-op when the value has no occurrence (a commented example is left alone).
 - **Validate** after every write with `hyprctl reload` + `hyprctl configerrors`;
