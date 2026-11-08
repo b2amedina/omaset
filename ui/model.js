@@ -138,33 +138,44 @@ function choiceLists(spec, id, tr) {
   return { labels: labels, values: values }
 }
 
+// Label for a value that is not one of a setting's declared choices. Numeric
+// seconds (idle timeouts) read human-readably; anything else (a legacy layout
+// name like "master") shows its raw value.
+function customChoiceLabel(value, tr) {
+  var s = String(value)
+  if (/^\d+(\.\d+)?$/.test(s)) {
+    var d = formatDuration(value, tr)
+    if (d !== "") return d
+  }
+  return s
+}
+
+// A current value outside the declared choices (a legacy default, or anything
+// hand-set) stays visible and selectable as a leading "custom" entry, so the
+// current value is never hidden or silently changed. Returns fresh parallel
+// label/value arrays, or the originals when the value is already a choice.
+function withCustomChoice(labels, values, value, tr) {
+  if (value === undefined || value === null || value === "") return { labels: labels, values: values }
+  for (var i = 0; i < values.length; i++)
+    if (String(values[i]) === String(value)) return { labels: labels, values: values }
+  var outLabels = labels.slice()
+  var outValues = values.slice()
+  outLabels.unshift(L(tr, "ui.custom", "Custom · %1").replace("%1", customChoiceLabel(value, tr)))
+  outValues.unshift(value)
+  return { labels: outLabels, values: outValues }
+}
+
 function choiceRow(id, sub, key, label, spec, value, tr) {
   var lists = choiceLists(spec, id, tr)
-  var labels = lists.labels
-  var values = lists.values
+  var withCustom = withCustomChoice(lists.labels, lists.values, value, tr)
   // A short list reads as a segmented row; many discrete choices read better
   // as a dropdown (macOS-style), e.g. idle timeouts.
   var kind = spec.options.length > 5 ? "dropdown" : "enum"
 
-  // A value that is not one of the presets (a legacy stock default like 150s,
-  // or anything hand-set) stays selectable as a labelled "custom" entry, so the
-  // current value is never hidden or silently rounded.
-  if (kind === "dropdown") {
-    var isPreset = false
-    if (value !== undefined && value !== null) {
-      for (var i = 0; i < values.length; i++)
-        if (String(values[i]) === String(value)) { isPreset = true; break }
-      if (!isPreset) {
-        labels.unshift(L(tr, "ui.custom", "Custom · %1").replace("%1", formatDuration(value, tr)))
-        values.unshift(value)
-      }
-    }
-  }
-
   return { kind: kind, id: id, sub: sub, label: label,
            description: L(tr, "setting." + id + ".description", spec.description),
            segmented: kind === "enum",
-           options: labels, values: values, value: value }
+           options: withCustom.labels, values: withCustom.values, value: value }
 }
 
 function fieldRow(id, sub, key, label, type, spec, effective, timeFormat, tr) {
@@ -252,22 +263,26 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
         if (!mon) mon = mons[0]
         for (var w = 0; w < mon.workspaces.length; w++) {
           var gid = mon.workspaces[w]
+          var val = valueOf(effective, s.id, undefined, gid, defVal)
+          var ch = withCustomChoice(optLabels, optValues, val, tr)
           rows.push({
             kind: "enum", id: s.id, key: gid, slot: w + 1,
             label: workspaceLabel(w + 1),
-            options: optLabels, values: optValues, segmented: true,
-            value: valueOf(effective, s.id, undefined, gid, defVal)
+            options: ch.labels, values: ch.values, segmented: true,
+            value: val
           })
         }
       } else {
         var keys = (keyedMap && keyedMap[s.id]) || []
         for (var k = 0; k < keys.length; k++) {
           var key = keys[k]
+          var val = valueOf(effective, s.id, undefined, key, defVal)
+          var ch = withCustomChoice(optLabels, optValues, val, tr)
           rows.push({
             kind: "enum", id: s.id, key: key,
             label: workspaceLabel(key),
-            options: optLabels, values: optValues, segmented: true,
-            value: valueOf(effective, s.id, undefined, key, defVal)
+            options: ch.labels, values: ch.values, segmented: true,
+            value: val
           })
         }
       }
