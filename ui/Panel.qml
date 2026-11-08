@@ -1176,7 +1176,8 @@ Item {
                   Text {
                     anchors.verticalCenter: parent.verticalCenter
                     textFormat: Text.PlainText
-                    text: root.searchMode ? "\uf002"
+                    text: root.helpMode ? "\uf059"
+                      : root.searchMode ? "\uf002"
                       : (root.changedMode ? "\uf044"
                       : (root.prefsMode ? "\uf013" : root.panelIcon(root.activePanel())))
                     color: root.accent
@@ -1186,7 +1187,8 @@ Item {
                   Text {
                     anchors.verticalCenter: parent.verticalCenter
                     textFormat: Text.PlainText
-                    text: root.searchMode ? root.tr.t("ui.search", "Search")
+                    text: root.helpMode ? root.tr.t("ui.keybindings", "Keybindings")
+                      : root.searchMode ? root.tr.t("ui.search", "Search")
                       : (root.changedMode ? root.tr.t("ui.changed", "Changed")
                       : (root.prefsMode ? root.tr.t("ui.preferences", "Preferences") : (root.activePanel() ? root.tr.t("panel." + root.activePanel().id, root.activePanel().title) : "")))
                     color: root.foreground
@@ -1209,7 +1211,12 @@ Item {
                   clip: true
                   visible: !root.searchMode && !root.changedMode && !root.prefsMode && !root.helpMode
                   ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                  ScrollBar.vertical.policy: rowsColumn.implicitHeight > scrollArea.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
+                  // Omarchy uses AsNeeded, but on this Qt the Basic ScrollBar
+                  // renders AsNeeded as a transient overlay (opacity 0 at rest,
+                  // only visible mid-scroll), so a content that overflows shows
+                  // no scrollbar. AlwaysOn keeps it visible exactly when the
+                  // rows spill over, hidden (AlwaysOff) when they fit.
+                  ScrollBar.vertical.policy: rowsColumn.implicitHeight > scrollArea.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
 
                   Column {
                     id: rowsColumn
