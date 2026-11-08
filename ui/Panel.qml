@@ -1720,7 +1720,10 @@ Item {
                     id: helpFlick
                     anchors.fill: parent
                     contentWidth: width
-                    contentHeight: helpColumn.implicitHeight
+                    // Grow the scroll surface to the viewport when the list
+                    // fits, so a centered short list has room to sit mid-panel;
+                    // overflow falls back to the natural height and scrolls.
+                    contentHeight: Math.max(height, helpColumn.implicitHeight)
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
 
@@ -1732,6 +1735,10 @@ Item {
                       // translations wrap instead of stretching the window.
                       width: Math.min(helpFlick.width, Style.space(460))
                       x: Math.max(0, (helpFlick.width - helpColumn.width) / 2)
+                      // Vertical centering mirrors the horizontal: centered
+                      // when the list fits, flush to the top once it overflows
+                      // so the scroll position stays natural.
+                      y: Math.max(0, (helpFlick.height - helpColumn.implicitHeight) / 2)
                       spacing: Style.space(12)
 
                       Repeater {
