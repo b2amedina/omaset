@@ -223,23 +223,18 @@ function M.monitors(setting)
     end
   end
 
-  local out = util.run_capture(
-    "hyprctl monitors -j | jq -r '.[] | [.name, (.make // \"\"), (.model // \"\")] | @tsv'")
+  local out = util.run_capture("hyprctl monitors -j | jq -r '.[].name'")
   local monitors = {}
   local used = {}
   for line in (out or ""):gmatch("[^\n]+") do
-    local name, make, model = line:match("^([^\t]*)\t([^\t]*)\t([^\t]*)$")
-    if name and name ~= "" then
+    local name = trim(line)
+    if name ~= "" then
       local block = connector_to_block[name] or active_block(name)
       if block == nil then
         block = 0
         while used[block] do block = block + 1 end
       end
       used[block] = true
-
-      local label = trim(model)
-      if label == "" then label = trim(make) end
-      if label == "" then label = name end
 
       local workspaces = {}
       for slot = 1, SLOTS do
@@ -248,7 +243,6 @@ function M.monitors(setting)
 
       monitors[#monitors + 1] = {
         name = name,
-        label = label,
         block = block,
         workspaces = workspaces,
       }

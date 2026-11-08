@@ -210,7 +210,7 @@ local function cmd_keys(flags, pos)
       end
     else
       for _, m in ipairs(result.monitors) do
-        print(string.format("%-12s %s", m.name, m.label))
+        print(m.name)
       end
     end
   else

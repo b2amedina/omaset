@@ -103,8 +103,8 @@ Per-workspace tiling layout, keyed by workspace number.
   Writing a mode equal to the default deletes the file.
 - On workspace-modes hosts the setting is **monitor-grouped**: workspaces are
   numbered in blocks of ten per monitor (laptop 1–10, next monitor 11–20, …).
-  `keys workspace_layout` lists the monitors (`name`, `label`, `block`, and
-  their ten workspace ids); `keys workspace_layout <connector>` filters to one
+  `keys workspace_layout` lists the monitors (`name`, `block`, and their ten
+  workspace ids); `keys workspace_layout <connector>` filters to one
   monitor. The block mapping comes from Omarchy's own
   `~/.local/state/omarchy/monitor-workspaces` file. Special/named workspaces
   (negative ids) are never listed.

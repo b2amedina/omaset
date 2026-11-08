@@ -25,14 +25,8 @@ BorderSurface {
 
   function labels() {
     var out = []
-    for (var i = 0; i < root.monitors.length; i++) out.push(String(root.monitors[i].label))
+    for (var i = 0; i < root.monitors.length; i++) out.push(String(root.monitors[i].name))
     return out
-  }
-
-  function selectedLabel() {
-    for (var i = 0; i < root.monitors.length; i++)
-      if (root.monitors[i].name === root.selectedName) return String(root.monitors[i].label)
-    return ""
   }
 
   onHasCursorChanged: {
@@ -87,7 +81,7 @@ BorderSurface {
       id: group
       anchors.verticalCenter: parent.verticalCenter
       options: root.labels()
-      value: root.selectedLabel()
+      value: root.selectedName
       cursorIndex: -1
       foreground: root.fg
       background: root.panel ? root.panel.background : Commons.Color.background
@@ -96,11 +90,7 @@ BorderSurface {
       onChanged: function(v) {
         if (!root.panel) return
         root.panel.cursorTo(root.rowIndex)
-        for (var i = 0; i < root.monitors.length; i++)
-          if (String(root.monitors[i].label) === String(v)) {
-            root.panel.selectMonitor(root.row.id, root.monitors[i].name)
-            break
-          }
+        root.panel.selectMonitor(root.row.id, String(v))
       }
     }
   }
