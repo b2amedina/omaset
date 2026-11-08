@@ -5,7 +5,7 @@
   "version": "0.2.0",
   "author": "b2amedina",
   "license": "MIT",
-  "description": "Keyboard-first settings window for omaset, an Omarchy settings engine. Browse and edit omaset-managed settings, with undo and rollback.",
+  "description": "A settings manager for Omarchy, for the age of agents. One window, one command line, and an MCP server over the same settings — searchable, undoable, Omarchy 4.5 ready.",
   "kinds": ["panel", "bar-widget"],
   "entryPoints": {
     "panel": "ui/Panel.qml",
