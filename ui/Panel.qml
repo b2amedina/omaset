@@ -182,28 +182,35 @@ Item {
   function loadPanelExtras() {
     var p = activePanel()
     if (!p) return
+    var pending = 0
+    function done() {
+      pending--
+      if (pending <= 0) root.rebuildRows()
+    }
     for (var i = 0; i < p.settings.length; i++) {
       var s = p.settings[i]
       if (s.type === "group") {
         var subs = s.subsettings || {}
-        for (var sub in subs) loadGroupValue(s.id, sub)
+        for (var sub in subs) { pending++; loadGroupValue(s.id, sub, done) }
       } else if (s.keyed) {
-        loadKeyed(s.id)
+        pending++; loadKeyed(s.id, done)
       }
     }
+    if (pending === 0) root.rebuildRows()
   }
 
-  function loadGroupValue(id, sub) {
+  function loadGroupValue(id, sub, onDone) {
     rpc.call("get", { id: id, key: sub }, function(o) {
-      if (!o) return
-      var n = cloneObj(root.effective)
-      n[Model.settingKey(id, sub)] = o.value
-      root.effective = n
-      root.rebuildRows()
+      if (o) {
+        var n = cloneObj(root.effective)
+        n[Model.settingKey(id, sub)] = o.value
+        root.effective = n
+      }
+      if (onDone) onDone()
     })
   }
 
-  function loadKeyed(id) {
+  function loadKeyed(id, onDone) {
     rpc.call("keys", { id: id }, function(o) {
       var keys = (o && o.keys) ? o.keys : []
       var mons = (o && o.monitors) ? o.monitors : []
@@ -216,16 +223,18 @@ Item {
       var sm = cloneObj(root.selectedMonitor)
       if (!sm[id] && mons.length > 0) sm[id] = mons[0].name
       root.selectedMonitor = sm
+
+      var pending = null
       if (mons.length > 0) {
         var mon = null
         for (var i = 0; i < mons.length; i++)
           if (mons[i].name === root.selectedMonitor[id]) { mon = mons[i]; break }
         if (!mon) mon = mons[0]
-        for (var i = 0; i < mon.workspaces.length; i++) loadKeyedValue(id, mon.workspaces[i])
+        pending = mon.workspaces
       } else {
-        for (var i = 0; i < keys.length; i++) loadKeyedValue(id, keys[i])
+        pending = keys
       }
-      root.rebuildRows()
+      loadKeyedValues(id, pending, onDone)
     })
   }
 
@@ -233,25 +242,39 @@ Item {
     var sm = cloneObj(root.selectedMonitor)
     sm[id] = name
     root.selectedMonitor = sm
+    root.rebuildRows()
     var mons = root.keyedMonitors[id] || []
     for (var i = 0; i < mons.length; i++) {
       if (mons[i].name === name) {
-        for (var w = 0; w < mons[i].workspaces.length; w++) loadKeyedValue(id, mons[i].workspaces[w])
+        loadKeyedValues(id, mons[i].workspaces, function() {
+          root.rebuildRows()
+          root.clampRow()
+        })
         break
       }
     }
-    root.rebuildRows()
     root.clampRow()
   }
 
-  function loadKeyedValue(id, key) {
-    rpc.call("get", { id: id, key: String(key) }, function(o) {
-      if (!o) return
-      var n = cloneObj(root.effective)
-      n[Model.settingKey(id, undefined, key)] = o.value
-      root.effective = n
-      root.rebuildRows()
-    })
+  // Fetch the values for a set of keyed keys, updating `effective` without
+  // rebuilding, and call onDone once when all have returned. The caller
+  // rebuilds once, so the rows populate atomically rather than one-by-one.
+  function loadKeyedValues(id, keys, onDone) {
+    if (!keys || keys.length === 0) { if (onDone) onDone(); return }
+    var remaining = keys.length
+    for (var i = 0; i < keys.length; i++) {
+      rpc.call("get", { id: id, key: String(keys[i]) }, (function(k) {
+        return function(o) {
+          if (o) {
+            var n = cloneObj(root.effective)
+            n[Model.settingKey(id, undefined, k)] = o.value
+            root.effective = n
+          }
+          remaining--
+          if (remaining <= 0 && onDone) onDone()
+        }
+      })(keys[i]))
+    }
   }
 
   function refreshChanged() {

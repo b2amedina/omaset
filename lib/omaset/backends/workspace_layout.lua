@@ -207,8 +207,9 @@ local function active_block(monitor_name)
 end
 
 -- The workspace ids a monitor's block shows, the same shape the bar renders:
--- the first five slots, plus any other workspace in the block that is open or
--- has a persisted layout. Sorted, as global ids.
+-- the first five slots, plus any other workspace in the block that is open.
+-- Sorted, as global ids. Persisted-but-closed layouts are intentionally not
+-- listed, so this matches the bar.
 local function block_workspaces(setting, block)
   local ids = {}
   local seen = {}
@@ -227,13 +228,6 @@ local function block_workspaces(setting, block)
   for line in (out or ""):gmatch("[^\n]+") do
     local text = trim(line)
     local id = tonumber(text)
-    if id and id > 0 and math.floor((id - 1) / SLOTS) == block then
-      add(id)
-    end
-  end
-
-  for _, key in ipairs(M.keys_all(setting) or {}) do
-    local id = tonumber(key)
     if id and id > 0 and math.floor((id - 1) / SLOTS) == block then
       add(id)
     end

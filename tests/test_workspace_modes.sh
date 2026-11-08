@@ -55,6 +55,10 @@ export PATH="$FAKE:$PATH"
 export OMASET_WORKSPACE_LAYOUTS_DIR="$ST"
 export OMASET_MONITOR_WORKSPACES_FILE="$MW/monitor-workspaces"
 
+# A persisted layout for a workspace that is not open (6, block 0) must not
+# appear: the list matches the bar, which only shows open workspaces.
+printf 'o.workspace_mode({ workspace = "6", mode = "scrolling" })\n' > "$ST/6.lua"
+
 # keys lists open workspace ids numerically sorted, dropping negative (special)
 # ids, and carries the monitor grouping.
 OUT="$(run keys workspace_layout --json)"
@@ -68,6 +72,9 @@ assert_eq "$(echo "$OUT" | jq -r '[.monitors[].name] | join(",")')" "eDP-1,DP-10
 assert_eq "$(echo "$OUT" | jq -r '.monitors[] | select(.name=="eDP-1") | .block')" "0" "eDP-1 block"
 assert_eq "$(echo "$OUT" | jq -r '.monitors[] | select(.name=="DP-10") | .workspaces | join(",")')" \
   "11,12,13,14,15" "DP-10 workspaces (first five)"
+assert_eq "$(echo "$OUT" | jq -r '.monitors[] | select(.name=="eDP-1") | .workspaces | join(",")')" \
+  "1,2,3,4,5" "eDP-1 workspaces exclude persisted-but-closed 6"
+rm -f "$ST/6.lua"
 
 # A monitor filter returns that monitor's workspaces.
 OUT="$(run keys workspace_layout DP-10 --json)"

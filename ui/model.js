@@ -211,7 +211,9 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
             kind: "enum", id: s.id, key: gid, slot: w + 1,
             label: "Workspace " + (w + 1),
             options: s.options || [], segmented: true,
-            value: valueOf(effective, s.id, undefined, gid)
+            // Default to the first option while the value loads, so rows do
+            // not flash empty before jumping to their real layout.
+            value: valueOf(effective, s.id, undefined, gid, (s.options && s.options[0]))
           })
         }
       } else {
@@ -222,7 +224,7 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
             kind: "enum", id: s.id, key: key,
             label: "Workspace " + key,
             options: s.options || [], segmented: true,
-            value: valueOf(effective, s.id, undefined, key)
+            value: valueOf(effective, s.id, undefined, key, (s.options && s.options[0]))
           })
         }
       }
