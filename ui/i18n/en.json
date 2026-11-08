@@ -4,6 +4,7 @@
   "ui.search": "Search",
   "ui.changed": "Changed",
   "ui.preferences": "Preferences",
+  "ui.keybindings": "Keybindings",
   "ui.schemaMismatch": "schema mismatch",
   "ui.settingsFound": "%1 settings found",
   "ui.changedCount": "%1 changed",
@@ -17,8 +18,16 @@
   "unit.hours": "%1 hours",
   "unit.hrMin": "%1 hr %2 min",
   "footer.close": "esc close",
-  "footer.search": "↑↓ move · ⏎ open · esc clear",
-  "footer.changed": "↑↓ move · ⏎ open · esc close",
-  "footer.prefs": "↑↓ move · ⏎/␣ toggle · h l step · esc close",
-  "footer.normal": "j k move · h l adjust · ⏎/␣ select/edit · tab pane · x reset · / search · c changed · p prefs · esc close"
+  "footer.search": "esc clear",
+  "footer.normal": "? help · esc close",
+  "help.move": "Move between settings",
+  "help.adjust": "Adjust a value",
+  "help.pane": "Switch pane",
+  "help.activate": "Activate / edit",
+  "help.reset": "Reset to default",
+  "help.search": "Search",
+  "help.changed": "Changed",
+  "help.prefs": "Preferences",
+  "help.help": "This help",
+  "help.close": "Close"
 }

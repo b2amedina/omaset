@@ -113,6 +113,22 @@ Item {
   property bool changedMode: false
   property int changedSel: 0
 
+  // help (keyboard reference, shown on "?")
+  property bool helpMode: false
+  // Keybinding reference: keys are literal; the action is localized by key.
+  property var helpRows: [
+    { keys: "j / k",         ak: "help.move",     af: "Move between settings" },
+    { keys: "h / l",         ak: "help.adjust",   af: "Adjust a value" },
+    { keys: "Tab",           ak: "help.pane",     af: "Switch pane" },
+    { keys: "Space / Enter", ak: "help.activate", af: "Activate / edit" },
+    { keys: "x",             ak: "help.reset",    af: "Reset to default" },
+    { keys: "/",             ak: "help.search",   af: "Search" },
+    { keys: "c",             ak: "help.changed",  af: "Changed" },
+    { keys: "p",             ak: "help.prefs",    af: "Preferences" },
+    { keys: "?",             ak: "help.help",     af: "This help" },
+    { keys: "Esc",           ak: "help.close",    af: "Close" }
+  ]
+
   // preferences (omaset's own config — not Omarchy settings, never in changed)
   property bool prefsMode: false
   property int prefsSel: 0
@@ -155,14 +171,6 @@ Item {
     var m = Hyprland.focusedMonitor
     if (m && m.height && m.scale) return Math.round((m.height / m.scale) * 0.9)
     return Style.space(900)
-  }
-
-  // Natural width of the longest footer hint, at the footer's font.
-  TextMetrics {
-    id: footerMetrics
-    font.family: root.fontFamily
-    font.pixelSize: Style.font.bodySmall
-    text: tr.t("footer.normal", "j k move · h l adjust · \u2423/\u23ce select/edit · tab pane · x reset · / search · c changed · p prefs · esc close")
   }
 
   // Widest sidebar title, measured without elision (implicitWidth of a Column
@@ -867,6 +875,16 @@ Item {
     prefError = ""
   }
 
+  // ---- help (keyboard reference, "?") ------------------------------------
+  function enterHelp() {
+    helpMode = true
+    focusPane = "content"
+  }
+
+  function exitHelp() {
+    helpMode = false
+  }
+
   function beginPrefEdit(i) {
     if (i < 0 || i >= prefsModel.count) return
     prefsSel = i
@@ -932,12 +950,10 @@ Item {
   readonly property string footerHints: schemaError !== ""
     ? tr.t("footer.close", "esc close")
     : searchMode
-    ? tr.t("footer.search", "\u2191\u2193 move · \u23ce open · esc clear")
-    : changedMode
-    ? tr.t("footer.changed", "\u2191\u2193 move · \u23ce open · esc close")
-    : prefsMode
-    ? tr.t("footer.prefs", "\u2191\u2193 move · \u23ce/\u2423 toggle · h l step · esc close")
-    : tr.t("footer.normal", "j k move · h l adjust · \u2423/\u23ce select/edit · tab pane · x reset · / search · c changed · p prefs · esc close")
+    ? tr.t("footer.search", "esc clear")
+    : (changedMode || prefsMode || helpMode)
+    ? tr.t("footer.close", "esc close")
+    : tr.t("footer.normal", "? help · esc close")
   readonly property string footerContext: schemaError !== ""
     ? tr.t("ui.schemaMismatch", "schema mismatch")
     : searchMode
@@ -954,12 +970,12 @@ Item {
     id: window
     title: "omaset Settings"
     color: root.background
-    // Size to the content (footer hint and sidebar titles), scale-aware, and
-    // capped at 90% of the focused monitor.
+    // Size to the content (sidebar titles), scale-aware, and capped at 90% of
+    // the focused monitor. The footer is a short one-liner, so it no longer
+    // drives width.
     implicitWidth: Math.min(root.maxWindowWidth,
       Math.max(Style.space(720),
-        root.sidebarWidth + Style.space(530),
-        footerMetrics.width + Style.space(32)))
+        root.sidebarWidth + Style.space(530)))
     implicitHeight: Math.min(root.maxWindowHeight, Style.space(560))
     minimumSize: Qt.size(Style.space(480), Style.space(360))
     maximumSize: Qt.size(root.maxWindowWidth, root.maxWindowHeight)
@@ -1031,15 +1047,20 @@ Item {
           if (event.key === Qt.Key_Left || event.text === "h") { root.stepPref(-1); event.accepted = true; return }
           return
         }
+        if (root.helpMode) {
+          if (event.key === Qt.Key_Escape) { root.exitHelp(); event.accepted = true; return }
+          return
+        }
         if (event.text === "/") { root.enterSearch(); event.accepted = true; return }
         if (event.text === "c" || event.text === "C") { root.enterChanged(); event.accepted = true; return }
         if (event.text === "p" || event.text === "P") { root.enterPrefs(); event.accepted = true }
+        if (event.text === "?") { root.enterHelp(); event.accepted = true }
       }
 
         PanelKeyCatcher {
           id: keyCatcher
           anchors.fill: parent
-          blocked: root.schemaError !== "" || root.searchMode || root.changedMode || root.prefsMode || root.editingRow >= 0 || root.prefEditing >= 0 || root.dropdownOpen
+          blocked: root.schemaError !== "" || root.searchMode || root.changedMode || root.prefsMode || root.helpMode || root.editingRow >= 0 || root.prefEditing >= 0 || root.dropdownOpen
 
         onMoveRequested: function(dx, dy) {
           if (dy !== 0) root.moveV(dy)
@@ -1669,6 +1690,59 @@ Item {
                               onClicked: root.beginPrefEdit(index)
                             }
                           }
+                        }
+                      }
+                    }
+                  }
+                }
+
+                FocusScope {
+                  id: helpScope
+                  anchors.fill: parent
+                  anchors.margins: Style.spacing.panelPadding
+                  anchors.topMargin: 0
+                  visible: root.helpMode
+
+                  Column {
+                    anchors.fill: parent
+                    anchors.leftMargin: Style.spacing.panelPadding
+                    anchors.rightMargin: Style.spacing.panelPadding
+                    spacing: Style.space(10)
+
+                    Text {
+                      textFormat: Text.PlainText
+                      text: root.tr.t("ui.keybindings", "Keybindings")
+                      color: root.foreground
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.heading
+                      font.bold: true
+                    }
+
+                    Repeater {
+                      model: root.helpRows
+                      delegate: Row {
+                        required property var modelData
+                        width: parent.width
+                        spacing: Style.spacing.lg
+
+                        Text {
+                          width: Style.space(140)
+                          horizontalAlignment: Text.AlignRight
+                          textFormat: Text.PlainText
+                          text: modelData.keys
+                          color: root.accent
+                          font.family: root.fontFamily
+                          font.pixelSize: Style.font.body
+                          font.bold: true
+                        }
+                        Text {
+                          width: parent.width - Style.space(140) - Style.spacing.lg
+                          textFormat: Text.PlainText
+                          text: root.tr.t(modelData.ak, modelData.af)
+                          color: root.foreground
+                          font.family: root.fontFamily
+                          font.pixelSize: Style.font.body
+                          wrapMode: Text.WordWrap
                         }
                       }
                     }
