@@ -237,7 +237,8 @@ function M.monitors(setting)
       end
       used[block] = true
 
-      local label = trim((make ~= "" and make .. " " or "") .. model)
+      local label = trim(model)
+      if label == "" then label = trim(make) end
       if label == "" then label = name end
 
       local workspaces = {}

@@ -64,7 +64,7 @@ assert_contains "$OUT" '"monitors":[' "keys reports monitors"
 
 # Monitors carry name, label, block, and their ten global workspaces.
 assert_eq "$(echo "$OUT" | jq -r '[.monitors[].name] | join(",")')" "eDP-1,DP-10" "monitor names"
-assert_eq "$(echo "$OUT" | jq -r '[.monitors[].label] | join(",")')" "Lenovo Panel,LG Ultrawide" "monitor labels"
+assert_eq "$(echo "$OUT" | jq -r '[.monitors[].label] | join(",")')" "Panel,Ultrawide" "monitor labels are the short model"
 assert_eq "$(echo "$OUT" | jq -r '.monitors[] | select(.name=="eDP-1") | .block')" "0" "eDP-1 block"
 assert_eq "$(echo "$OUT" | jq -r '.monitors[] | select(.name=="DP-10") | .workspaces | join(",")')" \
   "11,12,13,14,15,16,17,18,19,20" "DP-10 workspaces"
@@ -81,7 +81,7 @@ assert_exit "$CODE" 1 "unknown monitor rejected"
 # Human output lists monitors (name + label) when grouped.
 OUT="$(run keys workspace_layout)"
 assert_contains "$OUT" "eDP-1" "human lists monitor names"
-assert_contains "$OUT" "Lenovo Panel" "human lists monitor labels"
+assert_contains "$OUT" "Panel" "human lists monitor labels"
 
 # get reads via the -current command (falls back to dwindle).
 capture_out get workspace_layout 2
