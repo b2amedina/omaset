@@ -1,3 +1,4 @@
 *.bak
 *.omaset.bak
+.preview/
 media/*.mp4

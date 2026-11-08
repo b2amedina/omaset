@@ -1,9 +1,10 @@
 # How omaset works
 
-omaset is a small engine plus a set of pluggable **backends**. The engine owns
-one idea — a settings *schema* — and everything else is a face on top of it: the
-CLI, the settings window, and the MCP server all read and write the same schema
-through one shared operation layer.
+Your config files are the source of truth. omaset is a small core plus a set of
+pluggable **backends**. The core owns one idea — a settings *schema* — and each
+backend knows how to read and write one kind of file. Everything a person or an
+agent touches — the MCP server, the settings window, the CLI — is a face on top
+of that same core, so they never disagree.
 
 The layering is the whole design:
 
@@ -11,7 +12,7 @@ The layering is the whole design:
 bin/omaset              CLI entry (sets up package.path); `omaset ui` opens the window
 lib/omaset/
   init.lua              core: registry, schema, loading, read/write/reset
-  service.lua           one operation layer (get/set/reset/changed/...); CLI,
+  service.lua           the shared service (get/set/reset/changed/...); CLI,
                         MCP, and RPC all call this
   cli.lua               argv parsing + human/JSON formatting + dispatch
   rpc.lua               JSON-RPC 2.0 over stdio for the settings window
@@ -71,23 +72,23 @@ it does not understand instead of rendering a partial or wrong list. The setting
 window checks it against the version it supports and shows an error when the
 engine and the window are out of step.
 
-## One operation layer, four faces
+## One core, three ways in
 
-Everything the engine knows is reachable as JSON:
+Everything the core knows is reachable as JSON:
 
 ```
 omaset schema       every panel, setting, current value
 omaset get <id>     one setting, value + default
 omaset set <id> v   validated, applied, journaled
-omaset reset <id>   revert omaset's override
+omaset reset <id>   back to the Omarchy default
 omaset changed      settings differing from stock
 omaset search <q>   find by id or label
 ```
 
-`service.lua` implements those operations once. The CLI calls it in-process and
-formats the result; the [settings window](../ui/README.md) calls it through
-`omaset rpc`; the [MCP server](agents.md) exposes it as tools. Adding a setting
-changes what all of them offer at once; there is nothing to keep in sync.
+`service.lua` implements those operations once. Your agent calls it through the
+[MCP server](agents.md); the [settings window](../ui/README.md) calls it through
+`omaset rpc`; the CLI calls it in-process. Add a setting, and all three pick it
+up at once — nothing to keep in sync.
 
 See [docs/protocol.md](protocol.md) for the shapes each command returns, and
 [the UI README](../ui/README.md) for the RPC transport.

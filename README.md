@@ -1,6 +1,6 @@
 # omaset
 
-> **A settings manager for Omarchy.**
+> **A settings manager for Omarchy, for the age of agents.**
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-f38d70?style=flat-square" alt="License: MIT"></a>
@@ -13,27 +13,19 @@
   <img src="media/banner.png" alt="The omaset wordmark and tagline, above a strip of the Omarchy bar" width="880">
 </p>
 
-Omarchy's settings live in plain-text dotfiles — yours to read, version, and
-edit. omaset puts a face on them: a keyboard-first UI, a scriptable CLI, and an
-MCP server your agents can drive — so you can browse, search, and see what's
-really in your config, without ever rewriting it.
+Your config files are the source of truth. omaset puts every setting within reach — of you, and of your agent. Update one value where it lives. Everything else stays as you left it. See what's changed. Take it back.
 
-<p align="center">
-  <img src="media/ui-tour.gif" alt="A tour of the omaset settings window: search for a setting, adjust it, and review everything that differs from stock" width="800">
-</p>
+**Welcome the agents.** Your agent gets the same settings you do, as tools it can call. It searches for a setting by name, reads what it's set to, changes it. Undoes it if you need to. No parsing files, no guessing, no shell incantations — just the same settings, in front of both of you.
+
+**Made for 4.5.** The new desktop is more familiar to people coming from Windows or macOS, used to a settings panel. omaset does the same for settings — a view for humans, while your agent keeps working directly with the files.
+
+**Safe to change.** Every change is checked, logged, and reversible: `changed` shows what's not stock, `history` shows how it got there, `undo` takes it back.
+
+**No magic numbers.** Your file still says `300` — that's seconds to the computer. omaset shows you `5 min` — that's how you think about it. Same for times and every other choice. Made readable for humans, not just machines.
 
 ## Requirements
 
-omaset runs on Omarchy and uses what Omarchy already ships:
-
-- **Omarchy** — for the Lua 5.1 interpreter, Hyprland, and the Quickshell shell
-  (`omarchy-shell`) the window runs in.
-- **`hyprctl`** — to validate a change before it lands, and revert it if the
-  config errors.
-- **`hyprsunset`** — for the Display panel's night light.
-
-There is nothing else to install: the engine, the CLI, and the window ship as
-one plugin. `jq` appears in a few examples and dev scripts, not at runtime.
+Omarchy 4.5+ (older Omarchy still works). Nothing else to install — engine, command line, and window ship as one plugin.
 
 ## Install
 
@@ -41,22 +33,16 @@ one plugin. `jq` appears in a few examples and dev scripts, not at runtime.
 omarchy plugin add https://github.com/b2amedina/omaset.git --enable
 ```
 
-The engine and CLI do the real work; the settings window is a convenience on
-top. All three ship as one Omarchy plugin, so there is nothing separate to
-install. Click the omaset icon in your bar, or run `omaset ui` once you
-[link the CLI](docs/cli.md).
+Then link the command line and hook up your agent:
 
-On open the window also applies its own launch rule — floating and centered —
-by writing an `o.window(...)` rule for itself into
-`~/.config/hypr/hyprland.lua`. It is on by default and can be turned off in
-Preferences (`p`).
+- [The CLI](docs/cli.md) — `ln -s …/bin/omaset ~/.local/bin/omaset`
+- [For agents](docs/agents.md) — `omaset mcp install`
+
+Click the omaset icon in your bar, or run `omaset ui`.
 
 ## What it manages
 
-omaset models Omarchy's settings through small, pluggable **backends**, one per
-area. The engine is deliberately backend-agnostic, so it can grow to cover more
-of the operating system — and more backends are [being added](docs/backends.md) —
-without any change to the core.
+Covers appearance, layout, bar, input, windows, power, display, and behavior. One panel per area in the table below. [More backends](docs/backends.md) are added over time.
 
 | Panel | Examples |
 |---|---|
@@ -71,26 +57,10 @@ without any change to the core.
 
 ## Why omaset
 
-- **Every setting, one place.** Appearance, tiling layout, and more —
-  browsable, searchable, and changeable in one window and one command, over the
-  dotfiles you already have.
-- **One engine, pluggable backends.** Each area is a small backend on a shared
-  core, and one operation layer serves the CLI, the window, and agents — so they
-  are just different faces on the same settings. New areas plug in without
-  touching the engine.
-- **Agent-friendly.** An MCP server exposes settings as typed tools, so your
-  agent can widen the gaps or toggle blur in-session — and every change lands in
-  the same journal you can undo.
-- **Safe by default.** Every change is validated before it lands and reverted
-  automatically if it fails. omaset edits the value in place — it never rewrites
-  your config — so your hand-written files stay intact.
-- **Your config, made legible.** `changed` shows exactly what you've customized
-  against stock; `history` shows how you got there. Your dotfiles stay readable
-  at a glance, over time.
-- **Styled to match — and made obvious.** Colors, borders, and shapes come from
-  your active theme, so the window looks like it shipped with Omarchy, not a
-  separate app. And you can give full-width and tiled-fullscreen windows their
-  own border and rounding, so you can tell them apart at a glance:
+- **One place to see it all.** Every panel, searchable.
+- **Three ways in, same settings.** Agent, window, command line.
+- **Easy to undo.** Every change is checked and logged.
+- **Styled to match.** Colors and shapes come from your theme.
 
 <p align="center">
   <img src="media/window-modes.png" alt="Normal, full-width, and tiled-fullscreen windows, each with its own border and rounding" width="880">
@@ -98,9 +68,7 @@ without any change to the core.
 
 ## How to use
 
-**The window.** `omaset ui` opens a keyboard-first settings window that renders
-the schema and drives `get`/`set`/`reset` through one long-lived `omaset rpc`
-process — so it always reflects the same settings the CLI does.
+**The window.** `omaset ui` opens a keyboard-first settings window. It uses the same core as the command line, so what you see is what the CLI sees.
 
 | Key | Action |
 |---|---|
@@ -114,13 +82,7 @@ process — so it always reflects the same settings the CLI does.
 | `x` | reset the focused setting to its default |
 | `Esc` | close (or leave search / changed / preferences) |
 
-Vim keys throughout — `h` `j` `k` `l` — or the arrow keys; the mouse is
-optional. On a slider or time row, `Enter` (or clicking its value) opens an
-inline editor: type an exact number or time and press `Enter`; `Esc` cancels.
-
-The footer shows these hints plus a contextual badge — `N changed` when settings
-differ from stock, `N settings found` while searching. See
-[ui/README.md](ui/README.md) for the window in depth.
+Vim keys throughout — or the arrows. On a slider or time row, press `Enter`, type a value, press `Enter` again. `Esc` cancels. See [ui/README.md](ui/README.md) for the window in depth.
 
 **The CLI.** Link the bundled binary onto your PATH:
 
@@ -136,14 +98,14 @@ omaset undo                   # take it back
   <img src="media/usage.png" alt="omaset --help" width="820">
 </p>
 
-Full command reference — keyed settings, `help`/`options`, and omaset's own
-preferences — in [docs/cli.md](docs/cli.md).
+Full command reference — keyed settings, `help`/`options`, and omaset's own preferences — in [docs/cli.md](docs/cli.md).
 
 ## Documentation
 
 | Page | What's in it |
 |---|---|
-| [How it works](docs/how-it-works.md) | the engine, the schema DSL, the JSON interface |
+| [Changelog](CHANGELOG.md) | what's new in each release |
+| [How it works](docs/how-it-works.md) | the core, the schema, the three interfaces |
 | [Backends](docs/backends.md) | how each area reads and writes its config |
 | [Extending with Lua](docs/extending.md) | add a setting, or a whole backend |
 | [The CLI](docs/cli.md) | commands, keyed settings, preferences |
@@ -153,28 +115,32 @@ preferences — in [docs/cli.md](docs/cli.md).
 | [Tests](docs/tests.md) | how omaset is tested |
 | [Settings UI](ui/README.md) | the Quickshell window, install and keys |
 
-Themes are Omarchy themes: the window picks up your active one, so it looks at
-home in Tokyo Night, Osaka Jade, or any theme you install.
+Themes are Omarchy themes: the window picks up your active one, so it looks at home in Tokyo Night, Jade Horse, or any theme you install.
 
 <p align="center">
-  <img src="media/themes.png" alt="The same settings window rendered in the Tokyo Night and Osaka Jade themes" width="880">
+  <img src="media/themes.png" alt="The same settings window rendered in the Tokyo Night and Jade Horse themes" width="880">
 </p>
 
 ## Remove
 
 ```
-omaset rollback                      # optional: restore config files omaset touched
+omaset rollback
 omarchy plugin remove b2amedina.omaset
-unlink ~/.local/bin/omaset           # only if you linked the CLI
+unlink ~/.local/bin/omaset
 ```
 
-`omarchy plugin remove` deletes the plugin folder; the CLI symlink is yours to
-unlink. omaset's own state is left in place — the change journal
-(`~/.local/state/omaset/journal.jsonl`), preferences
-(`~/.config/omaset/preferences.json`), and any `<file>.omaset.bak` snapshots.
+Rolls back config files first (optional), then removes the plugin and the command link.
+
+## How it fits together
+
+One small core. A set of backends that all share a common interface, so the engine never needs to know the configuration details. Three ways in:
+
+- **MCP for your agent** — the main one.
+- **The window** — keyboard-first, uses Omarchy styling.
+- **The command line** — `omaset get`, `set`, `changed`, `undo`.
+
+Add a setting or a backend, and all three pick it up. That's the whole design.
 
 ## Next steps
 
-- A backup picker / restore view.
-- Live previews (compositor/tiling/fullscreen) in the settings window.
-- More backends — extending coverage across the OS and its applications.
+- More backends.

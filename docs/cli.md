@@ -1,7 +1,7 @@
 # The omaset CLI
 
-The CLI, the settings window, and the MCP server are all thin faces over the
-same operation layer (`lib/omaset/service.lua`). Link the bundled binary onto
+The CLI, the MCP server, and the settings window are all thin faces over the
+same shared service (`lib/omaset/service.lua`). Link the bundled binary onto
 your PATH to drive settings from a terminal, a script, or an agent:
 
 ```sh
@@ -15,7 +15,7 @@ ln -s ~/.config/omarchy/plugins/b2amedina.omaset/bin/omaset ~/.local/bin/omaset
 | `omaset schema` | every panel, every setting, with its current value |
 | `omaset get <id>` | read one setting (value + default) |
 | `omaset set <id> <value>` | write a value; validates, applies, journals |
-| `omaset reset <id>` | revert omaset's override so the default returns |
+| `omaset reset <id>` | put the setting back to its default |
 | `omaset changed` | settings that differ from Omarchy stock |
 | `omaset search <query>` | find a setting by id or label |
 | `omaset help <id>` | one setting's type, options, range, default, value |

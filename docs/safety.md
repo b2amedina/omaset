@@ -24,9 +24,10 @@ change is validated and automatically reverted on failure.
 
 ## Reset & changed semantics
 
-`reset` reverts **omaset's override** — it removes what omaset wrote and lets the
-Omarchy stock default re-emerge. It does not store snapshots: `read_default`
-recomputes the default from Omarchy's shipped config on every call.
+`reset` puts a setting back to its Omarchy default — writing the default in
+place where omaset changed it, or dropping the value omaset appended. It does
+not store snapshots: `read_default` recomputes the default from Omarchy's
+shipped config on every call.
 
 - `changed` diffs the *effective* value (as read from your config) against that
   stock default, so it sees changes made by hand-editing, `omarchy` commands, or

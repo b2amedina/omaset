@@ -32,9 +32,15 @@ trap 'omarchy theme set "$ORIG" >/dev/null 2>&1; [[ $KEEP == 1 ]] || rm -rf "$WO
 capture() {
   local theme="$1" out="$2"
   omarchy theme set "$theme" >/dev/null 2>&1
+  for _ in $(seq 1 20); do
+    [[ "$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)" == "$theme" ]] && break
+    sleep 0.5
+  done
+  sleep 4
+  omarchy restart shell >/dev/null 2>&1 || true
   sleep 3
   "$OMASET" ui open >/dev/null 2>&1
-  sleep 1.8
+  sleep 2.2
   read -r X Y W H < <(hyprctl clients -j |
     jq -r '.[] | select(.title == "omaset Settings") |
       "\(.at[0]) \(.at[1]) \(.size[0]) \(.size[1])"' | head -1)
@@ -50,12 +56,12 @@ panel() {  # <shot> <label> <accent> <out>
 }
 
 capture tokyo-night "$WORK/tokyo.png"
-capture osaka-jade  "$WORK/osaka.png"
+capture jade-horse "$WORK/jade.png"
 
 panel "$WORK/tokyo.png" "Tokyo Night" "#7aa2f7" "$WORK/tokyo-panel.png"
-panel "$WORK/osaka.png" "Osaka Jade"  "#509475" "$WORK/osaka-panel.png"
+panel "$WORK/jade.png" "Jade Horse"  "#509475" "$WORK/jade-panel.png"
 
-montage "$WORK/tokyo-panel.png" "$WORK/osaka-panel.png" \
+montage "$WORK/tokyo-panel.png" "$WORK/jade-panel.png" \
   -tile 2x1 -geometry +40+0 -background '#181414' "$WORK/strip.png"
 magick "$WORK/strip.png" -bordercolor '#181414' -border 40 "$OUT"
 

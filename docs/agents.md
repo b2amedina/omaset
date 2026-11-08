@@ -25,7 +25,7 @@ The server is `omaset mcp` (JSON-RPC over stdio) and exposes these tools:
 | `search` | find by id/label/description |
 | `get` | read one setting (value + default) |
 | `set` | write a value (validated, applied, journaled) |
-| `reset` | revert omaset's override |
+| `reset` | put the setting back to its default |
 | `changed` | settings differing from stock |
 | `help` | one setting's spec |
 | `keys` | enumerate a keyed/grouped setting's keys (value + default each) |
@@ -50,7 +50,7 @@ so agents see the real payload either way.
 omaset schema                # every panel + setting + current value, as JSON
 omaset get <id> [--plain]    # read one setting (--plain = bare value)
 omaset set <id> <value>      # write a value; validates and applies
-omaset reset <id>            # revert omaset's override so the default returns
+omaset reset <id>            # put the setting back to its default
 omaset changed --json        # settings that differ from Omarchy stock
 omaset search <query> --json # find a setting by id or label
 omaset help <id>             # type, options, range, default, current value
@@ -84,9 +84,8 @@ omaset changed --json
 1. **Read before you write.** `omaset get <id>` (or `schema`) first; only write
    what changed.
 2. **Prefer `reset` over pinning.** If the goal is "back to default", use
-   `omaset reset <id>` — it removes omaset's override so the Omarchy stock
-   default re-emerges, instead of hardcoding a value that will later look
-   "changed".
+   `omaset reset <id>` — it puts the setting back to the Omarchy stock default,
+   instead of hardcoding a value that will later look "changed".
 3. **Check the value contract first.** `omaset set <id> --help` prints the
    `<a|b|c>` enum form, `<min..max>` range, or the `<HH:MM|h:mm AM/PM>` time
    form; `omaset help <id>` lists options. An invalid value lists the valid
