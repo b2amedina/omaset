@@ -1,11 +1,11 @@
 # Safety, undo & rollback
 
 omaset's first promise is that it will not wreck your config. It never
-parses-and-rewrites your files. It only writes into a marked
-`-- omaset:begin/end` block (Lua config) or via Omarchy's own `jq` pipeline
-(`shell.json`), and keeps a one-time `<file>.omaset.bak` snapshot before its
-first write to any config file. Every change is validated and automatically
-reverted on failure.
+parses-and-rewrites your files: it edits the one value being changed — in place
+where it already lives, or appending a minimal override when it does not — and
+keeps a one-time `<file>.omaset.bak` snapshot before its first write to any
+config file. (`shell.json` is edited through Omarchy's own `jq` pipeline.) Every
+change is validated and automatically reverted on failure.
 
 ## History and undo
 
@@ -36,10 +36,10 @@ recomputes the default from Omarchy's shipped config on every call.
   the `omarchy` passthrough toggles (`nightlight`, `window-no-gaps`,
   `single-window-square`) declare `default = false` so they participate in
   `changed` too.
-- `hypr-lua` writes into a managed `-- omaset:begin/end` block, so `reset` only
-  removes omaset's block. A hand-written `hl.config(...)` override elsewhere in
-  the file is left alone (and would take effect again). To restore *everything*
-  to stock, use `omarchy refresh hyprland`.
+- `hypr-lua` edits the value in place, so `reset` writes the stock default back
+  where the value lives; a hand-written `hl.config(...)` override for a key omaset
+  never touched is left alone. To restore *everything* to stock, use
+  `omarchy refresh hyprland`.
 - `workspace-layout` shares storage with `omarchy hyprland workspace layout
   toggle` (Super+L) — the same `~/.local/state/omarchy/workspace-layouts/*.lua`
   files — so the two are coherent. `reset workspace_layout <n>` deletes one rule;

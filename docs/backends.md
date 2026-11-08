@@ -5,10 +5,12 @@ small read/write/validate interface for one area, and the engine treats them all
 identically. They self-register from `lib/omaset/backends/`, so a settings file
 can point at any of them — or at a new one — without the core changing.
 
-Every file-writing backend follows the same rules: write only inside a marked
-`-- omaset:begin` / `-- omaset:end` block, keep a one-time `<file>.omaset.bak`
-snapshot before the first write, validate after writing, and restore the previous
-content if validation fails. Details in [safety.md](safety.md).
+Every file-writing backend keeps a one-time `<file>.omaset.bak` snapshot before
+its first write, validates after writing, and restores the previous content if
+validation fails. Where a value already lives in the file, a backend edits it in
+place (`hypr-lua`); where it does not, it appends a minimal override (`hypr-lua`)
+or manages a marked block (`hypr-window`, `hyprsunset`). Details in
+[safety.md](safety.md).
 
 ## `hypr-lua`
 
@@ -17,9 +19,13 @@ Reads and writes Hyprland's Lua config.
 - **Read** evaluates the default config (`$OMARCHY_PATH/default/hypr/`) then the
   user config (`~/.config/hypr/`), capturing every `hl.config()` call into one
   merged table — the same order of precedence Hyprland itself uses.
-- **Write** maintains a single `-- omaset:begin` / `-- omaset:end` block at the
-  end of the user file. Only keys changed through omaset live there; the rest of
-  your file is never touched.
+- **Write** edits the *winning* `hl.config()` occurrence of the setting in place
+  (the last uncommented one — the value that is actually in effect), keeping the
+  surrounding comments and keys untouched. If the value has no occurrence yet, a
+  minimal `hl.config({ path = value })` override is appended at the end of the
+  file. There is no `-- omaset:begin` block for this backend.
+- **Reset** writes the stock default back in place using the same rule, and is a
+  no-op when the value has no occurrence (a commented example is left alone).
 - **Validate** after every write with `hyprctl reload` + `hyprctl configerrors`;
   on errors the previous content is restored. Set `OMASET_NO_APPLY=1` to skip
   this (tests, headless).

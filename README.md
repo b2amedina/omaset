@@ -48,9 +48,8 @@ install. Click the omaset icon in your bar, or run `omaset ui` once you
 
 On open the window also applies its own launch rule — floating and centered —
 by writing an `o.window(...)` rule for itself into the managed block of
-`~/.config/hypr/hyprland.lua`. It is on by default, can be turned off in
-Preferences (`p`), and stays inside the marked block like every other omaset
-write.
+`~/.config/hypr/hyprland.lua`. It is on by default and can be turned off in
+Preferences (`p`).
 
 ## What it manages
 
@@ -83,8 +82,8 @@ without any change to the core.
   agent can widen the gaps or toggle blur in-session — and every change lands in
   the same journal you can undo.
 - **Safe by default.** Every change is validated before it lands and reverted
-  automatically if it fails. omaset writes only into a marked block — it never
-  rewrites your config — so your hand-written files stay intact.
+  automatically if it fails. omaset edits the value in place — it never rewrites
+  your config — so your hand-written files stay intact.
 - **Your config, made legible.** `changed` shows exactly what you've customized
   against stock; `history` shows how you got there. Your dotfiles stay readable
   at a glance, over time.
@@ -148,7 +147,7 @@ preferences — in [docs/cli.md](docs/cli.md).
 | [Backends](docs/backends.md) | how each area reads and writes its config |
 | [Extending with Lua](docs/extending.md) | add a setting, or a whole backend |
 | [The CLI](docs/cli.md) | commands, keyed settings, preferences |
-| [Safety & undo](docs/safety.md) | managed blocks, `undo`, `rollback`, `reset` |
+| [Safety & undo](docs/safety.md) | in-place edits, `undo`, `rollback`, `reset` |
 | [For agents](docs/agents.md) | the MCP server and a worked example |
 | [Protocol](docs/protocol.md) | the machine-readable contract |
 | [Tests](docs/tests.md) | how omaset is tested |

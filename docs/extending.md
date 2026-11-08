@@ -71,7 +71,8 @@ is passed in — the engine never reaches into your file format itself.
 
 A backend only has to answer two questions: *what is the value now*, and *write
 this value without disturbing anything else*. The safeties are shared, not
-per-backend: write inside a marked block, snapshot once, validate, revert on
-failure. See [safety.md](safety.md) for what the engine guarantees around your
+per-backend: edit the value in place (or add it if absent), snapshot once,
+validate, revert on failure. See [safety.md](safety.md) for what the engine
+guarantees around your
 writes, and any of the existing backends in `lib/omaset/backends/` for a
 template — `hypr_lua.lua` is the most complete.

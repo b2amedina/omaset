@@ -96,11 +96,12 @@ omaset changed --json
 
 ## Safety model
 
-Full details — managed blocks, validation, `undo`, and `rollback` — are in
+Full details — in-place edits, validation, `undo`, and `rollback` — are in
 [safety.md](safety.md).
 
-- omaset only writes into a managed `-- omaset:begin/end` block (or equivalent)
-  in each config file; your hand-written config is never touched.
+- omaset edits the one value being changed — in place where it already lives,
+  appending a minimal override when it does not — so your hand-written config is
+  never rewritten.
 - Every Hyprland write is reloaded and checked with `hyprctl configerrors`; on
   error the previous content is restored.
 - `reset` does not store snapshots — the default is recomputed from Omarchy's

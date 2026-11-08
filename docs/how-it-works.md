@@ -101,7 +101,7 @@ the last entry, and `undo --all` replays it backwards. Because the journal
 records *effective* values, `changed` also sees changes made by hand-editing or
 by Omarchy's own commands and hotkeys.
 
-The safety guarantees around those writes — managed blocks, validation, and the
+The safety guarantees around those writes — in-place edits, validation, and the
 `rollback` panic button — are in [safety.md](safety.md).
 
 ## Backends
