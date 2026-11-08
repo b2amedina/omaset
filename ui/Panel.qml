@@ -126,6 +126,10 @@ Item {
   // nightlight toggle cold-starts hyprsunset) settle before the periodic
   // refresh re-reads their status and briefly shows a stale value.
   property double lastWrite: 0
+  // The DropdownRow currently under the cursor (so activate can open it) and
+  // whether its popup is open (so the keyCatcher yields keys to the list).
+  property var activeDropdown: null
+  property bool dropdownOpen: false
 
   ListModel {
     id: prefsModel
@@ -365,7 +369,7 @@ Item {
   property Timer refreshTimer: Timer {
     interval: root.refreshIntervalSec * 1000
     repeat: true
-    running: window.visible && !root.searchMode && !root.changedMode && !root.prefsMode && !root.interacting && root.editingRow < 0
+    running: window.visible && !root.searchMode && !root.changedMode && !root.prefsMode && !root.interacting && root.editingRow < 0 && !root.dropdownOpen
     onTriggered: root.pollRefresh()
   }
   function pollRefresh() {
@@ -531,7 +535,7 @@ Item {
     if (focusPane === "sidebar") return
     var row = currentRow()
     if (row && row.kind === "slider") { stepSlider(row, dx); return }
-    if (row && row.kind === "enum") { cycleEnum(row, dx); return }
+    if (row && (row.kind === "enum" || row.kind === "dropdown")) { cycleEnum(row, dx); return }
     if (row && row.kind === "monitor") { cycleMonitor(row, dx); return }
     if (row && row.kind === "time") { stepTime(row, dx) }
   }
@@ -600,6 +604,7 @@ Item {
     if (row.kind === "bool") commit(row, !row.value)
     else if (row.kind === "enum") cycleEnum(row, 1)
     else if (row.kind === "monitor") cycleMonitor(row, 1)
+    else if (row.kind === "dropdown") { if (root.activeDropdown && root.activeDropdown.open) root.activeDropdown.open() }
     else if (row.kind === "slider") beginEdit(selectedRow)
     else if (row.kind === "time") beginEdit(selectedRow)
   }
@@ -948,7 +953,7 @@ Item {
         PanelKeyCatcher {
           id: keyCatcher
           anchors.fill: parent
-          blocked: root.schemaError !== "" || root.searchMode || root.changedMode || root.prefsMode || root.editingRow >= 0 || root.prefEditing >= 0
+          blocked: root.schemaError !== "" || root.searchMode || root.changedMode || root.prefsMode || root.editingRow >= 0 || root.prefEditing >= 0 || root.dropdownOpen
 
         onMoveRequested: function(dx, dy) {
           if (dy !== 0) root.moveV(dy)
@@ -1135,6 +1140,11 @@ Item {
                         }
                         EnumRow {
                           visible: modelData.kind === "enum"
+                          panel: root; row: modelData; rowIndex: index
+                          width: parent.width
+                        }
+                        DropdownRow {
+                          visible: modelData.kind === "dropdown"
                           panel: root; row: modelData; rowIndex: index
                           width: parent.width
                         }

@@ -95,8 +95,11 @@ function choiceRow(id, sub, key, label, spec, value) {
     labels.push(String(spec.options[i].label))
     values.push(spec.options[i].value)
   }
-  return { kind: "enum", id: id, sub: sub, label: label,
-           description: spec.description, segmented: true,
+  // A short list reads as a segmented row; many discrete choices read better
+  // as a dropdown (macOS-style), e.g. idle timeouts.
+  var kind = spec.options.length > 5 ? "dropdown" : "enum"
+  return { kind: kind, id: id, sub: sub, label: label,
+           description: spec.description, segmented: kind === "enum",
            options: labels, values: values, value: value }
 }
 
@@ -225,5 +228,6 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
 function isInteractive(row) {
   return row && (row.kind === "bool" || row.kind === "slider"
               || row.kind === "number" || row.kind === "enum"
-              || row.kind === "time" || row.kind === "monitor")
+              || row.kind === "time" || row.kind === "monitor"
+              || row.kind === "dropdown")
 }
