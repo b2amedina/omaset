@@ -94,21 +94,26 @@ function M.coerce(str, setting)
     end
     return nil, "expected true/false, got '" .. tostring(str) .. "'"
   elseif t == "enum" then
-    local ok = true
-    if setting.options then
-      ok = false
-      for _, opt in ipairs(setting.options) do
-        if opt == str then
-          ok = true
-          break
-        end
+    local choices = M.choice_options(setting)
+    if choices then
+      -- Labelled options: accept the stored value, or its label (so the CLI
+      -- takes both "dwindle" and "Tiling").
+      local needle = tostring(str)
+      for _, opt in ipairs(choices) do
+        if tostring(opt.value) == needle then return needle end
       end
+      for _, opt in ipairs(choices) do
+        if tostring(opt.label):lower() == needle:lower() then return tostring(opt.value) end
+      end
+      local labels = {}
+      for _, opt in ipairs(choices) do labels[#labels + 1] = tostring(opt.label) end
+      return nil, "'" .. needle .. "' is not a valid option (choose from: " .. table.concat(labels, ", ") .. ")"
     end
-    if not ok then
-      if setting.options then
-        return nil, "'" .. tostring(str) .. "' is not a valid option (choose from: " .. table.concat(setting.options, ", ") .. ")"
+    if setting.options then
+      for _, opt in ipairs(setting.options) do
+        if opt == str then return str end
       end
-      return nil, "'" .. tostring(str) .. "' is not a valid option"
+      return nil, "'" .. tostring(str) .. "' is not a valid option (choose from: " .. table.concat(setting.options, ", ") .. ")"
     end
     return str
   elseif t == "time" then
@@ -138,6 +143,16 @@ function M.validate(value, setting)
       return nil, "expected a number, got " .. tostring(value)
     end
   elseif t == "enum" then
+    local choices = M.choice_options(setting)
+    if choices then
+      for _, opt in ipairs(choices) do
+        if tostring(opt.value) == tostring(value) then return true end
+      end
+      local labels = {}
+      for _, opt in ipairs(choices) do labels[#labels + 1] = tostring(opt.label) end
+      return nil, "'" .. tostring(value) .. "' is not a valid option (choose from: "
+        .. table.concat(labels, ", ") .. ")"
+    end
     if setting.options then
       local ok = false
       for _, opt in ipairs(setting.options) do

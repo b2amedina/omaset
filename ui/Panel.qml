@@ -603,7 +603,7 @@ Item {
     var pos = -1
     if (mapped) {
       for (var i = 0; i < vals.length; i++)
-        if (Number(vals[i]) === Number(row.value)) { pos = i; break }
+        if (String(vals[i]) === String(row.value)) { pos = i; break }
     } else {
       pos = opts.indexOf(row.value)
     }

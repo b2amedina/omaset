@@ -1,18 +1,26 @@
 panel("layout", "Tiling Layout", function()
   section("Workspaces", function()
     -- Workspace modes (Omarchy 4.5+): per-workspace mode, with "floating" as
-    -- a real option and no "master".
+    -- a real option and no "master". Omarchy's user-facing term for Hyprland's
+    -- "dwindle" layout is "Tiling", so the label follows it while the stored
+    -- value stays Hyprland's name.
     if feature.workspace_modes() then
+      local modes = {
+        { value = "dwindle", label = "Tiling" },
+        { value = "scrolling", label = "Scrolling" },
+        { value = "floating", label = "Floating" },
+      }
+
       setting({
         id = "workspace_layout",
         type = "enum",
         label = "Workspace layout",
-        description = "Tiling layout for one workspace.",
+        description = "Layout for one workspace.",
         backend = "workspace-layout",
         keyed = true,
         key_label = "workspace",
         key_type = "int",
-        options = { "dwindle", "scrolling", "floating" },
+        options = modes,
       })
 
       setting({
@@ -26,19 +34,25 @@ panel("layout", "Tiling Layout", function()
         command = "omarchy hyprland workspace layout default {value}",
         status = "omarchy hyprland workspace layout default",
         reset = "omarchy hyprland workspace layout default dwindle",
-        options = { "dwindle", "scrolling", "floating" },
+        options = modes,
       })
     else
+      local modes = {
+        { value = "dwindle", label = "Tiling" },
+        { value = "master", label = "Master" },
+        { value = "scrolling", label = "Scrolling" },
+      }
+
       setting({
         id = "workspace_layout",
         type = "enum",
         label = "Workspace layout",
-        description = "Tiling layout for one workspace.",
+        description = "Layout for one workspace.",
         backend = "workspace-layout",
         keyed = true,
         key_label = "workspace",
         key_type = "int",
-        options = { "dwindle", "master", "scrolling" },
+        options = modes,
       })
 
       setting({
@@ -49,17 +63,17 @@ panel("layout", "Tiling Layout", function()
         backend = "hypr-lua",
         file = "looknfeel",
         path = "general.layout",
-        options = { "dwindle", "master", "scrolling" },
+        options = modes,
       })
     end
   end)
 
-  section("Dwindle", function()
+  section("Tiling", function()
     setting({
       id = "dwindle_force_split",
       type = "int",
-      label = "Dwindle force split",
-      description = "Force dwindle splits: 0 off, 1 always, 2 unless a window is solo.",
+      label = "Force split",
+      description = "Force tiling splits: 0 off, 1 always, 2 unless a window is solo.",
       backend = "hypr-lua",
       file = "looknfeel",
       path = "dwindle.force_split",
@@ -71,7 +85,7 @@ panel("layout", "Tiling Layout", function()
       id = "preserve_split",
       type = "bool",
       label = "Preserve split",
-      description = "Keep the dwindle split direction when a window is removed.",
+      description = "Keep the tiling split direction when a window is removed.",
       backend = "hypr-lua",
       file = "looknfeel",
       path = "dwindle.preserve_split",

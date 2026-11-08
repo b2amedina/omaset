@@ -106,8 +106,28 @@ function valueOf(effective, id, sub, key, fallback) {
   return fallback
 }
 
-function choiceRow(id, sub, key, label, spec, value) {
+// Split a setting's `options` into parallel label/value arrays, handling both
+// plain strings (label == value) and { value, label } objects.
+function choiceLists(spec) {
   var labels = [], values = []
+  var opts = spec.options || []
+  for (var i = 0; i < opts.length; i++) {
+    var o = opts[i]
+    if (o && typeof o === "object" && o.label !== undefined) {
+      labels.push(String(o.label))
+      values.push(o.value)
+    } else {
+      labels.push(String(o))
+      values.push(o)
+    }
+  }
+  return { labels: labels, values: values }
+}
+
+function choiceRow(id, sub, key, label, spec, value) {
+  var lists = choiceLists(spec)
+  var labels = lists.labels
+  var values = lists.values
   // A short list reads as a segmented row; many discrete choices read better
   // as a dropdown (macOS-style), e.g. idle timeouts.
   var kind = spec.options.length > 5 ? "dropdown" : "enum"
@@ -118,19 +138,15 @@ function choiceRow(id, sub, key, label, spec, value) {
   if (kind === "dropdown") {
     var isPreset = false
     if (value !== undefined && value !== null) {
-      for (var i = 0; i < spec.options.length; i++)
-        if (Number(spec.options[i].value) === Number(value)) { isPreset = true; break }
+      for (var i = 0; i < values.length; i++)
+        if (String(values[i]) === String(value)) { isPreset = true; break }
       if (!isPreset) {
-        labels.push("Custom · " + formatDuration(value))
-        values.push(value)
+        labels.unshift("Custom · " + formatDuration(value))
+        values.unshift(value)
       }
     }
   }
 
-  for (var i = 0; i < spec.options.length; i++) {
-    labels.push(String(spec.options[i].label))
-    values.push(spec.options[i].value)
-  }
   return { kind: kind, id: id, sub: sub, label: label,
            description: spec.description, segmented: kind === "enum",
            options: labels, values: values, value: value }
@@ -195,6 +211,12 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
 
     if (s.keyed) {
       rows.push({ kind: "keyed", id: s.id, label: s.label })
+      var lists = choiceLists(s)
+      var optLabels = lists.labels
+      var optValues = lists.values
+      // Default to the first option while the value loads, so rows do not
+      // flash empty before jumping to their real layout.
+      var defVal = optValues.length > 0 ? optValues[0] : undefined
       var mons = (monitorMap && monitorMap[s.id]) || []
       if (mons.length > 0) {
         // Monitor-grouped: pick a monitor, then show its workspaces 1..10
@@ -210,10 +232,8 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
           rows.push({
             kind: "enum", id: s.id, key: gid, slot: w + 1,
             label: "Workspace " + (w + 1),
-            options: s.options || [], segmented: true,
-            // Default to the first option while the value loads, so rows do
-            // not flash empty before jumping to their real layout.
-            value: valueOf(effective, s.id, undefined, gid, (s.options && s.options[0]))
+            options: optLabels, values: optValues, segmented: true,
+            value: valueOf(effective, s.id, undefined, gid, defVal)
           })
         }
       } else {
@@ -223,8 +243,8 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
           rows.push({
             kind: "enum", id: s.id, key: key,
             label: "Workspace " + key,
-            options: s.options || [], segmented: true,
-            value: valueOf(effective, s.id, undefined, key, (s.options && s.options[0]))
+            options: optLabels, values: optValues, segmented: true,
+            value: valueOf(effective, s.id, undefined, key, defVal)
           })
         }
       }
@@ -235,9 +255,13 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
       rows.push({ kind: "bool", id: s.id, label: s.label,
                   description: s.description, value: s.value })
     } else if (s.type === "enum") {
-      rows.push({ kind: "enum", id: s.id, label: s.label,
-                  description: s.description,
-                  options: s.options || [], segmented: true, value: s.value })
+      if (hasChoices(s)) {
+        rows.push(choiceRow(s.id, undefined, undefined, s.label, s, s.value))
+      } else {
+        rows.push({ kind: "enum", id: s.id, label: s.label,
+                    description: s.description,
+                    options: s.options || [], segmented: true, value: s.value })
+      }
     } else if (s.type === "time") {
       rows.push({ kind: "time", id: s.id, label: s.label,
                   description: s.description, timeFormat: fmt, value: s.value })

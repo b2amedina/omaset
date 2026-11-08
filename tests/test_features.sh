@@ -19,8 +19,8 @@ assert_eq "$(has_id "$OUT" "corners")" "false" "legacy has no corners"
 assert_eq "$(has_id "$OUT" "window_transparency")" "false" "legacy has no window_transparency"
 assert_eq "$(has_id "$OUT" "dock_position")" "false" "legacy has no dock_position"
 assert_eq "$(has_id "$OUT" "dock_autohide")" "false" "legacy has no dock_autohide"
-assert_eq "$(echo "$OUT" | jq -r '[.panels[].settings[] | select(.id=="workspace_layout") | .options[]] | join(",")')" \
-  "dwindle,master,scrolling" "legacy workspace_layout options"
+assert_eq "$(echo "$OUT" | jq -r '[.panels[].settings[] | select(.id=="workspace_layout") | .options[].label] | join(",")')" \
+  "Tiling,Master,Scrolling" "legacy workspace_layout options"
 
 # --- workspace-modes branch (4.5+) ---
 export OMASET_WORKSPACE_MODES=1
@@ -32,9 +32,9 @@ assert_eq "$(has_id "$OUT" "corners")" "true" "modes has corners"
 assert_eq "$(has_id "$OUT" "window_transparency")" "true" "modes has window_transparency"
 assert_eq "$(has_id "$OUT" "dock_position")" "true" "modes has dock_position"
 assert_eq "$(has_id "$OUT" "dock_autohide")" "true" "modes has dock_autohide"
-assert_eq "$(echo "$OUT" | jq -r '[.panels[].settings[] | select(.id=="workspace_layout") | .options[]] | join(",")')" \
-  "dwindle,scrolling,floating" "modes workspace_layout options"
-assert_eq "$(echo "$OUT" | jq -r '[.panels[].settings[] | select(.id=="default_layout") | .options[]] | join(",")')" \
-  "dwindle,scrolling,floating" "modes default_layout options"
+assert_eq "$(echo "$OUT" | jq -r '[.panels[].settings[] | select(.id=="workspace_layout") | .options[].label] | join(",")')" \
+  "Tiling,Scrolling,Floating" "modes workspace_layout options"
+assert_eq "$(echo "$OUT" | jq -r '[.panels[].settings[] | select(.id=="default_layout") | .options[].label] | join(",")')" \
+  "Tiling,Scrolling,Floating" "modes default_layout options"
 
 echo "ok"

@@ -62,7 +62,7 @@ assert_exit "$CODE" 1 "injection-shaped key rejected"
 # help shows key type and options.
 OUT="$(run help workspace_layout)"
 assert_contains "$OUT" "workspace (int)" "help shows key type"
-assert_contains "$OUT" "dwindle, master, scrolling" "help shows options"
+assert_contains "$OUT" "dwindle=Tiling, master=Master, scrolling=Scrolling" "help shows options"
 
 # search renders keyed settings without leaking the internal null sentinel.
 OUT="$(run search workspace)"
@@ -72,7 +72,7 @@ assert_not_contains "$OUT" "table:" "search does not leak sentinel"
 # help and get/set/reset --help all indicate the required key.
 OUT="$(run help workspace_layout)"
 assert_contains "$OUT" "get workspace_layout <workspace>" "help shows get usage with key"
-assert_contains "$OUT" "set workspace_layout <workspace> <dwindle|master|scrolling>" "help shows set usage with key"
+assert_contains "$OUT" "set workspace_layout <workspace> <Tiling|Master|Scrolling>" "help shows set usage with key"
 
 OUT="$(run get workspace_layout --help)"
 assert_contains "$OUT" "<workspace>" "get --help shows key"

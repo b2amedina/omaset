@@ -103,6 +103,10 @@ assert_eq "$(cat "$ST/3.lua")" 'o.workspace_mode({ workspace = "3", mode = "floa
 capture_out get workspace_layout 3
 assert_eq "$OUT" '{"id":"workspace_layout","key":"3","value":"floating"}' "get workspace 3 floating"
 
+# The CLI accepts Omarchy's label ("Tiling") and stores Hyprland's value.
+capture_out set workspace_layout 3 Tiling
+assert_eq "$OUT" '{"id":"workspace_layout","key":"3","ok":true,"value":"dwindle"}' "set workspace 3 by label Tiling"
+
 # Writing the default deletes the file (mirrors the toggle script).
 capture_out set workspace_layout 3 dwindle
 assert_eq "$OUT" '{"id":"workspace_layout","key":"3","ok":true,"value":"dwindle"}' "set workspace 3 dwindle"
@@ -126,7 +130,7 @@ assert_eq "$([ -f "$ST/default.lua" ] && echo present || echo gone)" "present" "
 
 # help shows the 4.5 options.
 OUT="$(run help workspace_layout)"
-assert_contains "$OUT" "dwindle, scrolling, floating" "help shows modes options"
+assert_contains "$OUT" "dwindle=Tiling, scrolling=Scrolling, floating=Floating" "help shows modes options"
 assert_not_contains "$OUT" "master" "help has no master"
 
 echo "ok"

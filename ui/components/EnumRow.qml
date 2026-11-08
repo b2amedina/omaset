@@ -28,7 +28,7 @@ BorderSurface {
     if (!mapped) return (row.value !== undefined && row.value !== null) ? String(row.value) : ""
     var opts = row.options || []
     for (var i = 0; i < row.values.length; i++)
-      if (Number(row.values[i]) === Number(row.value)) return String(opts[i])
+      if (String(row.values[i]) === String(row.value)) return String(opts[i])
     return ""
   }
 
