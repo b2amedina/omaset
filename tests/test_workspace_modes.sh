@@ -62,16 +62,17 @@ assert_eq "$(echo "$OUT" | jq -r '.keys | join(",")')" "1,3,11,12" "keys drops n
 assert_not_contains "$OUT" "-98" "special workspace excluded"
 assert_contains "$OUT" '"monitors":[' "keys reports monitors"
 
-# Monitors carry name, block, and their ten global workspaces.
+# Monitors carry name, block, and their workspaces (first five slots + any
+# that exist), matching the bar.
 assert_eq "$(echo "$OUT" | jq -r '[.monitors[].name] | join(",")')" "eDP-1,DP-10" "monitor names"
 assert_eq "$(echo "$OUT" | jq -r '.monitors[] | select(.name=="eDP-1") | .block')" "0" "eDP-1 block"
 assert_eq "$(echo "$OUT" | jq -r '.monitors[] | select(.name=="DP-10") | .workspaces | join(",")')" \
-  "11,12,13,14,15,16,17,18,19,20" "DP-10 workspaces"
+  "11,12,13,14,15" "DP-10 workspaces (first five)"
 
 # A monitor filter returns that monitor's workspaces.
 OUT="$(run keys workspace_layout DP-10 --json)"
 assert_eq "$(echo "$OUT" | jq -r '.monitor')" "DP-10" "monitor filter echoed"
-assert_eq "$(echo "$OUT" | jq -r '.keys | join(",")')" "11,12,13,14,15,16,17,18,19,20" "monitor filter keys"
+assert_eq "$(echo "$OUT" | jq -r '.keys | join(",")')" "11,12,13,14,15" "monitor filter keys"
 
 # Unknown monitor is rejected.
 capture keys workspace_layout NOPE

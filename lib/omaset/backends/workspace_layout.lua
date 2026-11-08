@@ -206,6 +206,47 @@ local function active_block(monitor_name)
   return math.floor((ids[1] - 1) / SLOTS)
 end
 
+-- The workspace ids a monitor's block shows, the same shape the bar renders:
+-- the first five slots, plus any other workspace in the block that is open or
+-- has a persisted layout. Sorted, as global ids.
+local function block_workspaces(setting, block)
+  local ids = {}
+  local seen = {}
+  local function add(id)
+    if not seen[id] then
+      seen[id] = true
+      ids[#ids + 1] = id
+    end
+  end
+
+  for slot = 1, 5 do
+    add(block * SLOTS + slot)
+  end
+
+  local out = util.run_capture("hyprctl workspaces -j | jq -r '.[].id'")
+  for line in (out or ""):gmatch("[^\n]+") do
+    local text = trim(line)
+    local id = tonumber(text)
+    if id and id > 0 and math.floor((id - 1) / SLOTS) == block then
+      add(id)
+    end
+  end
+
+  for _, key in ipairs(M.keys_all(setting) or {}) do
+    local id = tonumber(key)
+    if id and id > 0 and math.floor((id - 1) / SLOTS) == block then
+      add(id)
+    end
+  end
+
+  table.sort(ids)
+  local workspaces = {}
+  for _, id in ipairs(ids) do
+    workspaces[#workspaces + 1] = tostring(id)
+  end
+  return workspaces
+end
+
 -- Connected monitors with their workspace blocks, ordered by block.
 -- Returns nil when the setting has no monitor dimension (not workspace modes).
 function M.monitors(setting)
@@ -236,15 +277,10 @@ function M.monitors(setting)
       end
       used[block] = true
 
-      local workspaces = {}
-      for slot = 1, SLOTS do
-        workspaces[#workspaces + 1] = tostring(block * SLOTS + slot)
-      end
-
       monitors[#monitors + 1] = {
         name = name,
         block = block,
-        workspaces = workspaces,
+        workspaces = block_workspaces(setting, block),
       }
     end
   end
