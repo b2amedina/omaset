@@ -119,7 +119,7 @@ Item {
   property var helpRows: [
     { keys: "j / k",         ak: "help.move",     af: "Move between settings" },
     { keys: "h / l",         ak: "help.adjust",   af: "Adjust a value" },
-    { keys: "Tab",           ak: "help.pane",     af: "Switch pane" },
+    { keys: "Tab / Shift+Tab", ak: "help.pane",   af: "Switch pane" },
     { keys: "Space / Enter", ak: "help.activate", af: "Activate / edit" },
     { keys: "x",             ak: "help.reset",    af: "Reset to default" },
     { keys: "/",             ak: "help.search",   af: "Search" },
