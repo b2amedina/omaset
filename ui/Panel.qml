@@ -157,6 +157,12 @@ Item {
     directory: Qt.resolvedUrl("i18n")
   }
 
+  // True when the selected language runs right-to-left (Arabic, Hebrew,
+  // Farsi, …), read from Omarchy's locale registry. Layouts that pair a key
+  // with a description mirror themselves so the key column stays on the
+  // reading-start side and text stays aligned to the text, not the panel.
+  readonly property bool rtl: Commons.I18n.rightToLeft
+
   // ---- window sizing ----------------------------------------------------
   // The window sizes to its content (widest footer hint + widest sidebar
   // title), scaled by the text size/display scale via Style.space(), and
@@ -1711,6 +1717,7 @@ Item {
                   visible: root.helpMode
 
                   Flickable {
+                    id: helpFlick
                     anchors.fill: parent
                     contentWidth: width
                     contentHeight: helpColumn.implicitHeight
@@ -1719,25 +1726,34 @@ Item {
 
                     Column {
                       id: helpColumn
-                      width: parent.width
-                      spacing: Style.space(10)
+                      // Centered block of a comfortable width, so each key
+                      // and its action read as one unit rather than a list
+                      // hugging the panel edge. The cap lets long
+                      // translations wrap instead of stretching the window.
+                      width: Math.min(helpFlick.width, Style.space(460))
+                      x: Math.max(0, (helpFlick.width - helpColumn.width) / 2)
+                      spacing: Style.space(12)
 
                       Repeater {
                         model: root.helpRows
                         delegate: Row {
                           required property var modelData
-                          width: parent.width
+                          width: helpColumn.width
                           spacing: Style.spacing.lg
+                          // Mirrored for RTL: the key column stays on the
+                          // reading-start side, beside its description.
+                          layoutDirection: root.rtl ? Qt.RightToLeft : Qt.LeftToRight
 
                           Text {
                             width: Style.space(140)
-                            horizontalAlignment: Text.AlignRight
                             textFormat: Text.PlainText
                             text: modelData.keys
                             color: root.accent
                             font.family: root.fontFamily
                             font.pixelSize: Style.font.body
                             font.bold: true
+                            // Keys hug their action (right in LTR, left in RTL).
+                            horizontalAlignment: root.rtl ? Text.AlignLeft : Text.AlignRight
                           }
                           Text {
                             width: parent.width - Style.space(140) - Style.spacing.lg
@@ -1747,6 +1763,7 @@ Item {
                             font.family: root.fontFamily
                             font.pixelSize: Style.font.body
                             wrapMode: Text.WordWrap
+                            horizontalAlignment: root.rtl ? Text.AlignRight : Text.AlignLeft
                           }
                         }
                       }
