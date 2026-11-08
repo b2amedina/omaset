@@ -239,9 +239,11 @@ Built-in backends:
   (command whose stdout is the current value), `mode` (`"value"` or `"toggle"`),
   and optional `reset`. `read` returns `null` when there is no `status` command.
 - `workspace-layout` — per-workspace Hyprland layout, keyed by workspace number.
-  Reads `hyprctl workspaces`, persists rules to
-  `~/.local/state/omarchy/workspace-layouts/` (like `omarchy hyprland workspace
-  layout toggle`), and applies via `hl.workspace_rule`. Default is `"dwindle"`.
+  Shares `~/.local/state/omarchy/workspace-layouts/` with Omarchy. On
+  workspace-modes hosts (Omarchy 4.5+) it reads/writes
+  `o.workspace_mode({workspace, mode})` via `omarchy-hyprland-workspace-layout-*`;
+  on older hosts it uses `hl.workspace_rule` + `hyprctl workspaces`. Default is
+  `"dwindle"`.
 - `hyprsunset` — night light schedule in `~/.config/hypr/hyprsunset.conf`; field
   `path` (`"schedule"`, `"start"`, `"stop"`, or `"temperature"`). Manages two
   omaset-owned profiles (warm at `start`, `identity` at `stop`) in a

@@ -49,6 +49,12 @@ local function eval_config(file_paths)
   local old_hl, old_o = _G.hl, _G.o
   _G.hl = hl
   _G.o = o
+  -- Omarchy's own default files may require() their siblings (e.g. 4.5's
+  -- input.lua needs default.hypr.keyboard). Put the Omarchy module root on
+  -- package.path while evaluating so those requires resolve, then restore.
+  local saved_path = package.path
+  package.path = omarchy_path() .. "/?.lua;"
+    .. omarchy_path() .. "/?/init.lua;" .. saved_path
   for _, path in ipairs(file_paths) do
     if util.file_exists(path) then
       local chunk, err = loadfile(path)
@@ -64,6 +70,7 @@ local function eval_config(file_paths)
   end
   _G.hl = old_hl
   _G.o = old_o
+  package.path = saved_path
   return merged
 end
 

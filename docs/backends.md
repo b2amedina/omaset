@@ -93,9 +93,14 @@ Per-workspace tiling layout, keyed by workspace number.
 
 - Shares storage with Omarchy's own `omarchy hyprland workspace layout toggle`
   (Super+L) — the same `~/.local/state/omarchy/workspace-layouts/*.lua` files —
-  so the two are coherent.
+  so the two are coherent. On workspace-modes hosts (Omarchy 4.5+) the files
+  carry `o.workspace_mode({workspace, mode})` and reads go through
+  `omarchy-hyprland-workspace-layout-current`/`-default`; older hosts use
+  `hl.workspace_rule`. Which mechanics apply is chosen by the
+  `features.workspace_modes()` probe.
 - `reset workspace_layout <n>` deletes one rule; `reset workspace_layout --all`
   clears every persisted rule, including workspaces that are not currently open.
+  Writing a mode equal to the default deletes the file.
 
 ## Writing a new one
 

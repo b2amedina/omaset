@@ -69,7 +69,43 @@ panel("appearance", "Appearance", function()
       file = "looknfeel",
       path = "decoration.shadow.enabled",
     })
+
+    -- How transparent Omarchy's windows render (Omarchy 4.5+).
+    if feature.workspace_modes() then
+      setting({
+        id = "window_transparency",
+        type = "enum",
+        label = "Window transparency",
+        description = "How see-through windows are (opaque, transparent, or glassy).",
+        backend = "omarchy",
+        mode = "value",
+        default = "transparent",
+        command = "omarchy hyprland window transparency {value}",
+        status = "omarchy hyprland window transparency",
+        reset = "omarchy hyprland window transparency transparent",
+        options = { "opaque", "transparent", "glassy" },
+      })
+    end
   end)
+
+  -- Window corner policy (Omarchy 4.5+).
+  if feature.workspace_modes() then
+    section("Corners", function()
+      setting({
+        id = "corners",
+        type = "enum",
+        label = "Window corners",
+        description = "Window corners: follow the theme, sharp, or rounded.",
+        backend = "omarchy",
+        mode = "value",
+        default = "theme",
+        command = "omarchy hyprland corners {value}",
+        status = "omarchy hyprland corners",
+        reset = "omarchy hyprland corners theme",
+        options = { "theme", "sharp", "rounded" },
+      })
+    end)
+  end
 
   section("Groupbar", function()
     setting({

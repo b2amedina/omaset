@@ -17,6 +17,7 @@ lib/omaset/
   rpc.lua               JSON-RPC 2.0 over stdio for the settings window
   mcp.lua               MCP wire adapter over service + agent registration
   dsl.lua               panel()/section()/setting() declarative DSL
+  features.lua          capability probes (e.g. workspace modes / 4.5+)
   discovery.lua         loads share/settings/*.lua (and ~/.config/omaset/settings/)
   types.lua             int/float/bool/enum/time coercion + range checks
   json.lua              minimal JSON encoder + decoder (journal, preferences)

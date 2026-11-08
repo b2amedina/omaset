@@ -61,9 +61,9 @@ without any change to the core.
 
 | Panel | Examples |
 |---|---|
-| Appearance | gaps, borders, rounding, blur, shadow, groupbar |
-| Tiling Layout | default layout, dwindle/master options, scrolling width |
-| Bar | position, transparency |
+| Appearance | gaps, borders, rounding, blur, shadow, groupbar, corners, transparency |
+| Tiling Layout | default layout, dwindle/scrolling/floating, scrolling width, dock |
+| Bar | position, background |
 | Input | mouse, trackpad, key repeat, numlock |
 | Windows | full-width & tiled-fullscreen styles, single-window square |
 | Power & Idle | screen and lock timeouts |

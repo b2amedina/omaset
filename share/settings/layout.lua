@@ -1,27 +1,57 @@
 panel("layout", "Tiling Layout", function()
   section("Workspaces", function()
-    setting({
-      id = "workspace_layout",
-      type = "enum",
-      label = "Workspace layout",
-      description = "Tiling layout for one workspace (dwindle, master, or scrolling).",
-      backend = "workspace-layout",
-      keyed = true,
-      key_label = "workspace",
-      key_type = "int",
-      options = { "dwindle", "master", "scrolling" },
-    })
+    -- Workspace modes (Omarchy 4.5+): per-workspace mode, with "floating" as
+    -- a real option and no "master".
+    if feature.workspace_modes() then
+      setting({
+        id = "workspace_layout",
+        type = "enum",
+        label = "Workspace layout",
+        description = "Tiling layout for one workspace (dwindle, scrolling, or floating).",
+        backend = "workspace-layout",
+        keyed = true,
+        key_label = "workspace",
+        key_type = "int",
+        options = { "dwindle", "scrolling", "floating" },
+      })
 
-    setting({
-      id = "default_layout",
-      type = "enum",
-      label = "Default layout (new workspaces)",
-      description = "Layout applied to newly opened workspaces.",
-      backend = "hypr-lua",
-      file = "looknfeel",
-      path = "general.layout",
-      options = { "dwindle", "master", "scrolling" },
-    })
+      setting({
+        id = "default_layout",
+        type = "enum",
+        label = "Default layout (new workspaces)",
+        description = "Layout applied to newly opened workspaces.",
+        backend = "omarchy",
+        mode = "value",
+        default = "dwindle",
+        command = "omarchy hyprland workspace layout default {value}",
+        status = "omarchy hyprland workspace layout default",
+        reset = "omarchy hyprland workspace layout default dwindle",
+        options = { "dwindle", "scrolling", "floating" },
+      })
+    else
+      setting({
+        id = "workspace_layout",
+        type = "enum",
+        label = "Workspace layout",
+        description = "Tiling layout for one workspace (dwindle, master, or scrolling).",
+        backend = "workspace-layout",
+        keyed = true,
+        key_label = "workspace",
+        key_type = "int",
+        options = { "dwindle", "master", "scrolling" },
+      })
+
+      setting({
+        id = "default_layout",
+        type = "enum",
+        label = "Default layout (new workspaces)",
+        description = "Layout applied to newly opened workspaces.",
+        backend = "hypr-lua",
+        file = "looknfeel",
+        path = "general.layout",
+        options = { "dwindle", "master", "scrolling" },
+      })
+    end
   end)
 
   section("Dwindle", function()
@@ -62,16 +92,52 @@ panel("layout", "Tiling Layout", function()
     })
   end)
 
-  section("Master", function()
-    setting({
-      id = "master_new_status",
-      type = "enum",
-      label = "Master new status",
-      description = "Whether new windows open as master or join the stack.",
-      backend = "hypr-lua",
-      file = "looknfeel",
-      path = "master.new_status",
-      options = { "master", "slave" },
-    })
-  end)
+  -- The master layout exists only before workspace modes (4.5).
+  if not feature.workspace_modes() then
+    section("Master", function()
+      setting({
+        id = "master_new_status",
+        type = "enum",
+        label = "Master new status",
+        description = "Whether new windows open as master or join the stack.",
+        backend = "hypr-lua",
+        file = "looknfeel",
+        path = "master.new_status",
+        options = { "master", "slave" },
+      })
+    end)
+  end
+
+  -- Floating workspaces are arranged by the mode; the dock shows there.
+  if feature.workspace_modes() then
+    section("Dock", function()
+      setting({
+        id = "dock_position",
+        type = "enum",
+        label = "Dock position",
+        description = "Which edge of the screen the dock sits on.",
+        backend = "omarchy",
+        mode = "value",
+        default = "bottom",
+        command = "omarchy dock position {value}",
+        status = "omarchy dock position",
+        reset = "omarchy dock position bottom",
+        options = { "top", "bottom", "left", "right" },
+      })
+
+      setting({
+        id = "dock_autohide",
+        type = "enum",
+        label = "Dock autohide",
+        description = "Hide the dock until the pointer reaches its edge.",
+        backend = "omarchy",
+        mode = "value",
+        default = "off",
+        command = "omarchy dock autohide {value}",
+        status = "omarchy dock autohide",
+        reset = "omarchy dock autohide off",
+        options = { "on", "off" },
+      })
+    end)
+  end
 end)

@@ -46,6 +46,7 @@ function M.environment()
     panel = panel,
     section = section,
     setting = setting,
+    feature = require("omaset.features"),
   }
 end
 

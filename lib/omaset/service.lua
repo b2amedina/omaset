@@ -100,10 +100,46 @@ local function coerce_value(raw, spec)
   return types.normalize(raw, spec)
 end
 
+-- A journal entry recorded by an older omaset/Omarchy may name a setting
+-- that no longer exists, or a value that is no longer a valid option (e.g.
+-- "master" after the 4.5 layout change). core.write_value bypasses type
+-- validation, so check here: such entries return "skipped" instead of being
+-- replayed.
+local function undo_stale_reason(core, s, entry)
+  local key = entry.key or entry.sub
+  local old = entry.old
+  if old == json.null then old = nil end
+  if old == nil then return nil end
+  local spec = s
+  if core.grouped(s) and key ~= nil then
+    spec = s.subsettings and s.subsettings[key] or nil
+    if not spec then return "unknown sub-setting '" .. tostring(key) .. "'" end
+  end
+  local t = (spec.type or "string")
+  local choices = types.choice_options(spec)
+  if choices then
+    for _, opt in ipairs(choices) do
+      if opt.value == old then return nil end
+    end
+    return "value '" .. tostring(old) .. "' is no longer a valid option for " .. s.id
+  end
+  if t == "enum" and spec.options then
+    for _, opt in ipairs(spec.options) do
+      if opt == old then return nil end
+    end
+    return "value '" .. tostring(old) .. "' is no longer a valid option for " .. s.id
+  end
+  return nil
+end
+
 local function apply_undo(core, entry)
   local s = core.find_setting(entry.id)
   if not s then
-    return nil, "unknown setting in journal: " .. tostring(entry.id)
+    return "skipped", "unknown setting in journal: " .. tostring(entry.id)
+  end
+  local stale = undo_stale_reason(core, s, entry)
+  if stale then
+    return "skipped", stale
   end
   local key = entry.key or entry.sub
   local old = entry.old
@@ -452,7 +488,10 @@ function M.undo(core, args)
     local errors = {}
     for i = #entries, 1, -1 do
       local ok, err = apply_undo(core, entries[i])
-      if ok then
+      if ok == "skipped" then
+        io.stderr:write("omaset: warning: skipping stale journal entry: "
+          .. tostring(err) .. "\n")
+      elseif ok then
         undone = undone + 1
       else
         errors[#errors + 1] = tostring(err)
@@ -471,6 +510,12 @@ function M.undo(core, args)
   end
   local entry = entries[#entries]
   local ok, err = apply_undo(core, entry)
+  if ok == "skipped" then
+    io.stderr:write("omaset: warning: skipping stale journal entry: "
+      .. tostring(err) .. "\n")
+    journal.remove_last()
+    return { ok = true, undone = 0, skipped = true, id = entry.id }
+  end
   if not ok then
     return nil, err
   end
