@@ -1,4 +1,4 @@
-panel("display", "Display", function()
+panel("display", "Display", 0xf108, function()
   section("Night light", function()
     setting({
       id = "nightlight",

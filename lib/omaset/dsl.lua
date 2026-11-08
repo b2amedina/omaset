@@ -4,8 +4,14 @@ local M = {}
 
 M.panels = {}
 
-local function panel(id, title, fn)
-  local p = { id = id, title = title, settings = {} }
+local function panel(id, title, icon, fn)
+  -- The icon is optional; a third argument that is a function is the body
+  -- (older settings files wrote panel(id, title, fn)).
+  if type(icon) == "function" then
+    fn = icon
+    icon = nil
+  end
+  local p = { id = id, title = title, icon = icon, settings = {} }
   M.panels[#M.panels + 1] = p
   local prev = M._current
   M._current = p

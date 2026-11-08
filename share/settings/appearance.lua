@@ -1,4 +1,4 @@
-panel("appearance", "Appearance", function()
+panel("appearance", "Appearance", 0xf1fc, function()
   section("Gaps & borders", function()
     setting({
       id = "gaps_in",

@@ -1,4 +1,4 @@
-panel("layout", "Tiling Layout", function()
+panel("layout", "Tiling Layout", 0xf009, function()
   section("Workspaces", function()
     -- Workspace modes (Omarchy 4.5+): per-workspace mode, with "floating" as
     -- a real option and no "master". Omarchy's user-facing term for Hyprland's

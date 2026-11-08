@@ -132,6 +132,14 @@ Item {
   property var activeDropdown: null
   property bool dropdownOpen: false
 
+  // Plugin-local translations. Follows the language in ~/.config/omarchy/
+  // language (Commons.I18n), falling back to English. Strings are in i18n/.
+  readonly property var tr: i18n
+  Commons.Translations {
+    id: i18n
+    directory: Qt.resolvedUrl("i18n")
+  }
+
   ListModel {
     id: prefsModel
   }
@@ -414,20 +422,15 @@ Item {
 
   // ---- row model -------------------------------------------------------
   function rebuildRows() {
-    root.rows = Model.rowsFor(activePanel(), effective, keyed, root.timeFormat, root.keyedMonitors, root.selectedMonitor)
+    root.rows = Model.rowsFor(activePanel(), effective, keyed, root.timeFormat, root.keyedMonitors, root.selectedMonitor,
+      function(key, fallback) { return root.tr.t(key, fallback) })
     clampRow()
     applyPendingSelect()
   }
 
-  function iconFor(id) {
-    var map = {
-      "appearance": "\uf1fc",
-      "layout": "\uf009",
-      "windows": "\uf0c8",
-      "power": "\uf011",
-      "display": "\uf108"
-    }
-    return map[id] || "\uf013"
+  // Panel icon glyph, declared in the panel's settings file (no hardcoded map).
+  function panelIcon(p) {
+    return (p && p.icon) ? p.icon : "\uf013"
   }
 
   // ---- writes ----------------------------------------------------------
@@ -891,14 +894,14 @@ Item {
     ? "\u2191\u2193 move · \u23ce/\u2423 toggle · h l step · esc close"
     : "j k move · h l adjust · \u2423/\u23ce select/edit · tab pane · x reset · / search · c changed · p prefs · esc close"
   readonly property string footerContext: schemaError !== ""
-    ? "schema mismatch"
+    ? tr.t("ui.schemaMismatch", "schema mismatch")
     : searchMode
-    ? (searchResults.length > 0 ? searchResults.length + " settings found" : "")
+    ? (searchResults.length > 0 ? tr.t("ui.settingsFound", "%1 settings found").replace("%1", String(searchResults.length)) : "")
     : changedMode
-    ? (changedList.length > 0 ? changedList.length + " changed" : "no changes")
+    ? (changedList.length > 0 ? tr.t("ui.changedCount", "%1 changed").replace("%1", String(changedList.length)) : tr.t("ui.noChanges", "no changes"))
     : prefsMode
-    ? (prefError !== "" ? prefError : "preferences")
-    : (changedCount > 0 ? changedCount + " changed" : "")
+    ? (prefError !== "" ? prefError : tr.t("ui.preferences", "Preferences"))
+    : (changedCount > 0 ? tr.t("ui.changedCount", "%1 changed").replace("%1", String(changedCount)) : "")
   readonly property color footerContextColor: (searchMode || changedMode || prefsMode) ? (prefError !== "" ? urgent : accent) : urgent
 
   // ---- window ----------------------------------------------------------
@@ -1050,7 +1053,7 @@ Item {
                       anchors.leftMargin: Style.spacing.controlPaddingX
                       anchors.verticalCenter: parent.verticalCenter
                       textFormat: Text.PlainText
-                      text: root.iconFor(modelData.id)
+                      text: root.panelIcon(modelData)
                       color: active ? Commons.Color.menu.selectedText : Qt.darker(root.foreground, 1.3)
                       font.family: root.fontFamily
                       font.pixelSize: Style.font.body
@@ -1103,7 +1106,7 @@ Item {
                     textFormat: Text.PlainText
                     text: root.searchMode ? "\uf002"
                       : (root.changedMode ? "\uf044"
-                      : (root.prefsMode ? "\uf013" : root.iconFor(root.activePanelId)))
+                      : (root.prefsMode ? "\uf013" : root.panelIcon(root.activePanel())))
                     color: root.accent
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.iconLarge
@@ -1111,9 +1114,9 @@ Item {
                   Text {
                     anchors.verticalCenter: parent.verticalCenter
                     textFormat: Text.PlainText
-                    text: root.searchMode ? "Search"
-                      : (root.changedMode ? "Changed"
-                      : (root.prefsMode ? "Preferences" : (root.activePanel() ? root.activePanel().title : "")))
+                    text: root.searchMode ? root.tr.t("ui.search", "Search")
+                      : (root.changedMode ? root.tr.t("ui.changed", "Changed")
+                      : (root.prefsMode ? root.tr.t("ui.preferences", "Preferences") : (root.activePanel() ? root.activePanel().title : "")))
                     color: root.foreground
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.heading

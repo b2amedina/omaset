@@ -1,4 +1,4 @@
-panel("input", "Input", function()
+panel("input", "Input", 0xf11c, function()
   section("Mouse", function()
     setting({
       id = "follow_mouse",

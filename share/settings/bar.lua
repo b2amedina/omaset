@@ -1,4 +1,4 @@
-panel("bar", "Bar", function()
+panel("bar", "Bar", 0xf0c9, function()
   section("Placement", function()
     setting({
       id = "bar_position",

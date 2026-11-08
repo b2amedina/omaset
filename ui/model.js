@@ -183,13 +183,18 @@ function fieldRow(id, sub, key, label, type, spec, effective, timeFormat) {
   }
 }
 
-function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMonitor) {
+function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMonitor, tr) {
   var fmt = (timeFormat === "12h") ? "12h" : "24h"
   var rows = []
   if (!panel) return rows
   rows.push({ kind: "title", id: panel.id, title: panel.title })
   var settings = panel.settings || []
   var currentSection = ""
+  // "Workspace N" label, localised through the passed-in t(key, fallback).
+  function workspaceLabel(n) {
+    if (tr) return tr("ui.workspace", "Workspace %1").replace("%1", String(n))
+    return "Workspace " + n
+  }
   for (var i = 0; i < settings.length; i++) {
     var s = settings[i]
     if (!s) continue
@@ -231,7 +236,7 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
           var gid = mon.workspaces[w]
           rows.push({
             kind: "enum", id: s.id, key: gid, slot: w + 1,
-            label: "Workspace " + (w + 1),
+            label: workspaceLabel(w + 1),
             options: optLabels, values: optValues, segmented: true,
             value: valueOf(effective, s.id, undefined, gid, defVal)
           })
@@ -242,7 +247,7 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
           var key = keys[k]
           rows.push({
             kind: "enum", id: s.id, key: key,
-            label: "Workspace " + key,
+            label: workspaceLabel(key),
             options: optLabels, values: optValues, segmented: true,
             value: valueOf(effective, s.id, undefined, key, defVal)
           })

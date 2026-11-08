@@ -1,0 +1,11 @@
+{
+  "ui.monitor": "Monitor",
+  "ui.workspace": "Workspace %1",
+  "ui.search": "Search",
+  "ui.changed": "Changed",
+  "ui.preferences": "Preferences",
+  "ui.schemaMismatch": "schema mismatch",
+  "ui.settingsFound": "%1 settings found",
+  "ui.changedCount": "%1 changed",
+  "ui.noChanges": "no changes"
+}

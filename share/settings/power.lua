@@ -1,4 +1,4 @@
-panel("power", "Power & Idle", function()
+panel("power", "Power & Idle", 0xf011, function()
   section("Idle", function()
     -- Friendly discrete time presets (macOS-style), so a raw-seconds slider
     -- is never shown. The stored value stays seconds in shell.json; the UI and

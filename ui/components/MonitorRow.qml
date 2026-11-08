@@ -67,7 +67,7 @@ BorderSurface {
 
       Text {
         textFormat: Text.PlainText
-        text: "Monitor"
+        text: root.panel ? root.panel.tr.t("ui.monitor", "Monitor") : "Monitor"
         color: root.fg
         font.family: root.fontFamily
         font.pixelSize: Style.font.subtitle

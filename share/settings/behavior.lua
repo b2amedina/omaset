@@ -1,4 +1,4 @@
-panel("behavior", "Behavior", function()
+panel("behavior", "Behavior", 0xf013, function()
   section("Windows & focus", function()
     setting({
       id = "resize_on_border",

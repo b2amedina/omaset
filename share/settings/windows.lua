@@ -1,4 +1,4 @@
-panel("windows", "Windows", function()
+panel("windows", "Windows", 0xf0c8, function()
   section("Fullscreen styles", function()
     setting({
       id = "fullwidth_style",

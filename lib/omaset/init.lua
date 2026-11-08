@@ -215,10 +215,25 @@ end
 -- shape changes incompatibly -- additive fields keep the same version.
 M.SCHEMA_VERSION = 1
 
+-- A numeric codepoint as its UTF-8 string (panel icons are declared as
+-- codepoints so the Lua source stays portable across Lua 5.1).
+local function utf8_char(cp)
+  if cp < 0x80 then
+    return string.char(cp)
+  elseif cp < 0x800 then
+    return string.char(0xC0 + math.floor(cp / 0x40), 0x80 + (cp % 0x40))
+  else
+    return string.char(0xE0 + math.floor(cp / 0x1000),
+      0x80 + (math.floor(cp / 0x40) % 0x40), 0x80 + (cp % 0x40))
+  end
+end
+
 function M.schema()
   local out = { schemaVersion = M.SCHEMA_VERSION, panels = {} }
   for _, p in ipairs(dsl.panels) do
-    local panel = { id = p.id, title = p.title, settings = {} }
+    local icon = p.icon
+    if type(icon) == "number" then icon = utf8_char(icon) end
+    local panel = { id = p.id, title = p.title, icon = icon, settings = {} }
     for _, s in ipairs(p.settings) do
       local entry = {}
       for k, v in pairs(s) do
