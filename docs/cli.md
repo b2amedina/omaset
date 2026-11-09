@@ -32,6 +32,25 @@ ln -s ~/.config/omarchy/plugins/b2amedina.omaset/bin/omaset ~/.local/bin/omaset
 
 Every command prints JSON; add `--json` where a command defaults to human text,
 or `--plain` to get just the bare value / `ok` (handy in scripts and prompts).
+JSON and `--plain` output always stay English — only human text localizes.
+
+## Language
+
+```
+omaset --lang <code> <command> [args...]   # one-off override for this call
+omaset --lang list                          # list available language codes
+omaset --lang <code>                        # print the resolved language
+```
+
+The code comes from Omarchy's registry (`omarchy language list`) and
+follows the desktop language by default: `--lang` > `OMASET_LANGUAGE` >
+`~/.config/omarchy/language` > `en`. The flag is accepted anywhere in the
+argument list (`omaset list --lang fr` works too). `omaset ui --lang fr`
+is the one-shot window override: it renders the settings window in French
+for that launch only (`~/.config/omaset/ui-language`, cleared on the next
+plain `omaset ui`). See [i18n.md](i18n.md)
+for what localizes (labels and status strings) and what does not (command
+names, flags, values, JSON, MCP).
 
 ## Keyed settings
 

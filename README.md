@@ -112,6 +112,7 @@ Full command reference — keyed settings, `help`/`options`, and omaset's own pr
 | [Safety & undo](docs/safety.md) | in-place edits, `undo`, `rollback`, `reset` |
 | [For agents](docs/agents.md) | the MCP server and a worked example |
 | [Protocol](docs/protocol.md) | the machine-readable contract |
+| [Internationalization](docs/i18n.md) | the catalogs, language resolution, and the per-release checklist |
 | [Tests](docs/tests.md) | how omaset is tested |
 | [Settings UI](ui/README.md) | the Quickshell window, install and keys |
 

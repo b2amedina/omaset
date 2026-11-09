@@ -25,6 +25,7 @@ lib/omaset/
   journal.lua           append-only change log for history/undo
   preferences.lua       omaset's own UI preferences (separate from settings)
   clock_format.lua      resolves the bar clock's 12h/24h format from shell.json
+  i18n.lua              language resolution, catalog lookup, plurals, number formatting
   util.lua              deep merge/get/set, serializer, shell helpers
   backends/             pluggable backends (self-register via load_dir)
     hypr_lua.lua         reads/writes Hyprland Lua config (looknfeel.lua etc.)
@@ -35,6 +36,8 @@ lib/omaset/
     hyprsunset.lua       night light schedule (hyprsunset.conf)
 share/settings/         built-in panels (appearance, layout, input, behavior,
                         bar, power, display, windows)
+i18n/                     the shared <language>.json catalogs (see docs/i18n.md)
+scripts/i18n-extract     regenerates i18n/en.json from the schema
 ui/                     the keyboard-first settings window (Quickshell plugin)
 ```
 
@@ -89,6 +92,11 @@ omaset search <q>   find by id or label
 [MCP server](agents.md); the [settings window](../ui/README.md) calls it through
 `omaset rpc`; the CLI calls it in-process. Add a setting, and all three pick it
 up at once — nothing to keep in sync.
+
+The schema always carries English labels (the stable machine contract).
+Localization happens at render time: the CLI and the window resolve
+`panel.*`/`setting.*` keys through the shared catalogs in `i18n/` (see
+[i18n.md](i18n.md)), while JSON, `--plain`, and MCP payloads stay English.
 
 See [docs/protocol.md](protocol.md) for the shapes each command returns, and
 [the UI README](../ui/README.md) for the RPC transport.

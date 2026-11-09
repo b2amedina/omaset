@@ -37,6 +37,17 @@ end)
 Within a panel, settings are sorted alphabetically by id, with each section's
 settings kept contiguous (sections ordered by their first member).
 
+## Localization
+
+The English `label`/`description` you write *is* the fallback. Do not add
+catalog entries by hand for a new setting — regenerate the canonical
+catalog with `scripts/i18n-extract` (it rewrites `i18n/en.json` from the
+schema, covering both capability branches) and, if you are maintaining a
+translation, update `i18n/<code>.json` for the changed keys (untranslated
+keys fall back to English). Stored values (`dwindle`, `top`, `on`) are
+never translated. See [i18n.md](i18n.md) for the full checklist,
+including what to do when Omarchy adds a language or renames an option.
+
 ## Where to put it
 
 Drop a file in `~/.config/omaset/settings/`. `discovery.lua` loads the built-in

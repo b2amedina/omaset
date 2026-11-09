@@ -4,6 +4,12 @@ The machine-readable contract between the omaset engine and its consumers
 (the CLI, the keyboard-first UI, or Omarchy's own commands). Every command
 emits valid, deterministic JSON (object keys are sorted).
 
+All JSON payloads stay in English regardless of the UI language (labels,
+descriptions, and tool descriptions included) — this is the stable contract
+for agents and scripts. Localization happens only where humans read text:
+the window (`Commons.Translations`) and the human CLI (`cli.*` catalog).
+See [i18n.md](i18n.md).
+
 ## Commands
 
 ### `schema`

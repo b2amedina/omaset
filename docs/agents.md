@@ -6,6 +6,10 @@ without needing to know which dotfile each setting lives in.
 
 The contract is `docs/protocol.md`; this page is the practical guide.
 
+> MCP, `schema`, and every JSON/`--plain` payload stay English (the stable
+> contract), even when the user runs the window and CLI in another language.
+> You never need to handle localized text here. See [i18n.md](i18n.md).
+
 ## MCP (recommended)
 
 omaset ships an MCP server so an agent can call settings as typed tools instead

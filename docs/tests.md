@@ -17,5 +17,6 @@ stays invisible.
 
 Coverage is one file per area — the schema and its sections, each backend
 (`hypr_lua`, `hypr_window`, `shell_json`, `hyprsunset`, `omarchy`,
-`workspace_layout`), the journal and revert path, type coercion, help output, and
-the MCP server and its installer.
+`workspace_layout`), the journal and revert path, type coercion, help output,
+the MCP server and its installer, and the i18n catalogs (`test_i18n.sh`:
+freshness, coverage, placeholders, plurals — see [i18n.md](i18n.md)).

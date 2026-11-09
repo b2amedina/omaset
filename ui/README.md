@@ -108,6 +108,9 @@ pinned at its bottom.
   `ButtonGroup`, `BorderSurface`), so theme/colors/shape come from the active
   Omarchy theme automatically (under Ristretto, toggles are square and
   foreground-based).
+- `../i18n/` (plugin root, shared with the engine) — the `<language>.json`
+  catalogs; the window reads them via `Commons.Translations` and follows
+  the desktop language. See [docs/i18n.md](../docs/i18n.md).
 
 ## How it maps omaset settings
 

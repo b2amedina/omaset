@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Full Omarchy language support (all 50 registry codes) — shared `i18n/`
+  catalogs, engine-side `lib/omaset/i18n.lua` (`t`/`tn`/`formatNumber`,
+  plural rules), `--lang <code>`/`OMASET_LANGUAGE` override (JSON and MCP
+  stay English), window localization of plain-string enum labels, counts,
+  and preferences, RTL mirroring for ar/fa/he/ur, locale AM/PM markers,
+  `scripts/i18n-extract`, `tests/test_i18n.sh`, and `docs/i18n.md`.
+
 ## 0.2.0 — 2026-11-08
 
 - Omarchy 4.5 support — floating workspaces, per-monitor workspace blocks,
