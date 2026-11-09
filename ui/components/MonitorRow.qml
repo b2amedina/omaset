@@ -14,6 +14,7 @@ BorderSurface {
   property var row: ({})
   property int rowIndex: -1
 
+  readonly property bool rtl: panel ? panel.rtl : false
   readonly property color fg: panel ? panel.foreground : Commons.Color.foreground
   readonly property color accent: panel ? panel.accent : Commons.Color.accent
   readonly property string fontFamily: panel ? panel.fontFamily : Style.font.family
@@ -67,6 +68,7 @@ BorderSurface {
 
       Text {
         textFormat: Text.PlainText
+        horizontalAlignment: root.rtl ? Text.AlignRight : Text.AlignLeft
         text: root.panel ? root.panel.tr.t("ui.monitor", "Monitor") : "Monitor"
         color: root.fg
         font.family: root.fontFamily

@@ -17,7 +17,10 @@
 //
 // `tr(key, fallback)` localizes user-facing text: the key is a stable catalog
 // id, the fallback is the English string from the schema. It is threaded
-// through every function that emits a label.
+// through every function that emits a label. Optional `tn` and `fmt`
+// (Commons.I18n.tn / Commons.I18n.formatNumber, the same threading idiom
+// Omarchy's own Model.js files use) localize plurals and numbers; when
+// omitted the plain English forms are used.
 
 // A numeric setting may declare labelled choices (options = [{value,label}]),
 // which the UI renders as a segmented control while storing the numeric value.
@@ -30,6 +33,12 @@ function hasChoices(spec) {
 // absent (engine-side use) or the key is untranslated.
 function L(tr, key, fallback) {
   return tr ? tr(key, fallback) : fallback
+}
+
+// Localized number for display (decimal separator + digit shape from the
+// registry). Plain String() when the shell's formatter is unavailable.
+function N(fmt, value) {
+  return fmt ? fmt(value) : String(value)
 }
 
 function settingKey(id, sub, key) {
@@ -70,13 +79,18 @@ function canonicalTime(value) {
   return t ? pad2(t.h) + ":" + pad2(t.m) : null
 }
 
-function formatTime(value, timeFormat) {
+function formatTime(value, timeFormat, amText, pmText) {
   var t = parseTime(value)
   if (!t) return (value === undefined || value === null) ? "" : String(value)
   if (timeFormat === "12h") {
     var h = t.h % 12
     if (h === 0) h = 12
-    return h + ":" + pad2(t.m) + (t.h < 12 ? " AM" : " PM")
+    // Meridiem comes from the locale (Qt.locale.amText/pmText) like the bar
+    // clock's `AP` token — never a catalog string. Defaults keep engine-side
+    // callers English.
+    var mer = (t.h < 12) ? (amText !== undefined && amText !== null && amText !== "" ? amText : "AM")
+                         : (pmText !== undefined && pmText !== null && pmText !== "" ? pmText : "PM")
+    return h + ":" + pad2(t.m) + " " + mer
   }
   return pad2(t.h) + ":" + pad2(t.m)
 }
@@ -89,23 +103,30 @@ function stepTime(value, minutes) {
 }
 
 // A human duration for a seconds value that is not one of the clean presets
-// (e.g. 150 -> "2 min 30 sec"), so a legacy value still reads clearly.
-function formatDuration(seconds, tr) {
+// (e.g. 150 -> "2 min 30 sec"), so a legacy value still reads clearly. `tn`
+// localizes the hour plural; `fmt` localizes the digits.
+function formatDuration(seconds, tr, tn, fmt) {
   var s = Number(seconds)
   if (!isFinite(s)) return ""
   if (s <= 0) return L(tr, "unit.never", "Never")
-  if (s < 60) return L(tr, "unit.sec", "%1 sec").replace("%1", String(s))
+  if (s < 60) return L(tr, "unit.sec", "%1 sec").replace("%1", N(fmt, s))
   if (s < 3600) {
     var m = Math.floor(s / 60)
     var r = s % 60
-    if (r === 0) return L(tr, "unit.min", "%1 min").replace("%1", String(m))
-    return L(tr, "unit.minSec", "%1 min %2 sec").replace("%1", String(m)).replace("%2", String(r))
+    if (r === 0) return L(tr, "unit.min", "%1 min").replace("%1", N(fmt, m))
+    return L(tr, "unit.minSec", "%1 min %2 sec").replace("%1", N(fmt, m)).replace("%2", N(fmt, r))
   }
   var h = Math.floor(s / 3600)
   var m = Math.round((s % 3600) / 60)
-  if (m === 0)
-    return L(tr, h === 1 ? "unit.hour" : "unit.hours", h === 1 ? "%1 hour" : "%1 hours").replace("%1", String(h))
-  return L(tr, "unit.hrMin", "%1 hr %2 min").replace("%1", String(h)).replace("%2", String(m))
+  if (m === 0) {
+    if (tn) {
+      var hourFallback = h === 1 ? "%1 hour" : "%1 hours"
+      var hourTemplate = tn("unit.hour", h, hourFallback)
+      return hourTemplate.replace("%1", N(fmt, h))
+    }
+    return L(tr, "unit.hour", h === 1 ? "%1 hour" : "%1 hours").replace("%1", N(fmt, h))
+  }
+  return L(tr, "unit.hrMin", "%1 hr %2 min").replace("%1", N(fmt, h)).replace("%2", N(fmt, m))
 }
 
 // `effective` maps settingKey(...) -> value for group sub-fields and keyed
@@ -131,7 +152,9 @@ function choiceLists(spec, id, tr) {
       labels.push(L(tr, "setting." + id + ".option." + o.value, String(o.label)))
       values.push(o.value)
     } else {
-      labels.push(String(o))
+      // Plain-string enums (bar_position, dock_autohide, …): the token is
+      // the stable stored value; its catalog label is user-facing only.
+      labels.push(L(tr, "setting." + id + ".option." + o, String(o)))
       values.push(o)
     }
   }
@@ -141,10 +164,10 @@ function choiceLists(spec, id, tr) {
 // Label for a value that is not one of a setting's declared choices. Numeric
 // seconds (idle timeouts) read human-readably; anything else (a legacy layout
 // name like "master") shows its raw value.
-function customChoiceLabel(value, tr) {
+function customChoiceLabel(value, tr, tn, fmt) {
   var s = String(value)
   if (/^\d+(\.\d+)?$/.test(s)) {
-    var d = formatDuration(value, tr)
+    var d = formatDuration(value, tr, tn, fmt)
     if (d !== "") return d
   }
   return s
@@ -154,20 +177,20 @@ function customChoiceLabel(value, tr) {
 // hand-set) stays visible and selectable as a leading "custom" entry, so the
 // current value is never hidden or silently changed. Returns fresh parallel
 // label/value arrays, or the originals when the value is already a choice.
-function withCustomChoice(labels, values, value, tr) {
+function withCustomChoice(labels, values, value, tr, tn, fmt) {
   if (value === undefined || value === null || value === "") return { labels: labels, values: values }
   for (var i = 0; i < values.length; i++)
     if (String(values[i]) === String(value)) return { labels: labels, values: values }
   var outLabels = labels.slice()
   var outValues = values.slice()
-  outLabels.unshift(L(tr, "ui.custom", "Custom · %1").replace("%1", customChoiceLabel(value, tr)))
+  outLabels.unshift(L(tr, "ui.custom", "Custom · %1").replace("%1", customChoiceLabel(value, tr, tn, fmt)))
   outValues.unshift(value)
   return { labels: outLabels, values: outValues }
 }
 
-function choiceRow(id, sub, key, label, spec, value, tr) {
+function choiceRow(id, sub, key, label, spec, value, tr, tn, fmt) {
   var lists = choiceLists(spec, id, tr)
-  var withCustom = withCustomChoice(lists.labels, lists.values, value, tr)
+  var withCustom = withCustomChoice(lists.labels, lists.values, value, tr, tn, fmt)
   // A short list reads as a segmented row; many discrete choices read better
   // as a dropdown (macOS-style), e.g. idle timeouts.
   var kind = spec.options.length > 5 ? "dropdown" : "enum"
@@ -178,24 +201,30 @@ function choiceRow(id, sub, key, label, spec, value, tr) {
            options: withCustom.labels, values: withCustom.values, value: value }
 }
 
-function fieldRow(id, sub, key, label, type, spec, effective, timeFormat, tr) {
+function fieldRow(id, sub, key, label, type, spec, effective, timeFormat, tr, tn, fmt) {
   var desc = L(tr, "setting." + id + "." + sub + ".description", spec.description)
   if (type === "bool")
     return { kind: "bool", id: id, sub: sub, label: label,
              description: desc,
              value: valueOf(effective, id, sub, key, spec.default) }
-  if (type === "enum")
+  if (type === "enum") {
+    // Grouped sub-settings use setting.<group>.<sub>.* keys for the label,
+    // but option labels share the top-level setting.<group>.option.* space.
+    var lists = choiceLists(spec, id, tr)
+    var val = valueOf(effective, id, sub, key, spec.default)
+    var withCustom = withCustomChoice(lists.labels, lists.values, val, tr, tn, fmt)
     return { kind: "enum", id: id, sub: sub, label: label,
              description: desc,
-             options: spec.options || [], segmented: true,
-             value: valueOf(effective, id, sub, key, spec.default) }
+             options: withCustom.labels, values: withCustom.values, segmented: true,
+             value: val }
+  }
   if (type === "time")
     return { kind: "time", id: id, sub: sub, label: label,
              description: desc, timeFormat: timeFormat,
              value: valueOf(effective, id, sub, key, spec.default) }
   if ((type === "int" || type === "float") && hasChoices(spec))
     return choiceRow(id, sub, key, label, spec,
-                     valueOf(effective, id, sub, key, spec.default), tr)
+                     valueOf(effective, id, sub, key, spec.default), tr, tn, fmt)
   var min = spec.min !== undefined ? spec.min : 0
   var max = spec.max !== undefined ? spec.max : 100
   var range = max - min
@@ -210,15 +239,15 @@ function fieldRow(id, sub, key, label, type, spec, effective, timeFormat, tr) {
   }
 }
 
-function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMonitor, tr) {
-  var fmt = (timeFormat === "12h") ? "12h" : "24h"
+function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMonitor, tr, tn, fmt) {
+  var timeFmt = (timeFormat === "12h") ? "12h" : "24h"
   var rows = []
   if (!panel) return rows
   var settings = panel.settings || []
   var currentSection = ""
   // "Workspace N" label, localized through the passed-in tr.
   function workspaceLabel(n) {
-    return L(tr, "ui.workspace", "Workspace %1").replace("%1", String(n))
+    return L(tr, "ui.workspace", "Workspace %1").replace("%1", N(fmt, n))
   }
   for (var i = 0; i < settings.length; i++) {
     var s = settings[i]
@@ -239,7 +268,7 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
       for (var sub in subs)
         rows.push(fieldRow(s.id, sub, undefined,
           L(tr, "setting." + s.id + "." + sub, subs[sub].label),
-          subs[sub].type, subs[sub], effective, fmt, tr))
+          subs[sub].type, subs[sub], effective, timeFmt, tr, tn, fmt))
       continue
     }
 
@@ -264,7 +293,7 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
         for (var w = 0; w < mon.workspaces.length; w++) {
           var gid = mon.workspaces[w]
           var val = valueOf(effective, s.id, undefined, gid, defVal)
-          var ch = withCustomChoice(optLabels, optValues, val, tr)
+          var ch = withCustomChoice(optLabels, optValues, val, tr, tn, fmt)
           rows.push({
             kind: "enum", id: s.id, key: gid, slot: w + 1,
             label: workspaceLabel(w + 1),
@@ -277,7 +306,7 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
         for (var k = 0; k < keys.length; k++) {
           var key = keys[k]
           var val = valueOf(effective, s.id, undefined, key, defVal)
-          var ch = withCustomChoice(optLabels, optValues, val, tr)
+          var ch = withCustomChoice(optLabels, optValues, val, tr, tn, fmt)
           rows.push({
             kind: "enum", id: s.id, key: key,
             label: workspaceLabel(key),
@@ -294,17 +323,20 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
                   description: L(tr, "setting." + s.id + ".description", s.description), value: s.value })
     } else if (s.type === "enum") {
       if (hasChoices(s)) {
-        rows.push(choiceRow(s.id, undefined, undefined, L(tr, "setting." + s.id, s.label), s, s.value, tr))
+        rows.push(choiceRow(s.id, undefined, undefined, L(tr, "setting." + s.id, s.label), s, s.value, tr, tn, fmt))
       } else {
+        // Plain-string enum: localize labels, keep stored tokens as values.
+        var lists2 = choiceLists(s, s.id, tr)
+        var with2 = withCustomChoice(lists2.labels, lists2.values, s.value, tr, tn, fmt)
         rows.push({ kind: "enum", id: s.id, label: L(tr, "setting." + s.id, s.label),
                     description: L(tr, "setting." + s.id + ".description", s.description),
-                    options: s.options || [], segmented: true, value: s.value })
+                    options: with2.labels, values: with2.values, segmented: true, value: s.value })
       }
     } else if (s.type === "time") {
       rows.push({ kind: "time", id: s.id, label: L(tr, "setting." + s.id, s.label),
-                  description: L(tr, "setting." + s.id + ".description", s.description), timeFormat: fmt, value: s.value })
+                  description: L(tr, "setting." + s.id + ".description", s.description), timeFormat: timeFmt, value: s.value })
     } else if ((s.type === "int" || s.type === "float") && hasChoices(s)) {
-      rows.push(choiceRow(s.id, undefined, undefined, L(tr, "setting." + s.id, s.label), s, s.value, tr))
+      rows.push(choiceRow(s.id, undefined, undefined, L(tr, "setting." + s.id, s.label), s, s.value, tr, tn, fmt))
     } else if (s.type === "int" || s.type === "float") {
       var min = s.min !== undefined ? s.min : 0
       var max = s.max !== undefined ? s.max : 100

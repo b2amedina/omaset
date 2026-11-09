@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Io
 import qs.Ui
 import qs.Commons
 import qs.Commons as Commons
@@ -149,19 +150,79 @@ Item {
   property var activeDropdown: null
   property bool dropdownOpen: false
 
-  // Plugin-local translations. Follows the language in ~/.config/omarchy/
-  // language (Commons.I18n), falling back to English. Strings are in i18n/.
+  // Plugin-local translations. Follows the desktop language in
+  // ~/.config/omarchy/language (Commons.I18n) unless `omaset ui --lang`
+  // wrote a one-shot override to ~/.config/omaset/ui-language (read
+  // below). Strings are shared with the engine in the plugin-root i18n/
+  // directory (docs/i18n.md).
   readonly property var tr: i18n
-  Commons.Translations {
+  UiTranslations {
     id: i18n
-    directory: Qt.resolvedUrl("i18n")
+    directory: Qt.resolvedUrl("../i18n")
+    language: root.uiLanguage
   }
 
-  // True when the selected language runs right-to-left (Arabic, Hebrew,
-  // Farsi, …), read from Omarchy's locale registry. Layouts that pair a key
-  // with a description mirror themselves so the key column stays on the
+  // One-shot UI override: `omaset ui --lang fr` (and OMASET_LANGUAGE)
+  // writes the code to the omaset-private ui-language file before
+  // summoning; plain `omaset ui` clears it. The window renders in the
+  // override for that launch only — the desktop language is untouched.
+  // Unknown/empty content is ignored (falls back to the OS language).
+  readonly property string configHome: Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")
+  property string omarchyPath: Quickshell.env("OMARCHY_PATH") || "/usr/share/omarchy"
+  property FileView overrideFile: FileView {
+    path: Quickshell.env("OMASET_UI_LANGUAGE_FILE") || (root.configHome + "/omaset/ui-language")
+    watchChanges: true
+    printErrors: false
+    blockLoading: true
+    onFileChanged: reload()
+  }
+  property FileView registryFile: FileView {
+    path: root.omarchyPath + "/default/i18n/locales.json"
+    watchChanges: true
+    printErrors: false
+    blockLoading: true
+    onFileChanged: reload()
+  }
+  function parseRegistry(raw) {
+    try {
+      var parsed = JSON.parse(raw || "{}")
+      return (parsed && typeof parsed === "object" && !Array.isArray(parsed)) ? parsed : ({})
+    } catch (e) {
+      return ({})
+    }
+  }
+  readonly property var registry: parseRegistry(registryFile.text())
+  readonly property string overrideCode: {
+    var code = String(overrideFile.text() || "").trim()
+    if (/^[a-z]{2,3}(-[A-Z]{2})?$/.test(code) && registry[code] !== undefined)
+      return code
+    return ""
+  }
+  readonly property string uiLanguage: overrideCode !== "" ? overrideCode : Commons.I18n.language
+  readonly property var uiLocaleSettings: registry[root.uiLanguage] || ({})
+  readonly property string uiFormatLocale: uiLocaleSettings.formatLocale || Commons.I18n.formatLocale
+
+  // Locale-aware number (decimal separator + digit shape from the
+  // registry, for the effective language) — mirrors Numbers.js.
+  function formatNumber(value, decimals) {
+    var number = Number(value)
+    if (!isFinite(number)) return String(value)
+    var text = decimals === undefined ? String(number) : number.toFixed(decimals)
+    var decimal = uiLocaleSettings.decimal || "."
+    if (decimal !== ".") text = text.replace(".", decimal)
+    var zeroDigit = uiLocaleSettings.zeroDigit || "0"
+    if (zeroDigit !== "0") {
+      var zero = zeroDigit.charCodeAt(0)
+      text = text.replace(/[0-9]/g, function(digit) { return String.fromCharCode(zero + digit.charCodeAt(0) - 48) })
+    }
+    return text
+  }
+
+  // True when the effective language runs right-to-left (Arabic, Hebrew,
+  // Farsi, …), from the registry entry for uiLanguage. Layouts that pair a
+  // key with a description mirror themselves so the key column stays on the
   // reading-start side and text stays aligned to the text, not the panel.
-  readonly property bool rtl: Commons.I18n.rightToLeft
+  readonly property bool rtl: uiLocaleSettings.direction === "rtl"
 
   // ---- window sizing ----------------------------------------------------
   // The window sizes to its content (widest footer hint + widest sidebar
@@ -482,7 +543,9 @@ Item {
   // ---- row model -------------------------------------------------------
   function rebuildRows() {
     root.rows = Model.rowsFor(activePanel(), effective, keyed, root.timeFormat, root.keyedMonitors, root.selectedMonitor,
-      function(key, fallback) { return root.tr.t(key, fallback) })
+      function(key, fallback) { return root.tr.t(key, fallback) },
+      function(key, count, fallback) { return root.tr.tn(key, count, fallback) },
+      function(value) { return root.formatNumber(value) })
     clampRow()
     applyPendingSelect()
   }
@@ -832,10 +895,50 @@ Item {
   }
 
   function changedLabel(r) {
-    var label = r.label || r.id
+    var label = root.tr.t("setting." + r.id, r.label || r.id)
     if (r.key !== undefined && r.key !== null) label += " " + r.key
     else if (r.sub !== undefined && r.sub !== null) label += " · " + r.sub
     return label
+  }
+
+  function panelTitle(panelId) {
+    var title = panelId
+    for (var i = 0; i < panels.length; i++)
+      if (panels[i].id === panelId) { title = panels[i].title; break }
+    return root.tr.t("panel." + panelId, title)
+  }
+
+  function valueLabel(id, sub, v) {
+    if (v === undefined || v === null) return ""
+    for (var pi = 0; pi < panels.length; pi++) {
+      var settings = panels[pi].settings || []
+      for (var si = 0; si < settings.length; si++) {
+        var s = settings[si]
+        if (!s || s.id !== id) continue
+        var spec = s
+        if (sub !== undefined && sub !== null && s.subsettings && s.subsettings[sub])
+          spec = s.subsettings[sub]
+        var opts = spec.options || []
+        for (var oi = 0; oi < opts.length; oi++) {
+          var o = opts[oi]
+          if (o && typeof o === "object" && o.label !== undefined && String(o.value) === String(v))
+            return root.tr.t("setting." + id + ".option." + o.value, String(o.label))
+          if ((typeof o === "string" || typeof o === "number") && String(o) === String(v))
+            return root.tr.t("setting." + id + ".option." + v, String(v))
+        }
+        break
+      }
+      break
+    }
+    if (typeof v === "number" && isFinite(v)) return root.formatNumber(v)
+    return String(v)
+  }
+
+  function changedDetail(r) {
+    var arrow = root.rtl ? "\u2190" : "\u2192"
+    return panelTitle(r.panel) + " · "
+      + valueLabel(r.id, r.sub, r.value) + " " + arrow + " "
+      + valueLabel(r.id, r.sub, r.default)
   }
 
   function openChangedResult() {
@@ -960,15 +1063,23 @@ Item {
     : (changedMode || prefsMode || helpMode)
     ? tr.t("footer.close", "esc close")
     : tr.t("footer.normal", "? help · esc close")
+  // Counts go through tn + formatNumber (plural rules + digit shape), never
+  // hand-built String() substitution.
+  function settingsFoundText(n) {
+    return tr.tn("ui.settingsFound", n, "%1 settings found").arg(root.formatNumber(n))
+  }
+  function changedCountText(n) {
+    return tr.tn("ui.changedCount", n, "%1 changed").arg(root.formatNumber(n))
+  }
   readonly property string footerContext: schemaError !== ""
     ? tr.t("ui.schemaMismatch", "schema mismatch")
     : searchMode
-    ? (searchResults.length > 0 ? tr.t("ui.settingsFound", "%1 settings found").replace("%1", String(searchResults.length)) : "")
+    ? (searchResults.length > 0 ? settingsFoundText(searchResults.length) : "")
     : changedMode
-    ? (changedList.length > 0 ? tr.t("ui.changedCount", "%1 changed").replace("%1", String(changedList.length)) : tr.t("ui.noChanges", "no changes"))
+    ? (changedList.length > 0 ? changedCountText(changedList.length) : tr.t("ui.noChanges", "no changes"))
     : prefsMode
     ? (prefError !== "" ? prefError : tr.t("ui.preferences", "Preferences"))
-    : (changedCount > 0 ? tr.t("ui.changedCount", "%1 changed").replace("%1", String(changedCount)) : "")
+    : (changedCount > 0 ? changedCountText(changedCount) : "")
   readonly property color footerContextColor: (searchMode || changedMode || prefsMode) ? (prefError !== "" ? urgent : accent) : urgent
 
   // ---- window ----------------------------------------------------------
@@ -1001,6 +1112,13 @@ Item {
       id: windowFocus
       anchors.fill: parent
       focus: true
+      // Right-to-left languages read the whole window mirrored (same
+      // idiom as Omarchy's OverlayWindow): Row order, anchors, sliders
+      // (PanelSlider.mirrored), toggles, and h/l + arrow keys
+      // (PanelKeyCatcher) flip together. Children inherit so every row
+      // flips without per-component wiring.
+      LayoutMirroring.enabled: root.rtl
+      LayoutMirroring.childrenInherit: true
 
       // While search is open the key catcher is blocked, so this outermost
       // handler owns every key: type characters into the query, backspace,
@@ -1221,12 +1339,16 @@ Item {
                   // renders AsNeeded as a transient overlay (opacity 0 at rest,
                   // only visible mid-scroll), so a content that overflows shows
                   // no scrollbar. AlwaysOn keeps it visible exactly when the
-                  // rows spill over, hidden (AlwaysOff) when they fit.
+                  // rows spill over, hidden (AlwaysOff) when they fit. The gap
+                  // is padding on the scrollbar side (mirrored for RTL) so the
+                  // bar never sits on top of the rows.
+                  leftPadding: root.rtl ? Style.space(24) : 0
+                  rightPadding: root.rtl ? 0 : Style.space(24)
                   ScrollBar.vertical.policy: rowsColumn.implicitHeight > scrollArea.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
 
                   Column {
                     id: rowsColumn
-                    width: scrollArea.availableWidth - Style.space(24)
+                    width: scrollArea.availableWidth
                     spacing: Style.space(8)
 
                     Repeater {
@@ -1321,7 +1443,7 @@ Item {
                       height: parent.height - Style.space(42)
                       clip: true
                       spacing: Style.space(4)
-                      ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                      ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded; LayoutMirroring.enabled: false }
                       model: root.searchResults
                       delegate: BorderSurface {
                         required property var modelData
@@ -1343,7 +1465,7 @@ Item {
 
                           Text {
                             textFormat: Text.PlainText
-                            text: modelData.label
+                            text: root.tr.t("setting." + modelData.id, modelData.label)
                             color: root.foreground
                             font.family: root.fontFamily
                             font.pixelSize: Style.font.body
@@ -1353,7 +1475,7 @@ Item {
                           }
                           Text {
                             textFormat: Text.PlainText
-                            text: modelData.panel + " · " + modelData.id
+                            text: root.panelTitle(modelData.panel) + " · " + modelData.id
                             color: Qt.darker(root.foreground, 1.5)
                             font.family: root.fontFamily
                             font.pixelSize: Style.font.caption
@@ -1385,7 +1507,7 @@ Item {
                     anchors.fill: parent
                     clip: true
                     spacing: Style.space(4)
-                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded; LayoutMirroring.enabled: false }
                     model: root.changedList
                     delegate: BorderSurface {
                       required property var modelData
@@ -1417,7 +1539,7 @@ Item {
                         }
                         Text {
                           textFormat: Text.PlainText
-                          text: modelData.panel + " · " + modelData.value + " \u2192 " + modelData.default
+                          text: root.changedDetail(modelData)
                           color: Qt.darker(root.foreground, 1.5)
                           font.family: root.fontFamily
                           font.pixelSize: Style.font.caption
@@ -1476,7 +1598,7 @@ Item {
                     anchors.bottomMargin: versionBar.height
                     clip: true
                     spacing: Style.space(8)
-                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded; LayoutMirroring.enabled: false }
                     model: prefsModel
                     delegate: BorderSurface {
                       id: prefRow
@@ -1493,10 +1615,25 @@ Item {
                       required property string resolved
 
                       readonly property bool editing: root.prefEditing === index
+                      // Preference labels localize in the window against
+                      // pref.<key>.* (the engine stays English, as with
+                      // settings); the RPC payload is only the fallback.
+                      readonly property string displayLabel:
+                        root.tr.t("pref." + prefRow.key, prefRow.label || "")
                       readonly property string displayDescription:
                         (prefRow.key === "time_format" && prefRow.resolved !== "")
-                        ? ((prefRow.description || "") + " (now " + prefRow.resolved + ")")
-                        : (prefRow.description || "")
+                        ? (root.tr.t("pref." + prefRow.key + ".description", prefRow.description || "")
+                           + " " + root.tr.t("pref.time_format.now", "(now %1)").arg(prefRow.resolved))
+                        : root.tr.t("pref." + prefRow.key + ".description", prefRow.description || "")
+                      readonly property var displayOptions: {
+                        if (prefRow.options === "") return []
+                        var values = prefRow.options.split(",")
+                        var labels = []
+                        for (var i = 0; i < values.length; i++) {
+                          labels.push(root.tr.t("pref." + prefRow.key + ".option." + values[i], values[i]))
+                        }
+                        return labels
+                      }
 
                       width: prefsResultsList.width - Style.space(12)
                       height: Style.space(64)
@@ -1527,7 +1664,7 @@ Item {
 
                           Text {
                             textFormat: Text.PlainText
-                            text: prefRow.label || ""
+                            text: prefRow.displayLabel || ""
                             color: root.foreground
                             font.family: root.fontFamily
                             font.pixelSize: Style.font.subtitle
@@ -1569,8 +1706,13 @@ Item {
                             visible: prefRow.type === "enum"
                             anchors.verticalCenter: parent.verticalCenter
                             anchors.right: parent.right
-                            options: prefRow.options !== "" ? prefRow.options.split(",") : []
-                            value: prefRow.value !== "" ? prefRow.value : prefRow.def
+                            options: prefRow.displayOptions
+                            value: {
+                              var cur = (prefRow.value !== "" ? prefRow.value : prefRow.def)
+                              var vals = prefRow.options !== "" ? prefRow.options.split(",") : []
+                              var idx = vals.indexOf(cur)
+                              return idx >= 0 ? prefRow.displayOptions[idx] : cur
+                            }
                             cursorIndex: -1
                             foreground: root.foreground
                             background: root.background
@@ -1578,7 +1720,10 @@ Item {
                             fontFamily: root.fontFamily
                             onChanged: function(v) {
                               root.prefsSel = index
-                              root.setPreference(prefRow.key, v)
+                              var vals = prefRow.options !== "" ? prefRow.options.split(",") : []
+                              var labels = prefRow.displayOptions
+                              var at = labels.indexOf(v)
+                              root.setPreference(prefRow.key, at >= 0 ? vals[at] : v)
                             }
                           }
 
@@ -1624,11 +1769,11 @@ Item {
                               visible: !prefRow.editing
                               textFormat: Text.PlainText
                               text: prefSlider.liveValue !== undefined
-                                ? (prefRow.type === "int"
-                                   ? String(Math.round(prefSlider.liveValue))
-                                   : prefSlider.liveValue.toFixed(2))
+                                ? root.formatNumber(prefRow.type === "int"
+                                   ? Math.round(prefSlider.liveValue)
+                                   : prefSlider.liveValue, prefRow.type === "int" ? 0 : 2)
                                 : ""
-                              horizontalAlignment: Text.AlignRight
+                              horizontalAlignment: root.rtl ? Text.AlignLeft : Text.AlignRight
                               verticalAlignment: Text.AlignVCenter
                               color: root.accent
                               font.family: root.fontFamily
@@ -1639,7 +1784,7 @@ Item {
                               id: valueField
                               visible: prefRow.editing
                               anchors.fill: parent
-                              horizontalAlignment: Text.AlignRight
+                              horizontalAlignment: root.rtl ? Text.AlignLeft : Text.AlignRight
                               foreground: root.foreground
                               accent: root.accent
                               font.family: root.fontFamily

@@ -17,6 +17,7 @@ BorderSurface {
   property var row: ({})
   property int rowIndex: -1
 
+  readonly property bool rtl: panel ? panel.rtl : false
   readonly property color fg: panel ? panel.foreground : Commons.Color.foreground
   readonly property color accent: panel ? panel.accent : Commons.Color.accent
   readonly property string fontFamily: panel ? panel.fontFamily : Style.font.family
@@ -24,8 +25,18 @@ BorderSurface {
   readonly property bool hot: hasCursor
   readonly property bool editing: panel ? (panel.editingRow === rowIndex) : false
 
+  // Meridiem follows the effective UI locale (like the bar clock's `AP`
+  // token), never the catalog. `panel.uiFormatLocale` already honors a
+  // one-shot `omaset ui --lang` override when one is active.
+  readonly property var formatLocale: Qt.locale(panel ? panel.uiFormatLocale : Commons.I18n.formatLocale)
+
+  function displayTime() {
+    return Model.formatTime(root.row.value, root.row.timeFormat,
+      formatLocale.amText, formatLocale.pmText)
+  }
+
   function editingText() {
-    return Model.formatTime(root.row.value, root.row.timeFormat)
+    return displayTime()
   }
 
   function commitEditing() {
@@ -78,6 +89,7 @@ BorderSurface {
       Text {
         textFormat: Text.PlainText
         text: root.row.label || ""
+        horizontalAlignment: root.rtl ? Text.AlignRight : Text.AlignLeft
         color: root.fg
         font.family: root.fontFamily
         font.pixelSize: Style.font.subtitle
@@ -88,6 +100,7 @@ BorderSurface {
       Text {
         textFormat: Text.PlainText
         text: root.row.description || ""
+        horizontalAlignment: root.rtl ? Text.AlignRight : Text.AlignLeft
         visible: root.row.description !== undefined && root.row.description !== ""
         color: Qt.darker(root.fg, 1.5)
         font.family: root.fontFamily
@@ -108,8 +121,8 @@ BorderSurface {
         anchors.fill: parent
         visible: !root.editing
         textFormat: Text.PlainText
-        text: Model.formatTime(root.row.value, root.row.timeFormat)
-        horizontalAlignment: Text.AlignRight
+        text: root.displayTime()
+        horizontalAlignment: root.rtl ? Text.AlignLeft : Text.AlignRight
         verticalAlignment: Text.AlignVCenter
         color: root.accent
         font.family: root.fontFamily
@@ -120,7 +133,7 @@ BorderSurface {
         id: valueField
         visible: root.editing
         anchors.fill: parent
-        horizontalAlignment: Text.AlignRight
+        horizontalAlignment: root.rtl ? Text.AlignLeft : Text.AlignRight
         foreground: root.fg
         accent: root.accent
         font.family: root.fontFamily

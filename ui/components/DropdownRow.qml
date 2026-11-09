@@ -16,6 +16,7 @@ BorderSurface {
   property var row: ({})
   property int rowIndex: -1
 
+  readonly property bool rtl: panel ? panel.rtl : false
   readonly property color fg: panel ? panel.foreground : Commons.Color.foreground
   readonly property color accent: panel ? panel.accent : Commons.Color.accent
   readonly property string fontFamily: panel ? panel.fontFamily : Style.font.family
@@ -86,6 +87,7 @@ BorderSurface {
       Text {
         textFormat: Text.PlainText
         text: root.row.label || ""
+        horizontalAlignment: root.rtl ? Text.AlignRight : Text.AlignLeft
         color: root.fg
         font.family: root.fontFamily
         font.pixelSize: Style.font.subtitle
@@ -96,6 +98,7 @@ BorderSurface {
       Text {
         textFormat: Text.PlainText
         text: root.row.description || ""
+        horizontalAlignment: root.rtl ? Text.AlignRight : Text.AlignLeft
         visible: root.row.description !== undefined && root.row.description !== ""
         color: Qt.darker(root.fg, 1.5)
         font.family: root.fontFamily

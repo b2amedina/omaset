@@ -6,11 +6,51 @@ local json = require("omaset.json")
 local types = require("omaset.types")
 local core = require("omaset")
 local service = require("omaset.service")
+local i18n = require("omaset.i18n")
 
 local grouped = core.grouped
 local sub_keys = core.sub_keys
 
 local M = {}
+
+-- Only human-facing strings localize (like omarchy's omarchy-i18n): setting
+-- labels, panel/section titles, and status markers. Command names, flags,
+-- value tokens, JSON/--plain output, and the MCP contract stay English.
+
+local function tr(key, fallback)
+  return i18n.t(key, fallback)
+end
+
+local function panel_title(p)
+  return tr("panel." .. p.id, p.title)
+end
+
+local function section_title(panel_id, s)
+  if s.section_key and s.section_key ~= "" then
+    return tr("section." .. panel_id .. "." .. s.section_key, s.section)
+  end
+  return s.section or ""
+end
+
+local function setting_label(s)
+  return tr("setting." .. s.id, s.label)
+end
+
+local function setting_description(s)
+  if s.description then
+    return tr("setting." .. s.id .. ".description", s.description)
+  end
+  return nil
+end
+
+-- Localized display label for one enum/choice option value.
+local function option_label(setting_id, value, fallback)
+  return tr("setting." .. setting_id .. ".option." .. tostring(value), fallback)
+end
+
+local function default_marker()
+  return tr("cli.defaultMarker", "(default)")
+end
 
 local function die(msg)
   io.stderr:write("omaset: " .. msg .. "\n")
@@ -27,10 +67,13 @@ end
 local function setting_row(s, indent)
   local pad = string.rep("  ", indent or 0)
   if s.keyed then
-    return pad .. string.format("%-24s (keyed: %s)", s.id, s.key_label or "key")
+    local marker = tr("cli.keyedMarker", "(keyed: %1)"):gsub("%%1", s.key_label or "key", 1)
+    return pad .. string.format("%-24s %s", s.id, marker)
   end
   if grouped(s) then
-    return pad .. string.format("%-24s (group: %s)", s.id, table.concat(sub_keys(s), ", "))
+    local subs = table.concat(sub_keys(s), ", ")
+    local marker = tr("cli.groupMarker", "(group: %1)"):gsub("%%1", subs, 1)
+    return pad .. string.format("%-24s %s", s.id, marker)
   end
   local v = core.read_value(s)
   return pad .. string.format("%-24s %s", s.id, tostring(v))
@@ -43,13 +86,13 @@ local function cmd_list(flags)
     return
   end
   for _, p in ipairs(core.panels()) do
-    print("# " .. p.title)
+    print("# " .. panel_title(p))
     local last_section = nil
     for _, s in ipairs(p.settings) do
       if s.section ~= last_section then
         last_section = s.section
         if s.section then
-          print("  # " .. s.section)
+          print("  # " .. section_title(p.id, s))
         end
       end
       print(setting_row(s, 1))
@@ -71,11 +114,16 @@ local function parse_target(s, pos)
   return nil, pos[2]
 end
 
+local function unknown_setting_msg(id)
+  local template = tr("cli.unknownSetting", "unknown setting: %1")
+  return template:gsub("%%1", tostring(id), 1)
+end
+
 local function cmd_get(flags, pos)
   core.load()
   local s = core.find_setting(pos[1])
   if not s then
-    die("unknown setting: " .. tostring(pos[1]))
+    die(unknown_setting_msg(pos[1]))
   end
   local key = parse_target(s, pos)
   local result, err = service.get(core, { id = pos[1], key = key })
@@ -100,7 +148,7 @@ local function cmd_set(flags, pos)
   core.load()
   local s = core.find_setting(pos[1])
   if not s then
-    die("unknown setting: " .. tostring(pos[1]))
+    die(unknown_setting_msg(pos[1]))
   end
   local key, value_str = parse_target(s, pos)
   local result, err = service.set(core, { id = pos[1], key = key, value = value_str })
@@ -120,7 +168,7 @@ local function cmd_reset(flags, pos)
   core.load()
   local s = core.find_setting(pos[1])
   if not s then
-    die("unknown setting: " .. tostring(pos[1]))
+    die(unknown_setting_msg(pos[1]))
   end
   local key = parse_target(s, pos)
   local result, err = service.reset(core, { id = pos[1], key = key, all = flags["--all"] })
@@ -155,8 +203,9 @@ local function cmd_changed(flags)
     print(json.encode({ changed = result.changed }))
     return
   end
+  local marker = default_marker()
   for _, r in ipairs(result.changed) do
-    print(string.format("%-24s %s -> %s (default)", display_id(r), tostring(r.value), tostring(r.default)))
+    print(string.format("%-24s %s -> %s %s", display_id(r), tostring(r.value), tostring(r.default), marker))
   end
 end
 
@@ -173,13 +222,13 @@ local function cmd_search(flags, pos)
   for _, r in ipairs(result.results) do
     local val
     if r.keyed then
-      val = "(keyed)"
+      val = tr("cli.keyedTag", "(keyed)")
     elseif r.grouped then
-      val = "(grouped)"
+      val = tr("cli.groupedTag", "(grouped)")
     else
-      val = (r.value == nil or r.value == json.null) and "(default)" or tostring(r.value)
+      val = (r.value == nil or r.value == json.null) and default_marker() or tostring(r.value)
     end
-    print(string.format("%-24s %-8s %s", r.id, val, r.label))
+    print(string.format("%-24s %-8s %s", r.id, val, tr("setting." .. r.id, r.label)))
   end
 end
 
@@ -222,8 +271,23 @@ end
 
 local function cmd_ui(pos)
   core.load()
+  -- One-shot window override: when this launch's effective language
+  -- differs from the desktop language, point the window at it via the
+  -- omaset-private ui-language file. Otherwise clear any stale file so
+  -- the window always starts on the OS language.
+  local effective = i18n.current_language()
+  if effective ~= i18n.os_language() then
+    local ok, err = i18n.write_ui_override(effective)
+    if not ok then
+      die(err)
+    end
+  else
+    i18n.clear_ui_override()
+  end
   local result, err = service.ui(core, { action = pos[1] or "toggle" })
   if not result then
+    -- Keep the override file on failure so the next open still honors
+    -- the requested language until the next successful summon clears it.
     die(err)
   end
 end
@@ -239,7 +303,7 @@ end
 
 local function show_value(v)
   if v == nil or v == json.null then
-    return "(default)"
+    return default_marker()
   end
   return tostring(v)
 end
@@ -289,7 +353,7 @@ local function cmd_rollback(flags)
   if flags["--json"] then
     print(json.encode(result))
   else
-    print("rollback: restored " .. result.restored .. " file(s)")
+    print(i18n.tn("cli.rollbackRestored", result.restored, "rollback: restored %1 file(s)"))
   end
 end
 
@@ -299,7 +363,8 @@ local function cmd_preferences(flags, pos)
   if sub == "get" then
     local key = pos[2]
     if key == nil then
-      die("preferences get: missing key")
+      local t = tr("cli.prefsMissingKey", "preferences %1: missing key")
+      die(t:gsub("%%1", "get", 1))
     end
     local result, err = service.preference_get(core, { key = key })
     if not result then
@@ -316,10 +381,12 @@ local function cmd_preferences(flags, pos)
   if sub == "set" then
     local key = pos[2]
     if key == nil then
-      die("preferences set: missing key")
+      local t = tr("cli.prefsMissingKey", "preferences %1: missing key")
+      die(t:gsub("%%1", "set", 1))
     end
     if pos[3] == nil then
-      die("preferences set: missing value for " .. key)
+      local t = tr("cli.prefsMissingValue", "preferences set: missing value for %1")
+      die(t:gsub("%%1", tostring(key), 1))
     end
     local result, err = service.preference_set(core, { key = key, value = pos[3] })
     if not result then
@@ -336,7 +403,8 @@ local function cmd_preferences(flags, pos)
   if sub == "reset" then
     local key = pos[2]
     if key == nil then
-      die("preferences reset: missing key")
+      local t = tr("cli.prefsMissingKey", "preferences %1: missing key")
+      die(t:gsub("%%1", "reset", 1))
     end
     local result, err = service.preference_reset(core, { key = key })
     if not result then
@@ -372,7 +440,8 @@ local function cmd_ui_float(flags, pos)
   elseif arg == "off" then
     enabled = false
   else
-    die("ui-float: expected on or off (got '" .. tostring(arg or "") .. "')")
+    local t = tr("cli.uiFloatBadArg", "ui-float: expected on or off (got '%1')")
+    die(t:gsub("%%1", tostring(arg or ""), 1))
   end
   local result, err = service.ui_float(core, { enabled = enabled })
   if not result then
@@ -409,7 +478,9 @@ local function cmd_mcp(flags, pos)
   end
 
   if sub ~= nil and sub ~= "serve" and sub ~= "run" then
-    io.stderr:write("omaset mcp: unknown subcommand '" .. sub .. "' (expected install, doctor, or none to serve)\n")
+    local t = tr("cli.mcpBadSubcommand",
+      "omaset mcp: unknown subcommand '%1' (expected install, doctor, or none to serve)")
+    io.stderr:write(t:gsub("%%1", tostring(sub), 1) .. "\n")
     os.exit(1)
   end
 
@@ -476,6 +547,8 @@ local function usage_text()
     "  omaset <command> [args...]",
     "  omaset <command> --help",
     "  omaset help <id>",
+    "  omaset --lang <code> <command> [args...]   (one-off language override)",
+    "  omaset --lang list   (list available language codes)",
     "",
   }
   for _, g in ipairs(groups) do
@@ -515,10 +588,16 @@ local function value_hint(setting)
   local choices = types.choice_options(setting)
   if choices then
     local labels = {}
-    for _, opt in ipairs(choices) do labels[#labels + 1] = tostring(opt.label) end
+    for _, opt in ipairs(choices) do
+      labels[#labels + 1] = option_label(setting.id, opt.value, tostring(opt.label))
+    end
     return "<" .. table.concat(labels, "|") .. ">"
   elseif t == "enum" and setting.options then
-    return "<" .. table.concat(setting.options, "|") .. ">"
+    local labels = {}
+    for _, opt in ipairs(setting.options) do
+      labels[#labels + 1] = option_label(setting.id, opt, tostring(opt))
+    end
+    return "<" .. table.concat(labels, "|") .. ">"
   elseif t == "int" or t == "float" then
     if setting.min ~= nil and setting.max ~= nil then
       return "<" .. tostring(setting.min) .. ".." .. tostring(setting.max) .. ">"
@@ -541,9 +620,10 @@ end
 
 local function setting_help(setting)
   local lines = {}
-  lines[#lines + 1] = setting.id .. " — " .. setting.label
-  if setting.description then
-    lines[#lines + 1] = "  " .. setting.description
+  lines[#lines + 1] = setting.id .. " — " .. setting_label(setting)
+  local desc = setting_description(setting)
+  if desc then
+    lines[#lines + 1] = "  " .. desc
   end
 
   if grouped(setting) then
@@ -584,16 +664,21 @@ local function setting_help(setting)
     if choices then
       local parts = {}
       for _, opt in ipairs(choices) do
-        parts[#parts + 1] = tostring(opt.value) .. "=" .. tostring(opt.label)
+        parts[#parts + 1] = tostring(opt.value) .. "="
+          .. option_label(setting.id, opt.value, tostring(opt.label))
       end
       lines[#lines + 1] = "  options: " .. table.concat(parts, ", ")
     else
-      lines[#lines + 1] = "  options: " .. table.concat(setting.options, ", ")
+      local parts = {}
+      for _, opt in ipairs(setting.options) do
+        parts[#parts + 1] = option_label(setting.id, opt, tostring(opt))
+      end
+      lines[#lines + 1] = "  options: " .. table.concat(parts, ", ")
     end
   end
 
   if setting.keyed then
-    lines[#lines + 1] = "  value:   (keyed)"
+    lines[#lines + 1] = "  value:   " .. tr("cli.keyedTag", "(keyed)")
   else
     lines[#lines + 1] = "  value:   " .. tostring(core.read_value(setting))
   end
@@ -603,24 +688,30 @@ end
 
 local function command_help(cmd, setting)
   if setting then
+    local label = setting_label(setting)
     if grouped(setting) then
       if cmd == "get" then
-        return "omaset get " .. setting.id .. " [<sub>]\n  " .. setting.label
+        return "omaset get " .. setting.id .. " [<sub>]\n  " .. label
       elseif cmd == "set" then
-        return "omaset set " .. setting.id .. " <sub> <value>\n  " .. setting.label
+        return "omaset set " .. setting.id .. " <sub> <value>\n  " .. label
       elseif cmd == "reset" then
-        return "omaset reset " .. setting.id .. " <sub> [--all]\n  " .. setting.label
+        return "omaset reset " .. setting.id .. " <sub> [--all]\n  " .. label
       end
     elseif cmd == "get" then
-      return "omaset get " .. setting.id .. key_arg(setting) .. "\n  " .. setting.label
+      return "omaset get " .. setting.id .. key_arg(setting) .. "\n  " .. label
     elseif cmd == "set" then
-      return "omaset set " .. setting.id .. key_arg(setting) .. " " .. value_hint(setting) .. "\n  " .. setting.label
+      return "omaset set " .. setting.id .. key_arg(setting) .. " " .. value_hint(setting) .. "\n  " .. label
     elseif cmd == "reset" then
       local extra = setting.keyed and " [--all]" or ""
-      return "omaset reset " .. setting.id .. key_arg(setting) .. extra .. "\n  " .. setting.label
+      return "omaset reset " .. setting.id .. key_arg(setting) .. extra .. "\n  " .. label
     end
   end
-  return COMMAND_HELP[cmd] or ("No help for '" .. tostring(cmd) .. "'.\n\n" .. usage_text())
+  local fallback = COMMAND_HELP[cmd]
+  if not fallback then
+    local t = tr("cli.noHelp", "No help for '%1'.")
+    fallback = t:gsub("%%1", tostring(cmd), 1) .. "\n\n" .. usage_text()
+  end
+  return fallback
 end
 
 local function cmd_help(pos)
@@ -632,7 +723,7 @@ local function cmd_help(pos)
   end
   local s = core.find_setting(id)
   if not s then
-    die("unknown setting: " .. id)
+    die(unknown_setting_msg(id))
   end
   print(setting_help(s))
 end
@@ -650,7 +741,81 @@ local function split_args(args)
   return flags, pos
 end
 
+-- Global --lang handling (mirrors omarchy's OMARCHY_LANGUAGE_FILE idiom):
+--   omaset --lang <code> <command> [...]   one-off override for this call
+--   omaset --lang list                     list registry codes
+--   omaset --lang <code>                   print the resolved language
+-- The flag is accepted anywhere in argv and removed before dispatch, so
+-- `omaset list --lang fr` and `omaset --lang fr list` both work. Values,
+-- JSON output, and the MCP contract are unaffected by the language.
+local function parse_lang_global(argv)
+  local lang = nil
+  local list = false
+  local out = {}
+  local i = 1
+  while i <= #argv do
+    local tok = argv[i]
+    if tok == "--lang" then
+      local val = argv[i + 1]
+      if val == nil then
+        die("missing value for --lang (expected a language code or 'list')")
+      end
+      if val == "list" then
+        list = true
+      else
+        lang = val
+      end
+      i = i + 2
+    elseif type(tok) == "string" and tok:sub(1, 7) == "--lang=" then
+      local val = tok:sub(8)
+      if val == "" then
+        die("missing value for --lang (expected a language code or 'list')")
+      end
+      if val == "list" then
+        list = true
+      else
+        lang = val
+      end
+      i = i + 1
+    else
+      out[#out + 1] = tok
+      i = i + 1
+    end
+  end
+  return lang, list, out
+end
+
+local function cmd_lang_list()
+  for _, e in ipairs(i18n.list_languages()) do
+    print(string.format("%s\t%s\t%s", e.name, e.code, e.englishName))
+  end
+end
+
 function M.main(arg)
+  local lang, lang_list, cleaned = parse_lang_global(arg)
+  if lang_list and #cleaned == 0 then
+    cmd_lang_list()
+    return
+  end
+  if lang ~= nil then
+    local ok, err = i18n.set_override(lang)
+    if not ok then
+      die(err)
+    end
+    local reg = i18n.registry()
+    if next(reg) ~= nil and reg[lang] == nil then
+      die("unknown language code: " .. tostring(lang))
+    end
+  end
+  if #cleaned == 0 then
+    if lang ~= nil then
+      print(i18n.current_language())
+      return
+    end
+    print(usage_text())
+    return
+  end
+  arg = cleaned
   local cmd = arg[1]
 
   if cmd == nil then
@@ -719,7 +884,8 @@ function M.main(arg)
   elseif cmd == "rpc" then
     cmd_rpc()
   else
-    io.stderr:write("omaset: unknown command: " .. tostring(cmd) .. "\n\n" .. usage_text() .. "\n")
+    local t = tr("cli.unknownCommand", "unknown command: %1")
+    io.stderr:write("omaset: " .. t:gsub("%%1", tostring(cmd), 1) .. "\n\n" .. usage_text() .. "\n")
     os.exit(1)
   end
 end

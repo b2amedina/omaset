@@ -15,6 +15,7 @@ Rectangle {
   property color contextColor: Commons.Color.accent
 
   readonly property bool contextVisible: context !== ""
+  readonly property bool rtl: panel ? panel.rtl : false
   readonly property color fg: panel ? panel.foreground : Commons.Color.foreground
   readonly property color bg: panel ? panel.background : Commons.Color.background
 
@@ -33,6 +34,7 @@ Rectangle {
     anchors.leftMargin: Style.spacing.rowPaddingX
     anchors.verticalCenter: parent.verticalCenter
     textFormat: Text.PlainText
+    horizontalAlignment: root.rtl ? Text.AlignRight : Text.AlignLeft
     text: root.hints
     color: Qt.darker(root.fg, 1.3)
     font.family: panel ? panel.fontFamily : Style.font.family
