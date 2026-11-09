@@ -1,0 +1,242 @@
+#!/usr/bin/env python3
+"""Extract the canonical English catalog (i18n/en.json) from the schema and
+the window/CLI source, and generate skeleton catalogs for every language in
+Omarchy's registry. See docs/i18n.md for the workflow agents follow.
+
+Usage:
+  scripts/i18n-extract            regenerate i18n/en.json
+  scripts/i18n-extract --check    fail if i18n/en.json is stale
+  scripts/i18n-extract --skeleton [code ...]
+                                  write missing i18n/<code>.json skeletons
+                                  (English values; no arg = every registry code)
+"""
+import json
+import subprocess
+import sys
+import os
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+I18N_DIR = ROOT / "i18n"
+LOCALES_JSON = Path(os.environ.get(
+    "OMASET_LOCALES_JSON",
+    os.path.join(os.environ.get("OMARCHY_PATH", "/usr/share/omarchy"),
+                 "default/i18n/locales.json"),
+))
+FALLBACK_LOCALES = Path("/usr/share/omarchy/default/i18n/locales.json")
+
+# Window chrome + CLI + preference strings. These live in QML/JS/Lua fallbacks,
+# not in the schema, so the extractor owns them as constants. Plural entries
+# are objects keyed by CLDR category; plain strings are fixed labels.
+CHROME = {
+    "footer.close": "esc close",
+    "footer.normal": "? help · esc close",
+    "footer.search": "esc clear",
+    "help.activate": "Activate / edit",
+    "help.adjust": "Adjust a value",
+    "help.changed": "Changed",
+    "help.close": "Close",
+    "help.help": "This help",
+    "help.move": "Move between settings",
+    "help.pane": "Switch pane",
+    "help.prefs": "Preferences",
+    "help.reset": "Reset to default",
+    "help.search": "Search",
+    "pref.launch_floating": "Launch floating",
+    "pref.launch_floating.description": "Open the settings window floating so it can be moved and resized.",
+    "pref.refresh_interval_sec": "Refresh interval (seconds)",
+    "pref.refresh_interval_sec.description": "How often the settings window re-reads values while visible.",
+    "pref.time_format": "Time format",
+    "pref.time_format.description": "How times are shown (storage is always 24-hour).",
+    "pref.time_format.now": "(now %1)",
+    "pref.time_format.option.12h": "12h",
+    "pref.time_format.option.24h": "24h",
+    "pref.time_format.option.auto": "auto (follow bar clock)",
+    "ui.changed": "Changed",
+    "ui.changedCount": {"one": "%1 changed", "other": "%1 changed"},
+    "ui.custom": "Custom · %1",
+    "ui.keybindings": "Keybindings",
+    "ui.monitor": "Monitor",
+    "ui.noChanges": "no changes",
+    "ui.preferences": "Preferences",
+    "ui.schemaMismatch": "schema mismatch",
+    "ui.search": "Search",
+    "ui.settingsFound": {"one": "%1 setting found", "other": "%1 settings found"},
+    "ui.workspace": "Workspace %1",
+    "unit.hour": {"one": "%1 hour", "other": "%1 hours"},
+    "unit.hrMin": "%1 hr %2 min",
+    "unit.min": "%1 min",
+    "unit.minSec": "%1 min %2 sec",
+    "unit.never": "Never",
+    "unit.sec": "%1 sec",
+    "cli.defaultMarker": "(default)",
+    "cli.groupMarker": "(group: %1)",
+    "cli.groupedTag": "(grouped)",
+    "cli.keyedMarker": "(keyed: %1)",
+    "cli.keyedTag": "(keyed)",
+    "cli.mcpBadSubcommand": "omaset mcp: unknown subcommand '%1' (expected install, doctor, or none to serve)",
+    "cli.missingKey": "missing key for %1 (choose from: %2)",
+    "cli.missingSubsetting": "missing sub-setting for setting: %1 (choose from: %2)",
+    "cli.missingValue": "missing value for setting: %1",
+    "cli.noHelp": "No help for '%1'.",
+    "cli.notKeyed": "setting is not keyed or grouped: %1",
+    "cli.notKeyedReset": "setting is not keyed: %1",
+    "cli.prefsMissingKey": "preferences %1: missing key",
+    "cli.prefsMissingValue": "preferences set: missing value for %1",
+    "cli.rollbackRestored": "rollback: restored %1 file(s)",
+    "cli.settingNotKeyed": "setting is not keyed or grouped: %1",
+    "cli.uiBadAction": "ui: expected open, close, toggle, or reload (got '%1')",
+    "cli.uiFloatBadArg": "ui-float: expected on or off (got '%1')",
+    "cli.uiNoShell": "ui: could not reach the Omarchy shell (is it running?)",
+    "cli.unknownCommand": "unknown command: %1",
+    "cli.unknownJournalOp": "unknown journal op: %1",
+    "cli.unknownMonitor": "unknown monitor '%1'",
+    "cli.unknownOperation": "unknown operation: %1",
+    "cli.unknownPreference": "unknown preference: %1",
+    "cli.unknownSetting": "unknown setting: %1",
+    "cli.unknownSubsetting": "unknown sub-setting '%1' for %2 (choose from: %3)",
+}
+
+
+def schema_for(mode: str) -> dict:
+    env = dict(os.environ)
+    env["OMASET_WORKSPACE_MODES"] = mode
+    out = subprocess.check_output(
+        [str(ROOT / "bin" / "omaset"), "schema"], env=env, text=True)
+    return json.loads(out)
+
+
+def build_english() -> dict:
+    catalog = dict(CHROME)
+    for mode in ("1", "0"):
+        data = schema_for(mode)
+        for panel in data["panels"]:
+            pid = panel["id"]
+            catalog[f"panel.{pid}"] = panel["title"]
+            for s in panel["settings"]:
+                sec_key = s.get("section_key")
+                if sec_key:
+                    catalog[f"section.{pid}.{sec_key}"] = s.get("section", sec_key)
+                sid = s["id"]
+                catalog[f"setting.{sid}"] = s["label"]
+                if s.get("description"):
+                    catalog[f"setting.{sid}.description"] = s["description"]
+                for opt in (s.get("options") or []):
+                    if isinstance(opt, dict):
+                        catalog[f"setting.{sid}.option.{opt['value']}"] = opt["label"]
+                    else:
+                        catalog[f"setting.{sid}.option.{opt}"] = opt
+                subs = s.get("subsettings") or {}
+                for sub, ss in subs.items():
+                    catalog[f"setting.{sid}.{sub}"] = ss["label"]
+                    if ss.get("description"):
+                        catalog[f"setting.{sid}.{sub}.description"] = ss["description"]
+                    for opt in (ss.get("options") or []):
+                        if isinstance(opt, dict):
+                            catalog[f"setting.{sid}.option.{opt['value']}"] = opt["label"]
+                        else:
+                            catalog[f"setting.{sid}.option.{opt}"] = opt
+    return {k: catalog[k] for k in sorted(catalog)}
+
+
+def load_locales() -> dict:
+    path = LOCALES_JSON if LOCALES_JSON.exists() else FALLBACK_LOCALES
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def write_en(catalog: dict) -> None:
+    with open(I18N_DIR / "en.json", "w", encoding="utf-8") as f:
+        json.dump(catalog, f, indent=2, ensure_ascii=False, sort_keys=False)
+        f.write("\n")
+
+
+def read_catalog(code: str) -> dict | None:
+    path = I18N_DIR / f"{code}.json"
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def skeleton_for(code: str, english: dict) -> dict:
+    # English values with this language's plural categories filled from the
+    # English form (one/other). The fallback chain covers untranslated keys,
+    # so a plain copy is a valid starting point for translators.
+    locales = load_locales()
+    import subprocess as sp
+    # Reuse the engine's plural rules via Lua (single source of truth).
+    env = dict(os.environ); env["I18N_CODE"] = code
+    out = sp.check_output([
+        "lua5.1", "-e",
+        'package.path="lib/?.lua;lib/?/init.lua;"..package.path;'
+        'local i=require("omaset.i18n");'
+        'for _,c in ipairs(i.plural_categories(os.getenv("I18N_CODE"))) do io.write(c.."\\n") end',
+    ], cwd=ROOT, text=True, env=env)
+    cats = [line.strip() for line in out.splitlines() if line.strip()]
+    catalog = {}
+    for k, v in english.items():
+        if isinstance(v, dict):
+            entry = {}
+            for cat in cats:
+                # Prefer the matching English form, else "other".
+                entry[cat] = v.get(cat, v.get("other", ""))
+            catalog[k] = entry
+        else:
+            catalog[k] = v
+    return {k: catalog[k] for k in sorted(catalog)}
+
+
+def main(argv: list[str]) -> int:
+    if "--check" in argv:
+        english = build_english()
+        current = read_catalog("en") or {}
+        if current != english:
+            # Emit a concise diff so the failure points at the drift.
+            current_keys = set(current)
+            expected_keys = set(english)
+            print("i18n/en.json is stale:", file=sys.stderr)
+            for k in sorted(expected_keys - current_keys):
+                print(f"  missing: {k} = {english[k]!r}", file=sys.stderr)
+            for k in sorted(current_keys - expected_keys):
+                print(f"  stale: {k}", file=sys.stderr)
+            for k in sorted(current_keys & expected_keys):
+                if current[k] != english[k]:
+                    print(f"  changed: {k}: {current[k]!r} -> {english[k]!r}",
+                          file=sys.stderr)
+            return 1
+        print("i18n/en.json up to date")
+        return 0
+
+    if "--skeleton" in argv:
+        english = build_english()
+        locales = load_locales()
+        if len(argv) > 1 and argv[1] != "--skeleton":
+            codes = [a for a in argv[1:] if not a.startswith("--")]
+        else:
+            codes = [c for c in argv if c != "--skeleton" and not c.startswith("--")]
+            if not codes:
+                codes = sorted(locales.keys())
+        wrote = 0
+        for code in codes:
+            if code not in locales:
+                print(f"skip {code}: not in locales.json", file=sys.stderr)
+                continue
+            if (I18N_DIR / f"{code}.json").exists():
+                print(f"keep {code}: already exists")
+                continue
+            data = skeleton_for(code, english)
+            with open(I18N_DIR / f"{code}.json", "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+                f.write("\n")
+            print(f"wrote {code}: {len(data)} keys")
+            wrote += 1
+        print(f"{wrote} skeleton(s) written")
+        return 0
+
+    english = build_english()
+    write_en(english)
+    print(f"wrote i18n/en.json: {len(english)} keys")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
