@@ -145,6 +145,19 @@ BorderSurface {
         }
       }
 
+      // The stock slider's onWheel accepts wheel events, so this shield
+      // forwards the delta to the ScrollView. Clicks still fall through
+      // (acceptedButtons: Qt.NoButton) for dragging.
+      MouseArea {
+        anchors.fill: slider
+        acceptedButtons: Qt.NoButton
+        onWheel: function(wheel) {
+          wheel.accepted = true
+          var delta = wheel.pixelDelta.y !== 0 ? wheel.pixelDelta.y : wheel.angleDelta.y
+          if (root.panel) root.panel.scrollContentBy(delta)
+        }
+      }
+
       Connections {
         target: slider
         function onDraggingChanged() {

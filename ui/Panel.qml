@@ -1055,6 +1055,18 @@ Item {
     else if (bottom > viewBottom - margin) flick.contentY = bottom + margin - flick.height
   }
 
+  // Scroll helper used by the slider shields: the stock PanelSlider's
+  // onWheel accepts wheel events, so forward the delta to the view.
+  function scrollBy(flick, deltaY) {
+    if (!flick || deltaY === 0) return
+    var maxY = Math.max(0, flick.contentHeight - flick.height)
+    flick.contentY = Math.max(0, Math.min(maxY, flick.contentY - deltaY))
+  }
+
+  function scrollContentBy(deltaY) {
+    if (scrollArea) scrollBy(scrollArea.contentItem, deltaY)
+  }
+
   // ---- footer ----------------------------------------------------------
   readonly property string footerHints: schemaError !== ""
     ? tr.t("footer.close", "esc close")
@@ -1752,6 +1764,16 @@ Item {
                             onReleased: function(v) {
                               root.prefsSel = index
                               root.setPreference(prefRow.key, prefRow.type === "int" ? Math.round(v) : v)
+                            }
+                          }
+
+                          MouseArea {
+                            anchors.fill: prefSlider
+                            acceptedButtons: Qt.NoButton
+                            onWheel: function(wheel) {
+                              wheel.accepted = true
+                              var delta = wheel.pixelDelta.y !== 0 ? wheel.pixelDelta.y : wheel.angleDelta.y
+                              root.scrollBy(prefsResultsList, delta)
                             }
                           }
 
