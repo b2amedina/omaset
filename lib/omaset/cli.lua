@@ -468,7 +468,11 @@ local function cmd_mcp(flags, pos)
     for i = 2, #pos do
       names[#names + 1] = pos[i]
     end
-    mcp.install(names)
+    local ok, err = mcp.install(names)
+    if not ok then
+      io.stderr:write("omaset mcp install: " .. tostring(err) .. "\n")
+      os.exit(1)
+    end
     return
   end
 
@@ -526,7 +530,7 @@ local function usage_text()
       "MCP & RPC (for frontends)",
       {
         { "omaset mcp", "Run the MCP server over stdio for agents" },
-        { "omaset mcp install [<agent>...]", "Write the MCP entry into agents' configs" },
+        { "omaset mcp install [<agent>...]", "Register the server via the agent's own mcp add" },
         { "omaset mcp doctor", "Report which agents are wired up" },
         { "omaset rpc", "Run the JSON-RPC server over stdio for the settings window" },
       },
@@ -579,7 +583,7 @@ local COMMAND_HELP = {
   preferences = "omaset preferences [list|get <key>|set <key> <val>|reset <key>] [--json|--plain]\n  List or edit omaset's own UI preferences (not Omarchy settings).",
   ["ui-float"] = "omaset ui-float <on|off>\n  Add or remove the omaset window's float/center rule (driven by the launch_floating preference).",
   ["hyprsunset-apply"] = "omaset hyprsunset-apply\n  Restart hyprsunset so a written night-light schedule takes effect.",
-  mcp = "omaset mcp\n  Run the MCP server over stdio for agents.\nomaset mcp install [<agent>...]\n  Write the omaset MCP entry into the named agents' configs (all when none are named).\nomaset mcp doctor\n  Report which agents are wired to the omaset MCP server.",
+  mcp = "omaset mcp\n  Run the MCP server over stdio for agents.\nomaset mcp install [<agent>...]\n  Register the omaset server with the named agents (all when none are named) by calling their own `mcp add`. Agents whose CLI is not installed are skipped.\nomaset mcp doctor\n  Report which agents are wired to the omaset MCP server.",
   rpc = "omaset rpc\n  Run the JSON-RPC server over stdio for the settings window.",
 }
 

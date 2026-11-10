@@ -27,6 +27,8 @@ ln -s ~/.config/omarchy/plugins/b2amedina.omaset/bin/omaset ~/.local/bin/omaset
 | `omaset ui-float <on|off>` | float/center the settings window |
 | `omaset hyprsunset-apply` | restart hyprsunset so a schedule takes effect |
 | `omaset mcp` | run the MCP server (see [agents.md](agents.md)) |
+| `omaset mcp install [<agent>...]` | register the server via each agent's own `mcp add` |
+| `omaset mcp doctor` | report which agents are wired up |
 | `omaset rpc` | run the JSON-RPC server the settings window uses |
 | `omaset ui` | open the settings window |
 

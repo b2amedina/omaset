@@ -14,7 +14,9 @@
 -- negotiate.
 --
 -- This file is only a wire adapter: every tool is dispatched to service.lua,
--- the same operation layer the CLI and the UI's RPC server use.
+-- the same operation layer the CLI and the UI's RPC server use. The one
+-- non-protocol part is agent registration at the bottom, which shells out to
+-- each agent's own `mcp add` rather than editing another tool's config.
 
 local util = require("omaset.util")
 local json = require("omaset.json")
@@ -137,39 +139,54 @@ function M.serve(core)
   end
 end
 
--- Agent registration: how to wire the server into each supported agent's MCP
--- config. `key` is the dotted JSON path to the server entry; `value` is the
--- server definition (command/args arrays marked so they encode as JSON arrays).
+-- Agent registration. omaset never rewrites another tool's config file: each
+-- agent ships its own `mcp add` subcommand, which owns the config format, the
+-- scope, and the file's permissions (claude writes ~/.claude.json mode 0600 and
+-- keeps it there; a hand-rolled rewrite would have to reimplement all of that).
+-- `argv` is the subcommand after the agent binary. `file`/`keys`/`section` are
+-- read-only, used by `doctor` to report where the agent keeps the entry.
+local function home()
+  return os.getenv("HOME") or ""
+end
+
 local function xdg_config_home()
-  return os.getenv("XDG_CONFIG_HOME") or (os.getenv("HOME") or "") .. "/.config"
+  return os.getenv("XDG_CONFIG_HOME") or home() .. "/.config"
 end
 
 local AGENTS = {
   opencode = {
+    bin = "opencode",
+    argv = { "mcp", "add", "--global", "omaset", "--", "omaset", "mcp" },
     file = function() return xdg_config_home() .. "/opencode/opencode.json" end,
-    key = { "mcp", "omaset" },
-    value = { type = "local", command = json.array({ "omaset", "mcp" }), enabled = true },
+    keys = { "mcp.servers.omaset" },
   },
   claude = {
-    file = function() return (os.getenv("HOME") or "") .. "/.claude.json" end,
-    key = { "mcpServers", "omaset" },
-    value = { command = "omaset", args = json.array({ "mcp" }) },
+    bin = "claude",
+    argv = { "mcp", "add", "-s", "user", "omaset", "--", "omaset", "mcp" },
+    file = function() return home() .. "/.claude.json" end,
+    keys = { "mcpServers.omaset" },
   },
   gemini = {
-    file = function() return (os.getenv("HOME") or "") .. "/.gemini/settings.json" end,
-    key = { "mcpServers", "omaset" },
-    value = { command = "omaset", args = json.array({ "mcp" }) },
+    bin = "gemini",
+    argv = { "mcp", "add", "-s", "user", "omaset", "omaset", "mcp" },
+    file = function() return home() .. "/.gemini/settings.json" end,
+    keys = { "mcpServers.omaset" },
   },
   copilot = {
+    bin = "copilot",
+    argv = { "mcp", "add", "omaset", "--", "omaset", "mcp" },
     file = function()
-      return (os.getenv("COPILOT_HOME") or (os.getenv("HOME") or "") .. "/.copilot") .. "/mcp-config.json"
+      return (os.getenv("COPILOT_HOME") or home() .. "/.copilot") .. "/mcp-config.json"
     end,
-    key = { "mcpServers", "omaset" },
-    value = { type = "local", command = "omaset", args = json.array({ "mcp" }) },
+    keys = { "mcpServers.omaset" },
   },
   codex = {
+    bin = "codex",
+    argv = { "mcp", "add", "omaset", "--", "omaset", "mcp" },
+    file = function()
+      return (os.getenv("CODEX_HOME") or home() .. "/.codex") .. "/config.toml"
+    end,
     toml = true,
-    file = function() return (os.getenv("HOME") or "") .. "/.codex/config.toml" end,
     section = "[mcp_servers.omaset]",
   },
 }
@@ -183,16 +200,45 @@ local function agent_names()
   return names
 end
 
-local function ensure_parent(path)
-  local dir = path:match("^(.*)/")
-  if dir then
-    os.execute("mkdir -p " .. util.shell_quote(dir))
+-- True when the agent's config already carries an omaset server entry.
+local function configured(a)
+  local existing = util.read_file(a.file())
+  if not existing then
+    return false
   end
+  if a.toml then
+    return existing:find(a.section, 1, true) ~= nil
+  end
+  local doc = json.decode(existing)
+  if type(doc) ~= "table" then
+    return false
+  end
+  for _, key in ipairs(a.keys) do
+    if util.deep_get(doc, key) ~= nil then
+      return true
+    end
+  end
+  return false
 end
 
--- `omaset mcp install [agent ...]` — write the omaset server entry into each
--- named agent's MCP config (all agents when none are named). JSON configs are
--- read, merged, and re-written; the Codex TOML section is appended idempotently.
+local function quote_argv(argv)
+  local parts = {}
+  for _, arg in ipairs(argv) do
+    parts[#parts + 1] = util.shell_quote(arg)
+  end
+  return table.concat(parts, " ")
+end
+
+-- The invocation that registers the server, as a printable one-liner.
+local function add_command(a)
+  return a.bin .. " " .. table.concat(a.argv, " ")
+end
+
+-- `omaset mcp install [agent ...]` — register the omaset server by calling each
+-- agent's own `mcp add`, which writes that agent's config in its own format,
+-- scope, and permissions. An agent whose CLI is not installed is skipped: there
+-- is nothing to configure for it, and omaset does not create config files for
+-- tools the user does not have.
 function M.install(names)
   local targets = {}
   if #names == 0 then
@@ -208,74 +254,62 @@ function M.install(names)
     end
   end
   if #targets == 0 then
-    os.exit(1)
+    return nil, "no agent selected"
   end
 
+  local done, failed = 0, 0
   for _, name in ipairs(targets) do
     local a = AGENTS[name]
-    local file = a.file()
-    ensure_parent(file)
-
-    if a.toml then
-      local existing = util.read_file(file) or ""
-      if existing:find(a.section, 1, true) then
-        print(name .. ": already configured in " .. file)
-      else
-        local block = existing
-        if block ~= "" and block:sub(-1) ~= "\n" then
-          block = block .. "\n"
-        end
-        block = block .. "\n" .. a.section .. "\ncommand = \"omaset\"\nargs = [\"mcp\"]\n"
-        util.write_file(file, block)
-        print(name .. ": " .. file)
-      end
+    if not util.cmd_exists(a.bin) then
+      io.stderr:write("omaset mcp install: " .. name .. ": " .. a.bin
+        .. " not installed; skipped\n")
     else
-      local existing = util.read_file(file)
-      local doc = {}
-      if existing then
-        local parsed, perr = json.decode(existing)
-        if parsed and type(parsed) == "table" then
-          doc = parsed
-        else
-          io.stderr:write("omaset mcp install: " .. file .. " is not valid JSON (" .. tostring(perr)
-            .. "); skipped " .. name .. "\n")
-          doc = nil
+      local out, code = util.run_capture(quote_argv({ a.bin, unpack(a.argv) }))
+      if code == 0 then
+        done = done + 1
+        print(name .. ": " .. a.file())
+      elseif configured(a) then
+        -- Some agents (copilot) refuse a duplicate entry instead of updating it.
+        done = done + 1
+        print(name .. ": already configured in " .. a.file())
+      else
+        failed = failed + 1
+        io.stderr:write("omaset mcp install: " .. name .. ": `" .. add_command(a)
+          .. "` failed (exit " .. tostring(code) .. ")\n")
+        local msg = (out or ""):gsub("^%s+", ""):gsub("%s+$", "")
+        if msg ~= "" then
+          io.stderr:write(msg .. "\n")
         end
-      end
-      if doc then
-        util.deep_set(doc, table.concat(a.key, "."), a.value)
-        util.write_file(file, json.encode(doc) .. "\n")
-        print(name .. ": " .. file)
       end
     end
   end
+
+  if failed > 0 then
+    return nil, failed .. " agent(s) failed"
+  end
+  if done == 0 then
+    return nil, "no agent configured"
+  end
+  return true
 end
 
 -- `omaset mcp doctor` — report which agents already point at the omaset server.
 -- Exit 0 when at least one agent is configured, 1 otherwise.
 function M.doctor()
-  local configured = 0
+  local configured_count = 0
   for _, name in ipairs(agent_names()) do
     local a = AGENTS[name]
-    local file = a.file()
-    local present = false
-    if a.toml then
-      local existing = util.read_file(file) or ""
-      present = existing:find(a.section, 1, true) ~= nil
-    else
-      local existing = util.read_file(file)
-      if existing then
-        local doc = json.decode(existing)
-        present = doc and type(doc) == "table"
-          and util.deep_get(doc, table.concat(a.key, ".")) ~= nil
-      end
+    local state = "missing"
+    if not util.cmd_exists(a.bin) then
+      -- No agent to serve, even if a stale config entry lingers on disk.
+      state = "no cli"
+    elseif configured(a) then
+      state = "ok"
+      configured_count = configured_count + 1
     end
-    print(string.format("%-10s %-8s %s", name, present and "ok" or "missing", file))
-    if present then
-      configured = configured + 1
-    end
+    print(string.format("%-10s %-8s %s", name, state, a.file()))
   end
-  os.exit(configured > 0 and 0 or 1)
+  os.exit(configured_count > 0 and 0 or 1)
 end
 
 return M

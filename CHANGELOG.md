@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- `omaset mcp install` registers the server through each agent's own `mcp add`
+  subcommand instead of rewriting its config file, so the agent keeps ownership
+  of its format, scope, and file permissions (rewriting `~/.claude.json` through
+  a temp file used to widen it from `0600` to `0644`). Agents whose CLI is not
+  installed are skipped rather than given a config file they never asked for.
+- `run_capture` now returns real exit codes on Lua 5.1, whose `pclose()`
+  reports success for any status; failed `jq`, `hyprctl`, and `omarchy` calls
+  were previously reported as successes.
+
 ## 0.2.1 — 2026-11-09
 
 - Speaks all 50 Omarchy languages — every label, description, and option.

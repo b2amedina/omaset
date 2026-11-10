@@ -21,6 +21,15 @@ omaset mcp install claude     # or a specific one
 omaset mcp doctor             # verify
 ```
 
+`install` registers the server by calling each agent's own `mcp add` subcommand
+(`claude mcp add -s user …`, `codex mcp add …`, `opencode mcp add --global …`,
+`gemini mcp add -s user …`, `copilot mcp add …`). The agent writes its own
+config, in its own format, scope, and permissions — Omaset never rewrites
+another tool's dotfile. An agent whose CLI is not installed is reported and
+skipped; Omaset does not create a config for a tool you do not have.
+`doctor` is read-only: it inspects each agent's config and prints `ok`,
+`missing`, or `no cli`.
+
 The server is `omaset mcp` (JSON-RPC over stdio) and exposes these tools:
 
 | Tool | Purpose |
