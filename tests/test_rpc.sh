@@ -36,7 +36,7 @@ OUT="$(printf '%s\n' \
   'not json' \
   | lua5.1 "$OMASET" rpc 2>/dev/null)"
 
-assert_contains "$OUT" '"id":1,"jsonrpc":"2.0","result":{"schemaVersion":1,"version":"0.2.1"}' "version reports engine + schema"
+assert_contains "$OUT" '"id":1,"jsonrpc":"2.0","result":{"schemaVersion":1,"version":"0.2.2"}' "version reports engine + schema"
 assert_contains "$OUT" '"id":2,"jsonrpc":"2.0","result":{}' "ping returns empty result"
 assert_contains "$OUT" '"panels"' "schema has panels"
 assert_contains "$OUT" '"id":"gaps_in"' "schema has setting ids"

@@ -264,6 +264,6 @@ function M.schema()
   return out
 end
 
-M.VERSION = "0.2.1"
+M.VERSION = "0.2.2"
 
 return M

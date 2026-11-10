@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.2 — 2026-11-09
 
 - Settings writes no longer touch file permissions: `util.write_file()` creates
   its temporary file with `mktemp` (exclusive, unpredictable name, already
