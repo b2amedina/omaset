@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "b2amedina.omaset",
   "name": "Omaset - Omarchy Settings",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "author": "b2amedina",
   "license": "MIT",
-  "description": "A settings manager for Omarchy. Designed for the age of agents but usable by humans — one window, one command line, and an MCP server over the same settings. Searchable, undoable, 4.5 ready, in all 50 languages.",
+  "description": "Every Omarchy setting in one place: a window for your hands, a CLI for your scripts, an MCP server for your agents. 4.5 ready, in all 50 languages.",
   "kinds": ["panel", "bar-widget"],
   "entryPoints": {
     "panel": "ui/Panel.qml",

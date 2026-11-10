@@ -1,17 +1,15 @@
 #!/usr/bin/env bash
-# Captures the omaset settings window for the plugin marketplace listing.
+# Captures the omaset settings window, tightly (no desktop margin), for the
+# plugin marketplace listing. This writes the window layer; compose-preview.sh
+# then combines it with hero.svg into preview.png.
 #
-#   bash media/src/preview.sh            # writes preview.png (repo root)
-#
-# Opens the window, screenshots it with a small margin of desktop around it,
-# then closes it. The window sizes to its content, so the shot tracks the
-# current UI without any hard-coded geometry.
+#   bash media/src/preview.sh            # writes media/window.png
 set -u
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OMASET="${OMASET:-$HOME/.local/bin/omaset}"
-OUT="${1:-$ROOT/preview.png}"
-MARGIN=14
+OUT="${1:-$ROOT/media/window.png}"
+MARGIN=0
 
 "$OMASET" ui open >/dev/null 2>&1
 sleep 1.8

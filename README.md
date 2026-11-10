@@ -1,7 +1,5 @@
 # Omaset
 
-> **A settings manager for Omarchy. Designed for the age of agents but usable by humans.**
-
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-f38d70?style=flat-square" alt="License: MIT"></a>
   <img src="https://img.shields.io/github/v/tag/b2amedina/omaset?style=flat-square&color=f38d70&label=version" alt="Version">
@@ -15,13 +13,13 @@
 
 Your config files are the source of truth. Omaset puts every setting within reach — of you, and of your agent. Update one value where it lives. Everything else stays as you left it. See what's changed. Take it back.
 
-**Welcome the agents.** Your agent gets the same settings you do, as tools it can call. It searches for a setting by name, reads what it's set to, changes it. Undoes it if you need to. No parsing files, no guessing, no shell incantations — just the same settings, in front of both of you.
+**Welcome the agents.** Your agent gets the same settings you do, as tools it can call. It searches for a setting by name, reads what it's set to, changes it. No parsing files, no guessing, no shell incantations — just the same settings, in front of both of you.
 
 **Made for 4.5.** The new desktop is more familiar to people coming from Windows or macOS, used to a settings panel. Omaset does the same for settings — a view for humans, while your agent keeps working directly with the files.
 
 **Speaks your language.** Every label, description, and option in all 50 Omarchy languages.
 
-**Safe to change.** Every change is checked, logged, and reversible: `changed` shows what's not stock, `history` shows how it got there, `undo` takes it back.
+**Checked before it lands.** Every change is validated against the live config, and Omaset puts it back if Hyprland won't load. `changed` shows what's not stock, `history` shows how it got there.
 
 **No magic numbers.** Your configuration file still says `300` — that's seconds to the computer. Omaset shows you `5 min` — that's how you think about it. Same for times and every other choice. Made readable for humans, not just machines.
 
@@ -65,7 +63,7 @@ Covers appearance, layout, bar, input, windows, power, display, and behavior. On
 
 - **One place to see it all.** Every panel, searchable.
 - **Three ways in, same settings.** Agent, window, command line.
-- **Easy to undo.** Every change is checked and logged.
+- **Checked before it lands.** Validation, then applied in place — nothing rewritten wholesale.
 - **Styled to match.** Colors and shapes come from your theme.
 
 <p align="center">

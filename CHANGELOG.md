@@ -1,7 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.2.3 — 2026-11-10
 
+- Marketplace listing refreshed: the description now leads with the concrete
+  window/CLI/MCP line, the slogan moves to the banner, the preview image drops
+  prose entirely, and the copy swaps "undoable" for "checked before it lands".
 - `shell.json` is no longer rewritten through its own `> .tmp` + `mv` dance.
   The jq pipeline's output is validated as a whole JSON document and committed
   through the shared `util.write_file()` atomic writer, so a private
