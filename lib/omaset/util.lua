@@ -21,20 +21,63 @@ function M.read_file(path)
   return content
 end
 
+-- Existing permissions of a path as an octal string ("600"), or nil when it
+-- does not exist. Uses stat(1) because the Lua 5.1 interpreter Omarchy ships
+-- has no lfs binding.
+function M.file_mode(path)
+  if not M.file_exists(path) then
+    return nil
+  end
+  local out, code = M.run_capture("stat -c %a " .. M.shell_quote(path))
+  if code ~= 0 then
+    return nil
+  end
+  return tostring(out or ""):match("^%s*(%d%d%d%d?)%s*$")
+end
+
 function M.write_file(path, content)
   -- Atomic: write to a temp file in the same directory, then rename over the
   -- target so a crash mid-write can't leave a torn file.
-  local tmp = path .. ".omaset.tmp"
-  local f = io.open(tmp, "wb")
-  if not f then
-    return nil, "cannot open " .. path .. " for writing"
+  --
+  -- The temp file comes from mktemp, which creates it exclusively, under an
+  -- unpredictable name, and already mode 0600 — so no partially written
+  -- content is ever readable by anyone else, and no predictable shared path is
+  -- left for another process to substitute. An existing target's mode is then
+  -- carried over to the replacement, so rewriting a private file (an agent
+  -- config at 0600, say) can never widen it. Files that did not exist keep
+  -- mktemp's 0600.
+  local dir = path:match("^(.*)/[^/]+$") or "."
+  if dir == "" then
+    dir = "/"
   end
-  f:write(content)
-  f:close()
-  local ok, err = os.rename(tmp, path)
+  local out, code = M.run_capture("mktemp " .. M.shell_quote(dir .. "/.omaset.XXXXXX"))
+  local tmp = code == 0 and tostring(out or ""):match("^%s*(.-)%s*$") or ""
+  if tmp == "" then
+    return nil, "cannot create a temporary file next to " .. path
+  end
+
+  local mode = M.file_mode(path)
+  local f, err = io.open(tmp, "wb")
+  if not f then
+    os.remove(tmp)
+    return nil, "cannot open " .. path .. " for writing: " .. tostring(err)
+  end
+  local wrote, werr = f:write(content)
+  local closed, cerr = f:close()
+  if not wrote or not closed then
+    os.remove(tmp)
+    return nil, "cannot write " .. path .. ": " .. tostring(werr or cerr or "short write")
+  end
+
+  if mode and os.execute("chmod " .. mode .. " " .. M.shell_quote(tmp)) ~= 0 then
+    os.remove(tmp)
+    return nil, "cannot preserve permissions on " .. path
+  end
+
+  local ok, rerr = os.rename(tmp, path)
   if not ok then
     os.remove(tmp)
-    return nil, "cannot write " .. path .. ": " .. tostring(err)
+    return nil, "cannot write " .. path .. ": " .. tostring(rerr)
   end
   return true
 end

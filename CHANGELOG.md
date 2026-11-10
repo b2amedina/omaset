@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Settings writes no longer touch file permissions: `util.write_file()` creates
+  its temporary file with `mktemp` (exclusive, unpredictable name, already
+  `0600` before any content is written), carries an existing target's mode over
+  to the replacement, and reports write, close, and rename failures instead of
+  claiming success. A private file rewritten by omaset can no longer end up
+  group- or world-readable.
 - `omaset mcp install` registers the server through each agent's own `mcp add`
   subcommand instead of rewriting its config file, so the agent keeps ownership
   of its format, scope, and file permissions (rewriting `~/.claude.json` through

@@ -46,4 +46,44 @@ cf="$TESTDIR/run_capture.code"
 PROBE_CODE_FILE="$cf" run_probe "omaset_no_such_command" > /dev/null
 assert_eq "$(cat "$cf")" "127" "run_capture reports command-not-found"
 
+# util.write_file: a replacement must never widen a private file's mode, and a
+# new file must start at 0600 rather than whatever umask 022 would give it.
+write_probe() {
+  lua5.1 - "$1" "$2" <<'LUA'
+package.path = os.getenv("ROOT") .. "/lib/?.lua;" .. os.getenv("ROOT") .. "/lib/?/init.lua;" .. package.path
+local util = require("omaset.util")
+local ok, err = util.write_file(arg[1], arg[2])
+io.write(ok and "ok" or ("err: " .. tostring(err)))
+LUA
+}
+
+printf '{"secret":true}\n' > "$TESTDIR/private.json"
+chmod 600 "$TESTDIR/private.json"
+assert_eq "$(write_probe "$TESTDIR/private.json" '{"secret":"rewritten"}')" "ok" \
+  "write_file replaces a private file"
+assert_eq "$(stat -c %a "$TESTDIR/private.json")" "600" \
+  "write_file preserves an existing 0600 mode"
+assert_eq "$(cat "$TESTDIR/private.json")" '{"secret":"rewritten"}' \
+  "write_file writes the new content"
+
+printf 'x\n' > "$TESTDIR/shared.conf"
+chmod 644 "$TESTDIR/shared.conf"
+assert_eq "$(write_probe "$TESTDIR/shared.conf" 'y')" "ok" \
+  "write_file replaces a 0644 file"
+assert_eq "$(stat -c %a "$TESTDIR/shared.conf")" "644" \
+  "write_file preserves an existing 0644 mode"
+
+assert_eq "$(write_probe "$TESTDIR/created.conf" 'z')" "ok" \
+  "write_file creates a missing file"
+assert_eq "$(stat -c %a "$TESTDIR/created.conf")" "600" \
+  "write_file creates new files 0600"
+
+# A failure is reported instead of being claimed as success, and leaves nothing
+# behind next to the target.
+assert_contains "$(write_probe "$TESTDIR/missing/dir/file.conf" 'nope')" "cannot" \
+  "write_file reports an unwritable path"
+[[ -e "$TESTDIR/missing/dir/file.conf" ]] && fail "write_file created a file under a missing directory"
+assert_eq "$(find "$TESTDIR" -maxdepth 1 -name '.omaset.*' | wc -l)" "0" \
+  "write_file leaves no temporary files behind"
+
 echo "ok"
