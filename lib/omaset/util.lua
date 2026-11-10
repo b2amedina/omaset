@@ -71,15 +71,23 @@ end
 -- end open, which would make read("*a") block forever. Redirecting to a file
 -- means only the foreground shell holds the pipe, so it EOFs as soon as the
 -- command finishes and the daemon's stray output goes to the file instead.
+--
+-- That leaves the pipe free to carry the exit status, which it has to: Lua
+-- 5.1's pclose() returns true for *any* status (the ok/reason/code form only
+-- exists from 5.2 on), so reading it off close() would report every command as
+-- having succeeded.
 function M.run_capture(cmd)
   local tmp = os.tmpname()
-  local p = io.popen(cmd .. " > " .. M.shell_quote(tmp) .. " 2>&1")
+  local p = io.popen("( " .. cmd .. " ) > " .. M.shell_quote(tmp) .. " 2>&1; echo $?")
   if not p then
     os.remove(tmp)
     return nil, nil, "cannot run: " .. cmd
   end
-  p:read("*a")
-  local ok, why, code = p:close()
+  local status = p:read("*a") or ""
+  p:close()
+  -- The trailing number is the exit status; anything before it would be stray
+  -- output that escaped the file redirect.
+  local code = tonumber(status:match("(%d+)%s*$")) or 1
   local out = ""
   local f = io.open(tmp, "rb")
   if f then
@@ -87,15 +95,7 @@ function M.run_capture(cmd)
     f:close()
   end
   os.remove(tmp)
-  local exit_code
-  if ok then
-    exit_code = 0
-  elseif why == "exit" then
-    exit_code = code
-  else
-    exit_code = 1
-  end
-  return out, exit_code
+  return out, code
 end
 
 -- List files in a directory matching a find-style -name pattern (e.g. "*.lua"),
