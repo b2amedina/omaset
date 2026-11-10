@@ -1,6 +1,6 @@
 # Safety, undo & rollback
 
-omaset's first promise is that it will not wreck your config. It never
+Omaset's first promise is that it will not wreck your config. It never
 parses-and-rewrites your files: it edits the one value being changed — in place
 where it already lives, or appending a minimal override when it does not — and
 keeps a one-time `<file>.omaset.bak` snapshot before its first write to any
@@ -9,7 +9,7 @@ change is validated and automatically reverted on failure.
 
 ## History and undo
 
-- `omaset history` lists every change omaset has made, oldest first, from an
+- `omaset history` lists every change Omaset has made, oldest first, from an
   append-only journal at `~/.local/state/omaset/journal.jsonl`.
 - `omaset undo` undoes the most recent change; `undo --all` replays the journal
   in reverse. Undo restores the recorded previous value, and falls back to
@@ -20,12 +20,12 @@ change is validated and automatically reverted on failure.
 
 - `omaset rollback` is the panic button: it restores every `<file>.omaset.bak`
   snapshot for each file-writing backend, returning each config file to the state
-  it had before omaset first wrote to it. It does not depend on the journal.
+  it had before Omaset first wrote to it. It does not depend on the journal.
 
 ## Reset & changed semantics
 
 `reset` puts a setting back to its Omarchy default — writing the default in
-place where omaset changed it, or dropping the value omaset appended. It does
+place where Omaset changed it, or dropping the value Omaset appended. It does
 not store snapshots: `read_default` recomputes the default from Omarchy's
 shipped config on every call.
 
@@ -38,7 +38,7 @@ shipped config on every call.
   `single-window-square`) declare `default = false` so they participate in
   `changed` too.
 - `hypr-lua` edits the value in place, so `reset` writes the stock default back
-  where the value lives; a hand-written `hl.config(...)` override for a key omaset
+  where the value lives; a hand-written `hl.config(...)` override for a key Omaset
   never touched is left alone. To restore *everything* to stock, use
   `omarchy refresh hyprland`.
 - `workspace-layout` shares storage with `omarchy hyprland workspace layout

@@ -1,6 +1,6 @@
-# omaset settings UI
+# Omaset settings UI
 
-A keyboard-first, schema-driven settings window for omaset, built as an
+A keyboard-first, schema-driven settings window for Omaset, built as an
 Omarchy Quickshell plugin. It renders whatever the schema returns, so adding or
 removing a setting in Lua needs no QML changes. The schema carries a
 `schemaVersion`, and the window only renders a version it supports: a mismatch
@@ -8,7 +8,7 @@ removing a setting in Lua needs no QML changes. The schema carries a
 rather than a partial list of settings.
 
 The window talks to one long-lived `omaset rpc` process over newline-delimited
-JSON-RPC 2.0 (see [the protocol](../docs/protocol.md#rpc-omaset-rpc)). Requests
+JSON-RPC 2.0 (see [the protocol](../docs/protocol.md#rpc-Omaset-rpc)). Requests
 are matched by id, so values can load in parallel without spawning a process
 per setting. A `snapshot` call fetches a panel's schema, preferences, changed
 list, and its keyed/grouped values together.
@@ -66,7 +66,7 @@ The shell rescans the plugins dir on change. `OMASET_BIN` (optional) points the
 panel at a different `omaset` executable; otherwise it runs the engine bundled
 with the plugin at `~/.config/omarchy/plugins/b2amedina.omaset/bin/omaset`.
 
-The window floats because omaset manages a `o.window(... float/center ...)`
+The window floats because Omaset manages a `o.window(... float/center ...)`
 rule for its own window (the `launch_floating` preference); no hand-written
 Hyprland rule is required.
 
@@ -92,7 +92,7 @@ still step by one. A time row works the same way: type `HH:MM` or
 
 The footer shows keyboard hints plus a contextual badge — `N changed` when
 settings differ from Omarchy stock, `N settings found` while searching. The
-Preferences overlay (`p`) shows the omaset engine version as a dimmed caption
+Preferences overlay (`p`) shows the Omaset engine version as a dimmed caption
 pinned at its bottom.
 
 ## Structure
@@ -112,7 +112,7 @@ pinned at its bottom.
   catalogs; the window reads them via `Commons.Translations` and follows
   the desktop language. See [docs/i18n.md](../docs/i18n.md).
 
-## How it maps omaset settings
+## How it maps Omaset settings
 
 | type | control |
 |------|---------|

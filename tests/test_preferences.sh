@@ -15,7 +15,7 @@ capture_out preferences --json
 assert_eq "$(echo "$OUT" | jq -r '.preferences | length')" "3" "three preferences"
 assert_eq "$(echo "$OUT" | jq -r '.preferences[0].key')" "refresh_interval_sec" "ordered first"
 assert_eq "$(echo "$OUT" | jq -r '.preferences[0].default')" "2" "default surfaced"
-assert_eq "$(echo "$OUT" | jq -r '.version')" "0.2.0" "engine version surfaced"
+assert_eq "$(echo "$OUT" | jq -r '.version')" "0.2.1" "engine version surfaced"
 
 # set persists and round-trips.
 capture_out preferences set refresh_interval_sec 5

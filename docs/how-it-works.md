@@ -1,6 +1,6 @@
-# How omaset works
+# How Omaset works
 
-Your config files are the source of truth. omaset is a small core plus a set of
+Your config files are the source of truth. Omaset is a small core plus a set of
 pluggable **backends**. The core owns one idea — a settings *schema* — and each
 backend knows how to read and write one kind of file. Everything a person or an
 agent touches — the MCP server, the settings window, the CLI — is a face on top

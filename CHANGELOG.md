@@ -1,13 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.2.1 — 2026-11-09
 
-- Full Omarchy language support (all 50 registry codes) — shared `i18n/`
-  catalogs, engine-side `lib/omaset/i18n.lua` (`t`/`tn`/`formatNumber`,
-  plural rules), `--lang <code>`/`OMASET_LANGUAGE` override (JSON and MCP
-  stay English), window localization of plain-string enum labels, counts,
-  and preferences, RTL mirroring for ar/fa/he/ur, locale AM/PM markers,
-  `scripts/i18n-extract`, `tests/test_i18n.sh`, and `docs/i18n.md`.
+- Speaks all 50 Omarchy languages — every label, description, and option.
+- A `--lang <code>` / `OMASET_LANGUAGE` override; JSON and MCP output stay English.
+- Right-to-left mirroring for Arabic, Persian, Hebrew, and Urdu.
+- The settings view scrolls when you wheel over a slider.
+- New `scripts/i18n-extract` extractor and `tests/test_i18n.sh` validation.
+- Localization guide and per-release checklist in `docs/i18n.md`.
 
 ## 0.2.0 — 2026-11-08
 

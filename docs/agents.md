@@ -1,6 +1,6 @@
-# omaset for agents
+# Omaset for agents
 
-omaset is a single machine-readable interface to Omarchy's settings. An agent
+Omaset is a single machine-readable interface to Omarchy's settings. An agent
 (or any tool) can list, read, and change settings through one JSON protocol,
 without needing to know which dotfile each setting lives in.
 
@@ -12,7 +12,7 @@ The contract is `docs/protocol.md`; this page is the practical guide.
 
 ## MCP (recommended)
 
-omaset ships an MCP server so an agent can call settings as typed tools instead
+Omaset ships an MCP server so an agent can call settings as typed tools instead
 of parsing CLI output. Enable it once:
 
 ```
@@ -34,12 +34,12 @@ The server is `omaset mcp` (JSON-RPC over stdio) and exposes these tools:
 | `help` | one setting's spec |
 | `keys` | enumerate a keyed/grouped setting's keys (value + default each) |
 | `undo` | undo the last change |
-| `history` | recent changes omaset has made, oldest first |
+| `history` | recent changes Omaset has made, oldest first |
 | `ui` | open/close/toggle/reload the settings window |
 | `open_ui` | summon the settings window for the user |
 | `ui_float` | apply the launch_floating window rule |
 | `hyprsunset_apply` | restart hyprsunset so a night-light schedule takes effect |
-| `preferences` | list omaset's own preferences (type, options, value, default) |
+| `preferences` | list Omaset's own preferences (type, options, value, default) |
 | `preference_get` | read one preference |
 | `preference_set` | write a preference (validated like a setting) |
 | `preference_reset` | reset a preference to its default |
@@ -102,7 +102,7 @@ omaset changed --json
 Full details — in-place edits, validation, `undo`, and `rollback` — are in
 [safety.md](safety.md).
 
-- omaset edits the one value being changed — in place where it already lives,
+- Omaset edits the one value being changed — in place where it already lives,
   appending a minimal override when it does not — so your hand-written config is
   never rewritten.
 - Every Hyprland write is reloaded and checked with `hyprctl configerrors`; on

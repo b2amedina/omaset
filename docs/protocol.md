@@ -1,6 +1,6 @@
-# omaset protocol
+# Omaset protocol
 
-The machine-readable contract between the omaset engine and its consumers
+The machine-readable contract between the Omaset engine and its consumers
 (the CLI, the keyboard-first UI, or Omarchy's own commands). Every command
 emits valid, deterministic JSON (object keys are sorted).
 
@@ -127,7 +127,7 @@ to that monitor's block.
 { "history": [ { "ts", "op", "id", "key"|"sub", "old", "default", "new", "backend" }, ... ] }
 ```
 
-Every change omaset has made, oldest first. `op` is `"set"` or `"reset"`;
+Every change Omaset has made, oldest first. `op` is `"set"` or `"reset"`;
 `old`/`new` are the effective values before/after (`null` = unset/default);
 `default` is the Omarchy default at the time. `N` limits the output to the most
 recent entries.
@@ -148,8 +148,8 @@ journal in reverse and returns `{ "ok": true, "undone": <count> }`.
 { "rollback": true, "restored": <n> }
 ```
 
-Restores every `<file>.omaset.bak` snapshot, returning each config file omaset
-has written to the state it had before omaset first touched it, and clears the
+Restores every `<file>.omaset.bak` snapshot, returning each config file Omaset
+has written to the state it had before Omaset first touched it, and clears the
 journal. Backends without a snapshot (e.g. the `omarchy` passthrough and
 `workspace-layout`) are no-ops.
 
@@ -164,14 +164,14 @@ The `time_format` preference additionally carries a `resolved` field — the
 `24h`/`12h` convention actually used, resolving the `auto` value against the
 bar clock's format in shell.json.
 
-omaset's **own** UI preferences, stored in `~/.config/omaset/preferences.json`
+Omaset's **own** UI preferences, stored in `~/.config/omaset/preferences.json`
 (`OMASET_PREFERENCES` overrides the path). They are deliberately *not* Omarchy
 settings: they have no backend, they never appear in `schema`/`search`, and
 they are never reported by `changed`.
 
 - `list` (default) — every preference with its current value and default;
   `--json` returns the array under `preferences`, alongside the `version` of
-  the omaset engine.
+  the Omaset engine.
 - `get <key>` — `{ "key", "value" }` (or `--plain` bare value).
 - `set <key> <value>` — validates and persists; `{ "key", "value", "ok" }`.
 - `reset <key>` — removes the override so the default applies.

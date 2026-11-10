@@ -1,6 +1,6 @@
 # Backends
 
-A backend is the only part of omaset that knows a config format. It exposes a
+A backend is the only part of Omaset that knows a config format. It exposes a
 small read/write/validate interface for one area, and the engine treats them all
 identically. They self-register from `lib/omaset/backends/`, so a settings file
 can point at any of them — or at a new one — without the core changing.
@@ -12,7 +12,7 @@ appends a minimal override when it does not. Details in [safety.md](safety.md).
 
 ## Migrating from 0.1.0
 
-0.1.0 wrote omaset's changes into `-- omaset:begin` / `-- omaset:end` blocks
+0.1.0 wrote Omaset's changes into `-- omaset:begin` / `-- omaset:end` blocks
 (`# -- omaset:begin` / `# -- omaset:end` in `hyprsunset.conf`). 0.2.0 edits
 values in place instead. Existing blocks keep working — reads evaluate the whole
 file, so the values inside them are still read and edited in place — but the

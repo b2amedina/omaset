@@ -1,6 +1,6 @@
-# omaset
+# Omaset
 
-> **A settings manager for Omarchy, for the age of agents.**
+> **A settings manager for Omarchy. Designed for the age of agents but usable by humans.**
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-f38d70?style=flat-square" alt="License: MIT"></a>
@@ -10,18 +10,24 @@
 </p>
 
 <p align="center">
-  <img src="media/banner.png" alt="The omaset wordmark and tagline, above a strip of the Omarchy bar" width="880">
+  <img src="media/banner.png" alt="The Omaset wordmark and tagline, above a strip of the Omarchy bar" width="880">
 </p>
 
-Your config files are the source of truth. omaset puts every setting within reach — of you, and of your agent. Update one value where it lives. Everything else stays as you left it. See what's changed. Take it back.
+Your config files are the source of truth. Omaset puts every setting within reach — of you, and of your agent. Update one value where it lives. Everything else stays as you left it. See what's changed. Take it back.
 
 **Welcome the agents.** Your agent gets the same settings you do, as tools it can call. It searches for a setting by name, reads what it's set to, changes it. Undoes it if you need to. No parsing files, no guessing, no shell incantations — just the same settings, in front of both of you.
 
-**Made for 4.5.** The new desktop is more familiar to people coming from Windows or macOS, used to a settings panel. omaset does the same for settings — a view for humans, while your agent keeps working directly with the files.
+**Made for 4.5.** The new desktop is more familiar to people coming from Windows or macOS, used to a settings panel. Omaset does the same for settings — a view for humans, while your agent keeps working directly with the files.
+
+**Speaks your language.** Every label, description, and option in all 50 Omarchy languages.
 
 **Safe to change.** Every change is checked, logged, and reversible: `changed` shows what's not stock, `history` shows how it got there, `undo` takes it back.
 
-**No magic numbers.** Your file still says `300` — that's seconds to the computer. omaset shows you `5 min` — that's how you think about it. Same for times and every other choice. Made readable for humans, not just machines.
+**No magic numbers.** Your configuration file still says `300` — that's seconds to the computer. Omaset shows you `5 min` — that's how you think about it. Same for times and every other choice. Made readable for humans, not just machines.
+
+<p align="center">
+  <img src="media/window.png" alt="The Omaset settings window" width="800">
+</p>
 
 ## Requirements
 
@@ -38,7 +44,7 @@ Then link the command line and hook up your agent:
 - [The CLI](docs/cli.md) — `ln -s …/bin/omaset ~/.local/bin/omaset`
 - [For agents](docs/agents.md) — `omaset mcp install`
 
-Click the omaset icon in your bar, or run `omaset ui`.
+Click the Omaset icon in your bar, or run `omaset ui`.
 
 ## What it manages
 
@@ -55,7 +61,7 @@ Covers appearance, layout, bar, input, windows, power, display, and behavior. On
 | Display | night light on/off, schedule (start & end), temperature |
 | Behavior | focus, tearing, cursor hiding |
 
-## Why omaset
+## Why Omaset
 
 - **One place to see it all.** Every panel, searchable.
 - **Three ways in, same settings.** Agent, window, command line.
@@ -95,10 +101,10 @@ omaset undo                   # take it back
 ```
 
 <p align="center">
-  <img src="media/usage.png" alt="omaset --help" width="820">
+  <img src="media/usage.png" alt="Omaset --help" width="820">
 </p>
 
-Full command reference — keyed settings, `help`/`options`, and omaset's own preferences — in [docs/cli.md](docs/cli.md).
+Full command reference — keyed settings, `help`/`options`, and Omaset's own preferences — in [docs/cli.md](docs/cli.md).
 
 ## Documentation
 
@@ -113,14 +119,8 @@ Full command reference — keyed settings, `help`/`options`, and omaset's own pr
 | [For agents](docs/agents.md) | the MCP server and a worked example |
 | [Protocol](docs/protocol.md) | the machine-readable contract |
 | [Internationalization](docs/i18n.md) | the catalogs, language resolution, and the per-release checklist |
-| [Tests](docs/tests.md) | how omaset is tested |
+| [Tests](docs/tests.md) | how Omaset is tested |
 | [Settings UI](ui/README.md) | the Quickshell window, install and keys |
-
-Themes are Omarchy themes: the window picks up your active one, so it looks at home in Tokyo Night, Jade Horse, or any theme you install.
-
-<p align="center">
-  <img src="media/themes.png" alt="The same settings window rendered in the Tokyo Night and Jade Horse themes" width="880">
-</p>
 
 ## Remove
 

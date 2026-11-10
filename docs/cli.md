@@ -1,4 +1,4 @@
-# The omaset CLI
+# The Omaset CLI
 
 The CLI, the MCP server, and the settings window are all thin faces over the
 same shared service (`lib/omaset/service.lua`). Link the bundled binary onto
@@ -20,10 +20,10 @@ ln -s ~/.config/omarchy/plugins/b2amedina.omaset/bin/omaset ~/.local/bin/omaset
 | `omaset search <query>` | find a setting by id or label |
 | `omaset help <id>` | one setting's type, options, range, default, value |
 | `omaset keys <id>` | enumerate a keyed/grouped setting's keys |
-| `omaset history` | every change omaset has made, oldest first |
+| `omaset history` | every change Omaset has made, oldest first |
 | `omaset undo` | undo the most recent change (`--all` replays the journal) |
-| `omaset rollback` | restore every config file omaset touched |
-| `omaset preferences` | omaset's own settings (see below) |
+| `omaset rollback` | restore every config file Omaset touched |
+| `omaset preferences` | Omaset's own settings (see below) |
 | `omaset ui-float <on|off>` | float/center the settings window |
 | `omaset hyprsunset-apply` | restart hyprsunset so a schedule takes effect |
 | `omaset mcp` | run the MCP server (see [agents.md](agents.md)) |
@@ -77,14 +77,14 @@ value lists the valid options in the error, so a typo tells you what it wanted.
 
 ## Preferences
 
-omaset has a few settings about *itself*, kept separate from the Omarchy settings
+Omaset has a few settings about *itself*, kept separate from the Omarchy settings
 above. They live in `~/.config/omaset/preferences.json`, are managed with
 `omaset preferences`, and are **not** Omarchy settings: they never appear in the
 settings panels, `search`, or `changed`.
 
 - `refresh_interval_sec` — how often the settings window re-reads values while
   visible (default 2, range 1..60).
-- `launch_floating` — whether the window opens floating (default true). omaset
+- `launch_floating` — whether the window opens floating (default true). Omaset
   manages this by adding/removing an `o.window(... float/center ...)` rule for
   its own window in `~/.config/hypr/hyprland.lua`, so no hand-written rule is
   needed. Takes effect on the next open.

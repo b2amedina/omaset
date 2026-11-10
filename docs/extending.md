@@ -1,4 +1,4 @@
-# Extending omaset with Lua
+# Extending Omaset with Lua
 
 Settings are data, not code in the engine. Adding one is dropping a Lua file;
 the engine, the CLI, the window, and the MCP server all pick it up with no
