@@ -15,10 +15,11 @@ if [[ -n "$offenders" ]]; then
   fail "raw TextField/TextInput outside ValueField.qml: $(echo "$offenders" | tr '\n' ' ')"
 fi
 
-# And it must actually block paste: the Ctrl+V / Shift+Insert shortcuts and the
-# middle/right mouse buttons that drive primary-selection and context-menu paste.
-grep -q 'Qt.Key_V' "$value_field" || fail "ValueField.qml does not block Ctrl+V"
-grep -q 'Qt.Key_Insert' "$value_field" || fail "ValueField.qml does not block Shift+Insert"
+# And it must actually block paste: every keyboard paste path (StandardKey.Paste
+# covers Ctrl+V, Shift+Insert, the dedicated Paste key, and platform bindings)
+# plus the middle/right mouse buttons that drive primary-selection and
+# context-menu paste.
+grep -q 'StandardKey\.Paste' "$value_field" || fail "ValueField.qml does not block keyboard paste"
 grep -q 'Qt.MiddleButton' "$value_field" || fail "ValueField.qml does not block middle-click paste"
 
 echo "ok"

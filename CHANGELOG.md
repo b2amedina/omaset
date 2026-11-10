@@ -18,11 +18,14 @@
   so a `snapshot` fanning out into many reads cannot stall past its budget.
 - The settings window rejects RPC requests that outlive their deadline and
   restarts the `omaset rpc` worker rather than replaying an uncertain write.
-  Failed writes revert their optimistic value and surface a transient notice in
-  the footer instead of silently leaving the row wrong.
-- Numeric and time editors go through one `ValueField` component that blocks the
-  native paste paths (Ctrl+V, Shift+Insert, middle/right click) before Qt's
-  unbounded clipboard read can stall the shell's GUI thread.
+  The pre-start queue is bounded, a failed start settles queued work, and a
+  worker that ignores SIGTERM is killed after a grace period before its
+  replacement starts. Failed writes revert their optimistic value and surface a
+  transient notice in the footer instead of silently leaving the row wrong.
+- Numeric and time editors go through one `ValueField` component that blocks
+  every native paste path — StandardKey.Paste (Ctrl+V, Shift+Insert, the
+  dedicated Paste key, and platform bindings) plus middle/right click — before
+  Qt's unbounded clipboard read can stall the shell's GUI thread.
 - Settings writes no longer touch file permissions: `util.write_file()` creates
   its temporary file with `mktemp` (exclusive, unpredictable name, already
   `0600` before any content is written), carries an existing target's mode over

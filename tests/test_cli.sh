@@ -3,7 +3,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 
 # --version
 OUT="$(run --version)"
-assert_eq "$OUT" "omaset 0.2.2" "version string"
+assert_eq "$OUT" "omaset 0.2.3" "version string"
 
 # global --help lists commands and advertises --help availability
 OUT="$(run --help)"

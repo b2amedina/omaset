@@ -4,17 +4,19 @@ import Quickshell.Io
 // Persistent `omaset rpc` client. Requests are newline-delimited JSON-RPC 2.0
 // and responses are matched by id, so several UI operations can be in flight
 // without spawning a process per call. Calls made before the process has
-// started are queued and flushed on start.
+// started are queued (up to `maxQueued`) and flushed on start.
 //
-// The backend bounds every subprocess and each request as a whole, but this
-// client keeps its own deadline too: if a request is still unanswered after
-// `timeoutMs`, it is rejected and the worker is restarted (never replayed), so
-// a wedged engine cannot leave the panel stuck with a pending write.
+// This client's deadline is a watchdog, not a cancellation of in-flight Lua:
+// if a request is still unanswered after `timeoutMs` it is rejected and the
+// worker is restarted (never replayed), so a wedged engine cannot leave the
+// panel stuck with a pending write. The backend's own `run_capture` bound is
+// what interrupts a stuck subprocess; this watchdog only stops waiting on it.
 Item {
   id: root
 
   property string binary: ""
   property int timeoutMs: 40000
+  property int maxQueued: 256
   property var pending: ({})
   property var pendingAt: ({})
   property var outbox: []
@@ -47,6 +49,10 @@ Item {
 
   function call(method, params, cb) {
     if (!started) {
+      if (outbox.length >= maxQueued) {
+        if (cb) cb(null, "omaset rpc worker not started; queue full", -1)
+        return -1
+      }
       outbox.push({ method: method, params: params, cb: cb })
       return -1
     }
@@ -91,8 +97,11 @@ Item {
   }
 
   function restart() {
+    if (restarting) return
     restarting = true
+    started = false
     proc.running = false
+    killTimer.start()
   }
 
   Process {
@@ -137,12 +146,33 @@ Item {
     }
 
     onExited: function(code) {
+      killTimer.stop()
       root.started = false
       root.failAll("omaset rpc exited (" + code + ")", code)
       if (root.restarting) {
         root.restarting = false
         proc.running = true
       }
+    }
+
+    // A failed start emits neither `started` nor `exited`, so settle queued
+    // work here (and drop any restart flag) instead of leaving it stuck.
+    onErrorOccurred: function(error) {
+      if (root.started) return
+      killTimer.stop()
+      root.failAll("omaset rpc failed to start (" + error + ")", error)
+      root.restarting = false
+    }
+  }
+
+  // Escalation for a worker that ignores SIGTERM: kill it hard after a grace
+  // period so onExited can settle and a replacement can start.
+  Timer {
+    id: killTimer
+    interval: 3000
+    repeat: false
+    onTriggered: {
+      if (proc.running) proc.signal(9)
     }
   }
 
