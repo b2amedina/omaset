@@ -8,9 +8,15 @@
 -- stdout carries protocol messages only; diagnostics go to stderr.
 
 local json = require("omaset.json")
+local util = require("omaset.util")
 local service = require("omaset.service")
 
 local M = {}
+
+-- Hard ceiling on one request. Backends already bound each subprocess; this
+-- budgets the whole operation (e.g. a snapshot that fans out into many reads)
+-- so a hung dependency cannot stall the worker past this deadline.
+local REQUEST_SECONDS = tonumber(os.getenv("OMASET_REQUEST_TIMEOUT")) or 30
 
 local function send(out, msg)
   out:write(json.encode(msg) .. "\n")
@@ -51,8 +57,14 @@ local function handle(core, out, msg)
     return
   end
 
+  local scope = util.begin_request(REQUEST_SECONDS)
   local result, err = service.call(core, method, msg.params or {})
+  local timed_out = scope and scope.timed_out
+  util.end_request(scope)
   if result == nil then
+    if timed_out and (err == nil or err == "") then
+      err = "operation timed out"
+    end
     send_error(out, id, -32602, err)
   else
     send(out, { jsonrpc = "2.0", id = id, result = result })

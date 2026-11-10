@@ -1,7 +1,25 @@
 # Changelog
 
-## 0.2.2 — 2026-11-09
+## Unreleased
 
+- `shell.json` is no longer rewritten through its own `> .tmp` + `mv` dance.
+  The jq pipeline's output is validated as a whole JSON document and committed
+  through the shared `util.write_file()` atomic writer, so a private
+  `0600` shell.json can no longer be widened to `0644` under a permissive umask,
+  and no `shell.json.tmp` sibling is ever left next to the config.
+- `run_capture` now bounds every subprocess: it runs under GNU `timeout`
+  (which signals the whole process group) so a hung dependency cannot block the
+  worker, captures into a `mktemp` file that is `0600` from creation instead of
+  `os.tmpname()`'s world-readable file, and caps the output it reads back. The
+  RPC server wraps each request in a deadline that every subprocess spends from,
+  so a `snapshot` fanning out into many reads cannot stall past its budget.
+- The settings window rejects RPC requests that outlive their deadline and
+  restarts the `omaset rpc` worker rather than replaying an uncertain write.
+  Failed writes revert their optimistic value and surface a transient notice in
+  the footer instead of silently leaving the row wrong.
+- Numeric and time editors go through one `ValueField` component that blocks the
+  native paste paths (Ctrl+V, Shift+Insert, middle/right click) before Qt's
+  unbounded clipboard read can stall the shell's GUI thread.
 - Settings writes no longer touch file permissions: `util.write_file()` creates
   its temporary file with `mktemp` (exclusive, unpredictable name, already
   `0600` before any content is written), carries an existing target's mode over

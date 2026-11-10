@@ -135,6 +135,17 @@ Item {
   property int prefsSel: 0
   property int prefEditing: -1
   property string prefError: ""
+  // Transient write/read error shown in the footer (e.g. a backend command
+  // that timed out). Cleared by noticeTimer a few seconds after it is set.
+  property string notice: ""
+  property Timer noticeTimer: Timer {
+    interval: 5000
+    onTriggered: root.notice = ""
+  }
+  function notifyError(msg) {
+    root.notice = String(msg || "error")
+    root.noticeTimer.restart()
+  }
   property int refreshIntervalSec: 2
   property bool launchFloating: true
   property string timeFormat: "24h"   // resolved from the time_format preference
@@ -590,16 +601,28 @@ Item {
     var key = rowKey(row)
     if (key !== undefined) {
       var k = Model.settingKey(row.id, row.sub, row.key)
+      var oldV = root.effective[k]
       setEffective(k, v)
-      rpc.call("set", { id: row.id, key: key, value: v }, function(o) {
+      rpc.call("set", { id: row.id, key: key, value: v }, function(o, err) {
+        if (err) {
+          setEffective(k, oldV)
+          root.notifyError(err)
+          return
+        }
         root.lastWrite = Date.now()
         if (o && o.value !== undefined && o.value !== null) setEffective(k, o.value)
         root.scheduleChanged()
       })
     } else {
       markNightlightDirty(row.id)
+      var oldV = row.value
       setSchemaValue(row.id, v)
-      rpc.call("set", { id: row.id, value: v }, function(o) {
+      rpc.call("set", { id: row.id, value: v }, function(o, err) {
+        if (err) {
+          setSchemaValue(row.id, oldV)
+          root.notifyError(err)
+          return
+        }
         root.lastWrite = Date.now()
         if (o && o.value !== undefined && o.value !== null) setSchemaValue(row.id, o.value)
         root.scheduleChanged()
@@ -614,7 +637,11 @@ Item {
     var keyArg = rowKey(row)
     var params = { id: row.id }
     if (keyArg !== undefined) params.key = keyArg
-    rpc.call("reset", params, function() {
+    rpc.call("reset", params, function(o, err) {
+      if (err) {
+        root.notifyError(err)
+        return
+      }
       root.lastWrite = Date.now()
       var n = {}
       for (var k in root.effective) if (k !== key) n[k] = root.effective[k]
@@ -1083,7 +1110,9 @@ Item {
   function changedCountText(n) {
     return tr.tn("ui.changedCount", n, "%1 changed").arg(root.formatNumber(n))
   }
-  readonly property string footerContext: schemaError !== ""
+  readonly property string footerContext: notice !== ""
+    ? notice
+    : schemaError !== ""
     ? tr.t("ui.schemaMismatch", "schema mismatch")
     : searchMode
     ? (searchResults.length > 0 ? settingsFoundText(searchResults.length) : "")
@@ -1092,7 +1121,9 @@ Item {
     : prefsMode
     ? (prefError !== "" ? prefError : tr.t("ui.preferences", "Preferences"))
     : (changedCount > 0 ? changedCountText(changedCount) : "")
-  readonly property color footerContextColor: (searchMode || changedMode || prefsMode) ? (prefError !== "" ? urgent : accent) : urgent
+  readonly property color footerContextColor: notice !== ""
+    ? urgent
+    : (searchMode || changedMode || prefsMode) ? (prefError !== "" ? urgent : accent) : urgent
 
   // ---- window ----------------------------------------------------------
   FloatingWindow {
@@ -1802,7 +1833,7 @@ Item {
                               font.pixelSize: Style.font.body
                             }
 
-                            TextField {
+                            ValueField {
                               id: valueField
                               visible: prefRow.editing
                               anchors.fill: parent
@@ -1855,12 +1886,7 @@ Item {
                                 })
                               }
 
-                              Keys.onPressed: function(event) {
-                                if (event.key === Qt.Key_Escape) {
-                                  root.prefEditing = -1
-                                  event.accepted = true
-                                }
-                              }
+                              onEscapePressed: root.prefEditing = -1
                             }
 
                             MouseArea {

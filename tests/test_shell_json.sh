@@ -21,4 +21,15 @@ run reset idle_lock
 capture_out get idle_lock
 assert_eq "$OUT" '{"id":"idle_lock","value":120}' "read after reset"
 
+# A pre-existing private shell.json must stay private through a write, even
+# under a permissive umask (022), and the write must not leave a .tmp sibling.
+umask 022
+printf '{"version":1,"bar":{"position":"top"},"plugins":[]}\n' > "$OMASET_SHELL_CONFIG"
+chmod 600 "$OMASET_SHELL_CONFIG"
+capture_out set bar_position bottom
+assert_eq "$(stat -c %a "$OMASET_SHELL_CONFIG")" "600" "shell.json keeps 0600 through a write"
+assert_eq "$(jq -r '.bar.position' "$OMASET_SHELL_CONFIG")" "bottom" "bar_position updated"
+assert_eq "$(find "$TESTDIR" -maxdepth 1 -name 'shell.json.tmp' | wc -l)" "0" "no shell.json.tmp leftover"
+assert_eq "$(stat -c %a "$OMASET_SHELL_CONFIG.omaset.bak")" "600" "shell.json backup is 0600"
+
 echo "ok"

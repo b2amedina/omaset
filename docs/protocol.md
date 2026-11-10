@@ -206,6 +206,13 @@ Errors use standard JSON-RPC codes: `-32601` for an unknown method, `-32602`
 for invalid parameters or a rejected value, `-32700` for an unparseable line,
 and `-32603` for an internal handler failure.
 
+Every request is bounded: the server runs each subprocess under GNU `timeout`
+and caps each request as a whole with a deadline (`OMASET_REQUEST_TIMEOUT`,
+default 30 s; per-command `OMASET_CMD_TIMEOUT`, default 15 s). A request whose
+backend command exceeds the budget is rejected with an error, never reported as
+success. The window additionally gives each request its own deadline and
+restarts the worker on expiry rather than waiting or replaying the write.
+
 ### `snapshot`
 
 `snapshot` bundles everything the window needs for one render, so opening a

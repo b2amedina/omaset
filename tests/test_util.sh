@@ -86,4 +86,36 @@ assert_contains "$(write_probe "$TESTDIR/missing/dir/file.conf" 'nope')" "cannot
 assert_eq "$(find "$TESTDIR" -maxdepth 1 -name '.omaset.*' | wc -l)" "0" \
   "write_file leaves no temporary files behind"
 
+# util.mktemp: private from the first write, in the requested directory.
+mktemp_probe() {
+  lua5.1 - "$1" <<'LUA'
+package.path = os.getenv("ROOT") .. "/lib/?.lua;" .. os.getenv("ROOT") .. "/lib/?/init.lua;" .. package.path
+local util = require("omaset.util")
+io.write(util.mktemp(arg[1]) or "")
+LUA
+}
+name="$(mktemp_probe "$TESTDIR/omaset.XXXXXX")"
+assert_ne() { [[ "$1" != "$2" ]] || fail "${3:-assert_ne}: want != got [$1]"; }
+assert_ne "$name" "" "mktemp creates a temp file"
+assert_eq "$(stat -c %a "$name")" "600" "mktemp creates the file 0600"
+rm -f "$name"
+
+# util.run_capture: a stuck command is killed after the timeout instead of
+# blocking forever, and reports GNU timeout's 124.
+cf="$TESTDIR/run_capture.code"
+: > "$cf"
+start=$(date +%s)
+out="$(OMASET_CMD_TIMEOUT=1 PROBE_CODE_FILE="$cf" run_probe "sleep 30")"
+elapsed=$(( $(date +%s) - start ))
+assert_eq "$(cat "$cf")" "124" "run_capture times out a stuck command"
+[[ $elapsed -le 5 ]] || fail "run_capture timeout took too long (${elapsed}s)"
+
+# util.run_capture: output is capped to OMASET_CMD_MAX_BYTES rather than read
+# into memory without bound.
+cf="$TESTDIR/run_capture.code"
+: > "$cf"
+out="$(OMASET_CMD_MAX_BYTES=4096 PROBE_CODE_FILE="$cf" run_probe "head -c 100000 /dev/zero | tr '\\0' x")"
+[[ ${#out} -le 4096 ]] || fail "run_capture output exceeded the cap (${#out} bytes)"
+[[ ${#out} -gt 0 ]] || fail "run_capture dropped the whole capped output"
+
 echo "ok"

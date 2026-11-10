@@ -129,7 +129,7 @@ BorderSurface {
         font.pixelSize: Style.font.body
       }
 
-      TextField {
+      ValueField {
         id: valueField
         visible: root.editing
         anchors.fill: parent
@@ -151,13 +151,7 @@ BorderSurface {
         }
 
         onAccepted: root.commitEditing()
-
-        Keys.onPressed: function(event) {
-          if (event.key === Qt.Key_Escape) {
-            if (root.panel) root.panel.endEdit()
-            event.accepted = true
-          }
-        }
+        onEscapePressed: if (root.panel) root.panel.endEdit()
       }
 
       MouseArea {

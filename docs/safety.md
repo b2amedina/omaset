@@ -4,8 +4,19 @@ Omaset's first promise is that it will not wreck your config. It never
 parses-and-rewrites your files: it edits the one value being changed — in place
 where it already lives, or appending a minimal override when it does not — and
 keeps a one-time `<file>.omaset.bak` snapshot before its first write to any
-config file. (`shell.json` is edited through Omarchy's own `jq` pipeline.) Every
-change is validated and automatically reverted on failure.
+config file. (`shell.json` is normalized through Omarchy's own `jq` pipeline and
+committed with the same atomic, permission-preserving writer as every other
+file.) Every change is validated and automatically reverted on failure.
+
+## Resource bounds
+
+Every subprocess runs through one helper that caps it twice: GNU `timeout`
+terminates the command (and its process group) after a deadline, and the output
+is written to a `0600` capture file and read back up to a byte cap. The RPC
+server wraps each request in a second, whole-request deadline, and the settings
+window rejects requests that still have not returned and restarts the worker
+rather than replaying a possibly-partial write. `OMASET_CMD_TIMEOUT`,
+`OMASET_CMD_MAX_BYTES`, and `OMASET_REQUEST_TIMEOUT` tune the defaults.
 
 ## History and undo
 

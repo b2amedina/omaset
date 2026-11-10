@@ -2,6 +2,36 @@
 
 local M = {}
 
+-- Default resource bounds for subprocess execution (overridable via env for
+-- tests and for hosts that need longer-running tools). A command that exceeds
+-- its timeout is terminated together with its process group; captured output is
+-- capped so a runaway producer cannot fill memory or disk.
+M.DEFAULT_CMD_TIMEOUT = 15
+M.DEFAULT_MAX_BYTES = 131072 -- 128 KiB
+
+-- Exit codes GNU timeout(1) reports: 124 when the deadline fired, 137 when it
+-- had to escalate to SIGKILL. Either means the command did not finish in time.
+local EXIT_TIMEOUT = 124
+local EXIT_KILLED = 137
+
+-- An active per-request deadline. The RPC server opens one around each request
+-- and run_capture spends from it, so one hung dependency cannot stall the whole
+-- request past its budget. Lua here is single-threaded and the RPC server
+-- serializes requests, so a single module-level scope is enough.
+local request_scope = nil
+
+function M.begin_request(seconds)
+  local s = { deadline = os.time() + seconds, timed_out = false, truncated = false }
+  request_scope = s
+  return s
+end
+
+function M.end_request(s)
+  if request_scope == s then
+    request_scope = nil
+  end
+end
+
 function M.file_exists(path)
   local f = io.open(path, "rb")
   if f then
@@ -50,9 +80,8 @@ function M.write_file(path, content)
   if dir == "" then
     dir = "/"
   end
-  local out, code = M.run_capture("mktemp " .. M.shell_quote(dir .. "/.omaset.XXXXXX"))
-  local tmp = code == 0 and tostring(out or ""):match("^%s*(.-)%s*$") or ""
-  if tmp == "" then
+  local tmp = M.mktemp(dir .. "/.omaset.XXXXXX")
+  if not tmp then
     return nil, "cannot create a temporary file next to " .. path
   end
 
@@ -106,22 +135,81 @@ function M.load_chunk(str, chunkname, env)
   return f
 end
 
+-- Create a private temporary file from a template with mktemp (exclusive,
+-- unpredictable name, 0600 before any bytes are written). Returns its path, or
+-- nil on failure.
+function M.mktemp(template)
+  local p = io.popen("mktemp " .. M.shell_quote(template))
+  local name = p and p:read("*l")
+  if p then
+    p:close()
+  end
+  name = name and name:match("^%s*(.-)%s*$")
+  if name == "" or name == nil then
+    return nil
+  end
+  return name
+end
+
 -- Run a command, capturing combined stdout+stderr and the exit code.
 --
--- Output is redirected through a temp file rather than read straight off the
--- popen pipe: a command that daemonizes (e.g. `omarchy toggle nightlight`
--- cold-starting hyprsunset) leaves a background child holding the pipe's write
--- end open, which would make read("*a") block forever. Redirecting to a file
--- means only the foreground shell holds the pipe, so it EOFs as soon as the
--- command finishes and the daemon's stray output goes to the file instead.
+-- Output is redirected through a private temp file rather than read straight
+-- off the popen pipe: a command that daemonizes (e.g. `omarchy toggle
+-- nightlight` cold-starting hyprsunset) leaves a background child holding the
+-- pipe's write end open, which would make read("*a") block forever. Redirecting
+-- to a file means only the foreground shell holds the pipe, so it EOFs as soon
+-- as the command finishes and the daemon's stray output goes to the file
+-- instead. The file comes from mktemp, so it is already 0600 and never briefly
+-- world-readable the way os.tmpname()'s 0644 file would be.
 --
 -- That leaves the pipe free to carry the exit status, which it has to: Lua
 -- 5.1's pclose() returns true for *any* status (the ok/reason/code form only
 -- exists from 5.2 on), so reading it off close() would report every command as
 -- having succeeded.
-function M.run_capture(cmd)
-  local tmp = os.tmpname()
-  local p = io.popen("( " .. cmd .. " ) > " .. M.shell_quote(tmp) .. " 2>&1; echo $?")
+--
+-- The command runs under GNU timeout, which signals its whole process group
+-- when the deadline fires, and under `ulimit -f`, which caps how much it may
+-- write before the kernel kills it (the +1 block of headroom is what lets
+-- truncation be detected by length). The read is capped to the same limit.
+--
+-- Returns (out, code[, err[, meta]]) where meta.timeout and meta.truncated flag
+-- the two ways a run can be cut short. opts may set `timeout` and `max_bytes`;
+-- both fall back to env (OMASET_CMD_TIMEOUT / OMASET_CMD_MAX_BYTES) and then to
+-- the defaults above.
+function M.run_capture(cmd, opts)
+  opts = opts or {}
+  local max_bytes = opts.max_bytes
+    or tonumber(os.getenv("OMASET_CMD_MAX_BYTES")) or M.DEFAULT_MAX_BYTES
+  local timeout = opts.timeout
+    or tonumber(os.getenv("OMASET_CMD_TIMEOUT")) or M.DEFAULT_CMD_TIMEOUT
+
+  -- Spend from the active request budget first; once it is exhausted there is
+  -- no point in starting another subprocess.
+  if request_scope then
+    local remaining = request_scope.deadline - os.time()
+    if remaining <= 0 then
+      request_scope.timed_out = true
+      return "", EXIT_TIMEOUT, nil, { timeout = true }
+    end
+    if remaining < timeout then
+      timeout = remaining
+    end
+  end
+  if timeout < 1 then
+    timeout = 1
+  end
+
+  local tmp = M.mktemp((os.getenv("TMPDIR") or "/tmp") .. "/omaset.XXXXXX")
+  if not tmp then
+    return nil, nil, "cannot create a capture file", {}
+  end
+
+  local blocks = math.ceil(max_bytes / 1024) + 1
+  local wrapper = "( ulimit -f " .. blocks
+    .. " 2>/dev/null; timeout -k 3 " .. math.floor(timeout)
+    .. " sh -c " .. M.shell_quote(cmd) .. " ) > " .. M.shell_quote(tmp)
+    .. " 2>&1; echo $?"
+  local p = io.popen(wrapper)
   if not p then
     os.remove(tmp)
     return nil, nil, "cannot run: " .. cmd
@@ -131,14 +219,30 @@ function M.run_capture(cmd)
   -- The trailing number is the exit status; anything before it would be stray
   -- output that escaped the file redirect.
   local code = tonumber(status:match("(%d+)%s*$")) or 1
+
   local out = ""
   local f = io.open(tmp, "rb")
   if f then
-    out = f:read("*a")
+    out = f:read(max_bytes + 1) or ""
     f:close()
   end
   os.remove(tmp)
-  return out, code
+
+  local meta = {}
+  if code == EXIT_TIMEOUT or code == EXIT_KILLED then
+    meta.timeout = true
+    if request_scope then
+      request_scope.timed_out = true
+    end
+  end
+  if #out > max_bytes then
+    meta.truncated = true
+    if request_scope then
+      request_scope.truncated = true
+    end
+    out = out:sub(1, max_bytes)
+  end
+  return out, code, nil, meta
 end
 
 -- List files in a directory matching a find-style -name pattern (e.g. "*.lua"),
