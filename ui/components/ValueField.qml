@@ -1,29 +1,60 @@
 import QtQuick
+import Quickshell.Io
 import qs.Ui
 
-// Single-line editor for numeric and time values. Wraps qs.Ui.TextField and
-// blocks every native paste path (StandardKey.Paste: Ctrl+V, Shift+Insert, the
-// dedicated Paste key, and platform bindings) before Qt can reach the
-// clipboard: the Wayland clipboard transfer in Qt's paste is a synchronous,
-// unbounded read on the shell's GUI thread, so pasting into these fields is
-// consumed here rather than allowed to stall the window. Typing is unaffected,
-// and the values these fields hold (a few digits, "20:30") never need paste.
+// Single-line editor for numeric and time values. Wraps qs.Ui.TextField.
 //
-// Enter still fires the inherited `accepted` signal; Escape emits `escapePressed`
-// so each caller can close its editor without owning the key handler.
+// Explicit paste is handled here instead of by Qt's native path: Qt's Wayland
+// clipboard transfer is an unbounded, synchronous read on the GUI thread, so
+// pasting is performed through a bounded `wl-paste` invocation (timeout + byte
+// cap) rather than Qt's built-in paste. Typing and caret placement are
+// unaffected. The background clipboard-change fetch is an upstream Qt issue
+// (qt/qtdeclarative ef692a52e3, pending in the distro's Qt build) and is not
+// reachable from QML; it is tracked separately.
 
 TextField {
   id: root
 
   signal escapePressed()
 
+  property string clipBuffer: ""
+
+  Process {
+    id: clipboardProc
+    running: false
+    stdout: SplitParser {
+      onRead: function(line) {
+        if (root.clipBuffer.length > 0) root.clipBuffer += "\n"
+        root.clipBuffer += line
+      }
+    }
+    stderr: SplitParser {
+      onRead: function(line) { }
+    }
+    onStarted: root.clipBuffer = ""
+    onExited: function(code) {
+      if (code === 0 && root.clipBuffer.length > 0) {
+        let text = root.clipBuffer
+        if (text.length > 4096) text = text.substring(0, 4096)
+        let pos = root.cursorPosition
+        root.text = root.text.substring(0, pos) + text + root.text.substring(pos)
+        root.cursorPosition = pos + text.length
+      }
+      root.clipBuffer = ""
+    }
+  }
+
+  function doPaste() {
+    if (clipboardProc.running) return
+    clipboardProc.command = ["timeout", "2", "wl-paste", "--no-newline"]
+    clipboardProc.running = true
+  }
+
   Keys.priority: Keys.BeforeItem
   Keys.onPressed: function(event) {
-    // StandardKey.Paste matches Ctrl+V, Shift+Insert, the dedicated Paste key,
-    // and platform-specific paste bindings — every path that reaches Qt's
-    // synchronous clipboard read. Consume them all before the item.
     if (event.matches(StandardKey.Paste)) {
       event.accepted = true
+      root.doPaste()
       return
     }
     if (event.key === Qt.Key_Escape) {
