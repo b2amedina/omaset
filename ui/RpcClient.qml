@@ -23,6 +23,13 @@ Item {
   property int nextId: 1
   property bool started: false
   property bool restarting: false
+  // The worker runs under `setsid`, so its PID is also its process group ID.
+  // Signalling -workerPid reaches the worker and every backend command it spawned.
+  property int workerPid: 0
+  readonly property string reapScript:
+    'kill -TERM -- -"$1" 2>/dev/null; i=0; ' +
+    'while kill -0 -- -"$1" 2>/dev/null && [ $i -lt 30 ]; do sleep 0.1; i=$((i+1)); done; ' +
+    'kill -KILL -- -"$1" 2>/dev/null; exit 0'
 
   function pendingCount() {
     var n = outbox.length
@@ -100,18 +107,48 @@ Item {
     if (restarting) return
     restarting = true
     started = false
-    proc.running = false
-    killTimer.start()
+    reap()
+  }
+
+  // Stop the old worker group (TERM, then KILL after 3s) and wait for it to
+  // empty before a replacement can start. Runs once at a time.
+  function reap() {
+    if (reaper.running) return
+    if (workerPid <= 0) {
+      settle()
+      return
+    }
+    reaper.command = ["sh", "-c", reapScript, "sh", String(workerPid)]
+    reaper.running = true
+  }
+
+  // Start the replacement once both the worker and its group are gone.
+  function settle() {
+    if (reaper.running || proc.running) return
+    if (restarting) {
+      restarting = false
+      proc.running = true
+    }
+  }
+
+  Process {
+    id: reaper
+    running: false
+    onExited: function() {
+      root.workerPid = 0
+      root.settle()
+    }
   }
 
   Process {
     id: proc
-    command: root.binary !== "" ? [root.binary, "rpc"] : []
+    command: root.binary !== "" ? ["setsid", root.binary, "rpc"] : []
     running: false
     stdinEnabled: true
 
     onStarted: {
       root.started = true
+      root.workerPid = proc.processId
       root.flush()
     }
 
@@ -146,37 +183,19 @@ Item {
     }
 
     onExited: function(code) {
-      killTimer.stop()
       root.started = false
       root.failAll("omaset rpc exited (" + code + ")", code)
-      if (root.restarting) {
-        root.restarting = false
-        proc.running = true
-      }
+      root.reap()
     }
 
     // quickshell 0.3.2 has no `errorOccurred` signal on Process. A failed
     // start flips `running` back to false without ever emitting `started` or
     // `exited`, so this is the only place that can settle the pre-start queue.
-    // (A normal exit first fires `exited`, which already settled everything, so
-    // re-settling here is a harmless no-op.)
+    // A restart's own exit is not a failed start, so it is skipped here.
     onRunningChanged: {
-      if (!proc.running && !root.started) {
-        killTimer.stop()
+      if (!proc.running && !root.started && !root.restarting) {
         root.failAll("omaset rpc failed to start", -1)
-        root.restarting = false
       }
-    }
-  }
-
-  // Escalation for a worker that ignores SIGTERM: kill it hard after a grace
-  // period so onExited can settle and a replacement can start.
-  Timer {
-    id: killTimer
-    interval: 3000
-    repeat: false
-    onTriggered: {
-      if (proc.running) proc.signal(9)
     }
   }
 
