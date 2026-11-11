@@ -23,13 +23,18 @@ Item {
   property int nextId: 1
   property bool started: false
   property bool restarting: false
-  // The worker runs under `setsid`, so its PID is also its process group ID.
-  // Signalling -workerPid reaches the worker and every backend command it spawned.
+  property bool reaping: false
+  // The worker runs under `setsid`, so its PID is a session leader (SID == PID).
+  // Backend commands stay in that session even when GNU timeout moves them into
+  // their own process group (timeout calls setpgid(0,0)), so cleanup signals the
+  // whole session rather than a single process group.
   property int workerPid: 0
   readonly property string reapScript:
-    'kill -TERM -- -"$1" 2>/dev/null; i=0; ' +
-    'while kill -0 -- -"$1" 2>/dev/null && [ $i -lt 30 ]; do sleep 0.1; i=$((i+1)); done; ' +
-    'kill -KILL -- -"$1" 2>/dev/null; exit 0'
+    'pkill -TERM -s "$1" 2>/dev/null; i=0; ' +
+    'while pkill -0 -s "$1" 2>/dev/null && [ $i -lt 30 ]; do sleep 0.1; i=$((i+1)); done; ' +
+    'pkill -KILL -s "$1" 2>/dev/null; ' +
+    'for i in 1 2 3 4 5; do pkill -0 -s "$1" 2>/dev/null || exit 0; sleep 0.05; done; ' +
+    'exit 1'
 
   function pendingCount() {
     var n = outbox.length
@@ -110,21 +115,26 @@ Item {
     reap()
   }
 
-  // Stop the old worker group (TERM, then KILL after 3s) and wait for it to
-  // empty before a replacement can start. Runs once at a time.
+  // Stop the old worker session (TERM, then KILL after a grace period) and wait
+  // for it to empty before a replacement can start. Runs once at a time.
   function reap() {
-    if (reaper.running) return
+    if (reaping) return
     if (workerPid <= 0) {
-      settle()
+      finishReap()
       return
     }
+    reaping = true
+    reaper.launched = false
     reaper.command = ["sh", "-c", reapScript, "sh", String(workerPid)]
     reaper.running = true
   }
 
-  // Start the replacement once both the worker and its group are gone.
-  function settle() {
-    if (reaper.running || proc.running) return
+  // The old worker and everything in its session are gone (or there was nothing
+  // to reap). Clear the recorded PID and, if this was a deliberate restart,
+  // start the replacement. A crash (restarting === false) does not auto-restart.
+  function finishReap() {
+    reaping = false
+    workerPid = 0
     if (restarting) {
       restarting = false
       proc.running = true
@@ -134,9 +144,22 @@ Item {
   Process {
     id: reaper
     running: false
-    onExited: function() {
-      root.workerPid = 0
-      root.settle()
+    property bool launched: false
+
+    onStarted: reaper.launched = true
+
+    onExited: function(code) {
+      if (code !== 0)
+        console.warn("omaset rpc: cleanup exited " + code)
+      root.finishReap()
+    }
+
+    // quickshell 0.3.2 has no `errorOccurred` on Process; a cleanup process
+    // that cannot even launch flips `running` back to false without emitting
+    // `started`, so settle here instead of leaving `restarting` armed forever.
+    onRunningChanged: {
+      if (!reaper.running && !reaper.launched && root.reaping)
+        root.finishReap()
     }
   }
 
