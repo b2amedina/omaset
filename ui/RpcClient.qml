@@ -24,6 +24,9 @@ Item {
   property bool started: false
   property bool restarting: false
   property bool reaping: false
+  property bool reapFailed: false
+  property int reapRetryCount: 0
+  property int maxReapRetries: 10
   // The worker runs under `setsid`, so its PID is a session leader (SID == PID).
   // Backend commands stay in that session even when GNU timeout moves them into
   // their own process group (timeout calls setpgid(0,0)), so cleanup signals the
@@ -109,9 +112,12 @@ Item {
   }
 
   function restart() {
-    if (restarting) return
+    if (reaping) return
+    if (restarting && !reapFailed) return
     restarting = true
     started = false
+    reapFailed = false
+    reapRetryCount = 0
     reap()
   }
 
@@ -134,10 +140,28 @@ Item {
   // start the replacement. A crash (restarting === false) does not auto-restart.
   function finishReap() {
     reaping = false
+    reapFailed = false
+    reapRetryCount = 0
     workerPid = 0
     if (restarting) {
       restarting = false
       proc.running = true
+    }
+  }
+
+  // Cleanup did not confirm the old session is empty. Retain workerPid (the old
+  // session identity) and do NOT start a replacement; retry until confirmed.
+  function failReap() {
+    if (!reaping) return
+    reaping = false
+    reapFailed = true
+    console.warn("omaset rpc: cleanup failed; worker session not confirmed empty")
+    if (reapRetryCount < maxReapRetries) {
+      reapRetryCount += 1
+      reapRetry.stop()
+      reapRetry.start()
+    } else {
+      console.warn("omaset rpc: giving up on cleanup after " + maxReapRetries + " retries")
     }
   }
 
@@ -149,9 +173,12 @@ Item {
     onStarted: reaper.launched = true
 
     onExited: function(code) {
-      if (code !== 0)
+      if (code !== 0) {
         console.warn("omaset rpc: cleanup exited " + code)
-      root.finishReap()
+        root.failReap()
+      } else {
+        root.finishReap()
+      }
     }
 
     // quickshell 0.3.2 has no `errorOccurred` on Process; a cleanup process
@@ -159,7 +186,7 @@ Item {
     // `started`, so settle here instead of leaving `restarting` armed forever.
     onRunningChanged: {
       if (!reaper.running && !reaper.launched && root.reaping)
-        root.finishReap()
+        root.failReap()
     }
   }
 
@@ -227,6 +254,13 @@ Item {
     repeat: true
     running: root.started
     onTriggered: root.expire()
+  }
+
+  Timer {
+    id: reapRetry
+    interval: 1000
+    repeat: false
+    onTriggered: if (root.reapFailed) root.reap()
   }
 
   Component.onCompleted: {
