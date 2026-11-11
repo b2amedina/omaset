@@ -155,13 +155,17 @@ Item {
       }
     }
 
-    // A failed start emits neither `started` nor `exited`, so settle queued
-    // work here (and drop any restart flag) instead of leaving it stuck.
-    onErrorOccurred: function(error) {
-      if (root.started) return
-      killTimer.stop()
-      root.failAll("omaset rpc failed to start (" + error + ")", error)
-      root.restarting = false
+    // quickshell 0.3.2 has no `errorOccurred` signal on Process. A failed
+    // start flips `running` back to false without ever emitting `started` or
+    // `exited`, so this is the only place that can settle the pre-start queue.
+    // (A normal exit first fires `exited`, which already settled everything, so
+    // re-settling here is a harmless no-op.)
+    onRunningChanged: {
+      if (!proc.running && !root.started) {
+        killTimer.stop()
+        root.failAll("omaset rpc failed to start", -1)
+        root.restarting = false
+      }
     }
   }
 
