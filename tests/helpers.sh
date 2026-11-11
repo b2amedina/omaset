@@ -18,6 +18,9 @@ export OMASET_SETTINGS_DIR="$TESTDIR/settings"
 export OMASET_BACKENDS_DIR="$TESTDIR/backends"
 export OMASET_JOURNAL="$TESTDIR/journal.jsonl"
 export OMASET_PREFERENCES="$TESTDIR/preferences.json"
+# The output-cap probe intentionally overshoots the bound; ignore the resulting
+# SIGXFSZ so it doesn't dump core and trip a "Process crashed" notification.
+export OMASET_IGNORE_XFSZ=1
 mkdir -p "$OMASET_HYPR_DIR" "$OMASET_SETTINGS_DIR" "$OMASET_BACKENDS_DIR"
 
 # Run omaset, stdout to the caller.

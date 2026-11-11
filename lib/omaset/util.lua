@@ -204,9 +204,22 @@ function M.run_capture(cmd, opts)
     return nil, nil, "cannot create a capture file", {}
   end
 
-  local blocks = math.ceil(max_bytes / 1024) + 1
+  -- `ulimit -f` (POSIX 512-byte blocks) caps a runaway producer by failing its
+  -- writes once output exceeds the bound. The +1 block of headroom lets the
+  -- producer slightly overshoot `max_bytes`, so the read-back detects
+  -- truncation by length. Normally a capped producer dies with SIGXFSZ, which
+  -- is the real error a production caller wants surfaced. The test suite sets
+  -- OMASET_IGNORE_XFSZ so its intentional cap probe doesn't dump core and trip
+  -- a "Process crashed" notification; then the signal is ignored and the
+  -- producer just sees a write error.
+  local blocks = math.ceil(max_bytes / 512) + 1
+  local xfsz_guard = ""
+  local ignore_xfsz = os.getenv("OMASET_IGNORE_XFSZ")
+  if ignore_xfsz and ignore_xfsz ~= "" then
+    xfsz_guard = "; trap '' XFSZ"
+  end
   local wrapper = "( ulimit -f " .. blocks
-    .. " 2>/dev/null; timeout -k 3 " .. math.floor(timeout)
+    .. " 2>/dev/null" .. xfsz_guard .. "; timeout -k 3 " .. math.floor(timeout)
     .. " sh -c " .. M.shell_quote(cmd) .. " ) > " .. M.shell_quote(tmp)
     .. " 2>&1; echo $?"
   local p = io.popen(wrapper)

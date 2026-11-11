@@ -40,6 +40,21 @@
 - `run_capture` now returns real exit codes on Lua 5.1, whose `pclose()`
   reports success for any status; failed `jq`, `hyprctl`, and `omarchy` calls
   were previously reported as successes.
+- The output cap now uses POSIX 512-byte `ulimit -f` blocks (it was sizing for
+  1024-byte blocks, so `max_bytes` actually capped at half the requested size)
+  and truncation is now actually detected. The test suite's intentional
+  overshoot probe sets `OMASET_IGNORE_XFSZ` so it doesn't dump core and trip a
+  "Process crashed" notification; in production a capped producer still dies
+  with SIGXFSZ as the real error.
+- Search is now language-aware: it matches the resolved language's labels,
+  descriptions, panel and section titles, and option labels in addition to the
+  English source strings, folding case and diacritics (`écart` finds `Écart`).
+  The window passes its own language so `omaset ui --lang fr` searches French,
+  and the result payload stays English-keyed for the machine contract.
+- The RPC worker's failed-start settlement is quickshell 0.3.2-compatible: it
+  settles the pre-start queue via `onRunningChanged` (which fires when a failed
+  start flips `running` back to false), since 0.3.2's `Process` has no
+  `errorOccurred` signal.
 
 ## 0.2.1 — 2026-11-09
 
