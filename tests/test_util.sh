@@ -118,4 +118,24 @@ out="$(OMASET_CMD_MAX_BYTES=4096 PROBE_CODE_FILE="$cf" run_probe "head -c 100000
 [[ ${#out} -le 4096 ]] || fail "run_capture output exceeded the cap (${#out} bytes)"
 [[ ${#out} -gt 0 ]] || fail "run_capture dropped the whole capped output"
 
+# util.fold: search text folding (lowercase + strip diacritics) across the
+# scripts the shipped catalogs use.
+fold_probe() {
+  lua5.1 - "$1" <<'LUA'
+package.path = os.getenv("ROOT") .. "/lib/?.lua;" .. os.getenv("ROOT") .. "/lib/?/init.lua;" .. package.path
+local util = require("omaset.util")
+io.write(util.fold(arg[1]))
+LUA
+}
+
+assert_eq "$(fold_probe "Écart intérieur")" "ecart interieur" "fold strips accents and lowercases"
+assert_eq "$(fold_probe "ÄB")" "ab" "fold folds umlaut and uppercase"
+assert_eq "$(fold_probe "Œuvre")" "oeuvre" "fold folds a ligature"
+assert_eq "$(fold_probe "straße")" "strasse" "fold folds sharp s"
+assert_eq "$(fold_probe "Журнал")" "журнал" "fold lowercases Cyrillic"
+assert_eq "$(fold_probe "Αθήνα")" "αθηνα" "fold strips Greek tonos"
+assert_eq "$(fold_probe "café")" "cafe" "fold strips an acute accent"
+assert_eq "$(fold_probe "İstanbul")" "istanbul" "fold folds dotted capital I"
+assert_eq "$(fold_probe "日本語")" "日本語" "fold passes CJK through unchanged"
+
 echo "ok"

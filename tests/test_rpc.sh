@@ -32,6 +32,7 @@ OUT="$(printf '%s\n' \
   '{"jsonrpc":"2.0","id":24,"method":"bogus"}' \
   '{"jsonrpc":"2.0","id":25,"method":"set","params":{"id":"nope","value":1}}' \
   '{"jsonrpc":"2.0","id":26,"method":"snapshot","params":{"panel":"windows"}}' \
+  '{"jsonrpc":"2.0","id":27,"method":"search","params":{"query":"espacio interior","lang":"es-MX"}}' \
   '{"jsonrpc":"2.0","method":"changed"}' \
   'not json' \
   | lua5.1 "$OMASET" rpc 2>/dev/null)"
@@ -70,6 +71,8 @@ assert_contains "$OUT" '"schemaVersion":1' "snapshot has schema version"
 assert_contains "$OUT" '"groups":{"fullwidth_style":' "snapshot has grouped values for windows"
 
 assert_contains "$OUT" '"id":"gaps_in"' "search finds gaps_in"
+assert_contains "$(echo "$OUT" | grep '"id":27')" '"id":"gaps_in"' \
+  "search honors an explicit lang and matches the translated label"
 
 assert_contains "$OUT" '"key":"time_format"' "preferences lists time_format"
 assert_contains "$OUT" '"key":"time_format","ok":true,"value":"12h"' "preference_set writes"

@@ -17,7 +17,7 @@ ln -s ~/.config/omarchy/plugins/b2amedina.omaset/bin/omaset ~/.local/bin/omaset
 | `omaset set <id> <value>` | write a value; validates, applies, journals |
 | `omaset reset <id>` | put the setting back to its default |
 | `omaset changed` | settings that differ from Omarchy stock |
-| `omaset search <query>` | find a setting by id or label |
+| `omaset search <query>` | find a setting by id, label, description, title, or option |
 | `omaset help <id>` | one setting's type, options, range, default, value |
 | `omaset keys <id>` | enumerate a keyed/grouped setting's keys |
 | `omaset history` | every change Omaset has made, oldest first |

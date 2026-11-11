@@ -113,6 +113,14 @@ never reported as changed.
 { "results": [ { "id", "panel", "label", "value" }, ... ] }
 ```
 
+Matches, case- and accent-insensitively, against a setting's id, label,
+description, panel title, section header, option labels, and (for grouped
+settings) sub-setting labels/descriptions — in English and in the resolved
+language (`--lang` / `OMASET_LANGUAGE` / the desktop language). Results are
+ranked so an id or label hit outranks a description or title hit, and the
+payload stays English regardless of the language matched. The RPC form accepts
+an optional `lang` so the window can search in the language it renders.
+
 ### `keys <id> [<monitor>] [--all] [--json]`
 
 Lists the keys of a keyed setting (e.g. open workspace numbers), one per line.

@@ -85,7 +85,7 @@ omaset get <id>     one setting, value + default
 omaset set <id> v   validated, applied, journaled
 omaset reset <id>   back to the Omarchy default
 omaset changed      settings differing from stock
-omaset search <q>   find by id or label
+omaset search <q>   find by id, label, description, title, or option
 ```
 
 `service.lua` implements those operations once. Your agent calls it through the

@@ -866,7 +866,7 @@ Item {
     if (!searchMode) return
     var q = searchQuery
     if (q.replace(/\s+$/, "") === "") { searchResults = []; return }
-    rpc.call("search", { query: q }, function(o) {
+    rpc.call("search", { query: q, lang: root.uiLanguage }, function(o) {
       if (!root.searchMode) return
       root.searchResults = (o && o.results && Array.isArray(o.results)) ? o.results : []
       if (root.searchSel >= root.searchResults.length)

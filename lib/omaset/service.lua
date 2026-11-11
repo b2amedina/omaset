@@ -6,6 +6,8 @@
 -- changing a setting touches no frontend-specific copy of the logic.
 
 local json = require("omaset.json")
+local util = require("omaset.util")
+local i18n = require("omaset.i18n")
 local types = require("omaset.types")
 local journal = require("omaset.journal")
 local preferences = require("omaset.preferences")
@@ -228,14 +230,70 @@ function M.snapshot(core, args)
 end
 
 function M.search(core, args)
-  local q = tostring(args.query or ""):lower()
+  local q = tostring(args.query or "")
+  if q:gsub("%s+$", "") == "" then
+    q = ""
+  end
+  local lang = args.lang
+  if lang == nil or lang == "" then
+    lang = i18n.current_language()
+  end
+  local fq = util.fold(q)
+
+  -- Collect matches for one setting. Each candidate carries the position of
+  -- the folded query, whether it is an exact match, and a ranking tier; the
+  -- best score across candidates ranks the setting.
+  local function add(hits, text, tier)
+    if text == nil then
+      return
+    end
+    text = tostring(text)
+    if text == "" then
+      return
+    end
+    local ftext = util.fold(text)
+    local pos = ftext:find(fq, 1, true)
+    if pos then
+      hits[#hits + 1] = { pos = pos, exact = (ftext == fq), tier = tier }
+    end
+  end
+
   local out = {}
+  local order = 0
   for _, p in ipairs(core.panels()) do
     for _, s in ipairs(p.settings) do
-      local hit = (q == "") or s.id:lower():find(q, 1, true)
-        or s.label:lower():find(q, 1, true)
-        or (s.description or ""):lower():find(q, 1, true)
-      if hit then
+      local hits = {}
+      add(hits, s.id, 90)
+      add(hits, s.label, 70)
+      add(hits, i18n.t_lang(lang, "setting." .. s.id, s.label), 70)
+      add(hits, s.description, 30)
+      add(hits, i18n.t_lang(lang, "setting." .. s.id .. ".description", s.description), 30)
+      add(hits, p.title, 40)
+      add(hits, i18n.t_lang(lang, "panel." .. p.id, p.title), 40)
+      add(hits, s.section, 40)
+      if s.section_key then
+        add(hits, i18n.t_lang(lang, "section." .. p.id .. "." .. s.section_key, s.section), 40)
+      end
+      for _, opt in ipairs(s.options or {}) do
+        local value, olabel
+        if type(opt) == "table" then
+          value, olabel = opt.value, opt.label
+        else
+          value, olabel = opt, opt
+        end
+        add(hits, olabel, 50)
+        add(hits, i18n.t_lang(lang, "setting." .. s.id .. ".option." .. tostring(value), olabel), 50)
+      end
+      if s.subsettings then
+        for sub, spec in pairs(s.subsettings) do
+          add(hits, spec.label, 70)
+          add(hits, i18n.t_lang(lang, "setting." .. s.id .. "." .. sub, spec.label), 70)
+          add(hits, spec.description, 30)
+          add(hits, i18n.t_lang(lang, "setting." .. s.id .. "." .. sub .. ".description", spec.description), 30)
+        end
+      end
+
+      if q == "" or #hits > 0 then
         local entry = { id = s.id, panel = p.id, label = s.label }
         if s.description then entry.description = s.description end
         if s.type then entry.type = s.type end
@@ -246,10 +304,33 @@ function M.search(core, args)
         else
           entry.value = jnull(core.read_value(s))
         end
+        order = order + 1
+        entry._order = order
+        entry._score = 0
+        for _, h in ipairs(hits) do
+          local sc = h.tier
+          if h.pos == 1 then sc = sc + 10 end
+          if h.exact then sc = sc + 10 end
+          if sc > entry._score then entry._score = sc end
+        end
         out[#out + 1] = entry
       end
     end
   end
+
+  if q ~= "" then
+    table.sort(out, function(a, b)
+      if a._score ~= b._score then
+        return a._score > b._score
+      end
+      return a._order < b._order
+    end)
+  end
+  for _, e in ipairs(out) do
+    e._order = nil
+    e._score = nil
+  end
+
   return { results = json.array(out) }
 end
 
@@ -724,10 +805,13 @@ local OPS = {
   },
   {
     name = "search",
-    description = "Find settings by id, label, or description substring.",
+    description = "Find settings by id, label, description, panel or section title, or option label, in English or the resolved language.",
     inputSchema = {
       type = "object",
-      properties = { query = { type = "string", description = "Substring to match" } },
+      properties = {
+        query = { type = "string", description = "Substring to match (case- and accent-insensitive)" },
+        lang = { type = "string", description = "Language code to also match in (defaults to the resolved language)" },
+      },
       required = { "query" },
     },
     run = function(core, args)

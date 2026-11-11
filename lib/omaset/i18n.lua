@@ -529,8 +529,7 @@ end
 
 -- Raw template for key, with %1 holes (caller substitutes via format).
 -- Falls back to `fallback` when the key is untranslated, then to the key.
-function M.t(key, fallback)
-  local merged = catalogs_for().merged
+local function lookup(merged, key, fallback)
   local value = merged[key]
   if type(value) == "string" and value ~= "" then
     return value
@@ -548,6 +547,21 @@ function M.t(key, fallback)
     return fallback
   end
   return key
+end
+
+function M.t(key, fallback)
+  return lookup(catalogs_for().merged, key, fallback)
+end
+
+-- Lookup for an explicit language. Search uses this so a frontend can match in
+-- the language it renders (e.g. the window's one-shot `omaset ui --lang`
+-- override) regardless of this process's own resolved language. An empty code
+-- falls back to the resolved language.
+function M.t_lang(code, key, fallback)
+  if code == nil or code == "" then
+    return M.t(key, fallback)
+  end
+  return lookup(catalogs_for(code).merged, key, fallback)
 end
 
 local function subst(template, args)

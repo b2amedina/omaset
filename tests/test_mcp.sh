@@ -27,6 +27,7 @@ OUT="$(printf '%s\n' \
   '{"jsonrpc":"2.0","id":20,"method":"tools/call","params":{"name":"preference_set","arguments":{"key":"time_format","value":"bogus"}}}' \
   '{"jsonrpc":"2.0","id":21,"method":"tools/call","params":{"name":"set","arguments":{"id":"nightlight_start","value":"8:30 PM"}}}' \
   '{"jsonrpc":"2.0","id":22,"method":"tools/call","params":{"name":"get","arguments":{"id":"nightlight_start"}}}' \
+  '{"jsonrpc":"2.0","id":23,"method":"tools/call","params":{"name":"search","arguments":{"query":"espacio interior","lang":"es-MX"}}}' \
   | lua5.1 "$OMASET" mcp 2>/dev/null)"
 
 assert_contains "$OUT" '"protocolVersion":"2025-11-25"' "initialize echoes version"
@@ -54,6 +55,8 @@ assert_contains "$OUT" '"id":8,"jsonrpc":"2.0","result":{"content"' "reset retur
 assert_contains "$OUT" '"default":4000,"id":"nightlight_temperature","value":4000' "reset restores default"
 
 assert_contains "$OUT" '"id":"gaps_in"' "search finds gaps_in"
+assert_contains "$(echo "$OUT" | grep '"id":23')" '"id":"gaps_in"' \
+  "search accepts a lang argument and matches the translated label"
 
 assert_contains "$OUT" '"panels"' "schema has panels"
 assert_contains "$OUT" '"appearance"' "schema includes appearance panel"

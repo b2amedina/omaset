@@ -199,5 +199,9 @@ grep -q 'root.tr.t("setting." + r.id' "$ROOT/ui/Panel.qml" \
   || fail "Panel.qml changedLabel must localize via tr.t"
 grep -q 'root.tr.t("setting." + modelData.id' "$ROOT/ui/Panel.qml" \
   || fail "Panel.qml search delegate must localize via tr.t"
+# The window must pass its effective language to search so matching follows the
+# language it renders (the rpc child never sees the one-shot ui-language file).
+grep -q 'lang: root.uiLanguage' "$ROOT/ui/Panel.qml" \
+  || fail "Panel.qml search must pass root.uiLanguage as the lang"
 
 echo "ok"

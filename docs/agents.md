@@ -35,7 +35,7 @@ The server is `omaset mcp` (JSON-RPC over stdio) and exposes these tools:
 | Tool | Purpose |
 |---|---|
 | `schema` | every panel/setting + current value |
-| `search` | find by id/label/description |
+| `search` | find by id/label/description/title/option |
 | `get` | read one setting (value + default) |
 | `set` | write a value (validated, applied, journaled) |
 | `reset` | put the setting back to its default |
@@ -65,7 +65,7 @@ omaset get <id> [--plain]    # read one setting (--plain = bare value)
 omaset set <id> <value>      # write a value; validates and applies
 omaset reset <id>            # put the setting back to its default
 omaset changed --json        # settings that differ from Omarchy stock
-omaset search <query> --json # find a setting by id or label
+omaset search <query> --json # find a setting by id, label, or option
 omaset help <id>             # type, options, range, default, current value
 ```
 
