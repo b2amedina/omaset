@@ -16,7 +16,7 @@ BarWidget {
     anchors.fill: parent
     bar: root.bar
     text: "\uf013"
-    tooltipText: "omaset Settings"
+    tooltipText: "Omarchy Settings"
     onPressed: function(button) {
       if (!root.bar) return
       if (button === Qt.RightButton) return

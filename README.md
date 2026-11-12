@@ -42,6 +42,13 @@ Then link the command line and hook up your agent:
 - [The CLI](docs/cli.md) — `ln -s …/bin/omaset ~/.local/bin/omaset`
 - [For agents](docs/agents.md) — `omaset mcp install`
 
+The bar widget is enabled automatically when you install with `--enable`
+(default section: `centerEnd`, beside the clock). To apply a set of sensible
+defaults (full-width and tiled full-screen styling, plus the bar widget on the
+right if it is missing), run:
+
+    scripts/omaset-defaults
+
 Click the Omaset icon in your bar, or run `omaset ui`.
 
 ## What it manages

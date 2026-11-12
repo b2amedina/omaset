@@ -18,12 +18,13 @@ panel("windows", "Windows", 0xf0c8, function()
       id = "tiled_fullscreen_style",
       type = "group",
       label = "Tiled full screen style",
-      description = "Border applied to tiled full-screen windows.",
+      description = "Border and rounding applied to tiled full-screen windows.",
       backend = "hypr-window",
       file = "hyprland",
       match = { fullscreen_state_client = 2, fullscreen_state_internal = 0 },
       subsettings = {
         border_size = { type = "int", label = "Border size", description = "Border width for tiled full-screen windows.", default = 2, min = 0, max = 20 },
+        rounding = { type = "int", label = "Rounding", description = "Corner radius for tiled full-screen windows.", default = 0, min = 0, max = 20 },
       },
     })
   end)

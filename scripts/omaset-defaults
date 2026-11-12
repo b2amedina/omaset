@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# omaset-defaults - apply a set of sensible Omaset defaults on top of Omarchy.
+#
+# Optional and idempotent: it only writes settings whose value differs from the
+# current one, and it never removes a bar widget the user has already placed.
+# Run after `omarchy plugin add ... --enable` (or on its own to re-apply).
+
+set -euo pipefail
+
+if ! command -v omaset >/dev/null 2>&1; then
+  echo "omaset-defaults: 'omaset' not found on PATH" >&2
+  echo "  link it first: ln -s .../bin/omaset ~/.local/bin/omaset" >&2
+  exit 1
+fi
+
+echo "Applying Omaset defaults..."
+
+# Full-width windows: a small border and matching rounding.
+omaset set fullwidth_style border_size 4
+omaset set fullwidth_style rounding 4
+
+# Tiled full-screen windows: same border, square corners.
+omaset set tiled_fullscreen_style border_size 4
+omaset set tiled_fullscreen_style rounding 0
+
+# Bar widget: enable on the right if it isn't on the bar yet.
+SHELL_JSON="$HOME/.config/omarchy/shell.json"
+if [[ -f "$SHELL_JSON" ]] && ! jq -e '.. | objects | select(.id? == "b2amedina.omaset")' "$SHELL_JSON" >/dev/null 2>&1; then
+  if command -v omarchy-plugin-enable >/dev/null 2>&1; then
+    omarchy plugin enable b2amedina.omaset --section right
+  else
+    echo "  skipped bar widget: omarchy plugin enable not available" >&2
+  fi
+else
+  echo "  bar widget already present; left in place"
+fi
+
+cat <<'NOTE'
+
+Optional keybinding (not applied automatically):
+  Check availability first:
+    omarchy menu keybindings --print | grep 'SUPER + SHIFT + S'
+  Then append to ~/.config/hypr/bindings.lua:
+    o.bind("SUPER + SHIFT + S", "Omarchy Settings", { panel = "b2amedina.omaset" })
+  and validate with: hyprctl reload && hyprctl configerrors
+NOTE
+
+echo "Done."

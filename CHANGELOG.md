@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0 — 2026-11-11
+
+- Top-bar settings icon tooltip now reads "Omarchy Settings" instead of "omaset Settings".
+- `tiled_fullscreen_style` gains a `rounding` subsetting, so tiled full-screen windows
+  can have corner radius like full-width windows.
+- New `scripts/omaset-defaults` helper applies preferred window styling (full-width
+  border/rounding 4, tiled full-screen border 4/rounding 0) and ensures the bar
+  widget is present on the right when missing.
+- README documents that the bar widget is enabled automatically with `--enable`
+  and how to run the defaults helper.
+
+
 ## 0.2.3 — 2026-11-10
 
 - Marketplace listing refreshed: the description now leads with the concrete
