@@ -321,6 +321,9 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
     if (s.type === "bool") {
       rows.push({ kind: "bool", id: s.id, label: L(tr, "setting." + s.id, s.label),
                   description: L(tr, "setting." + s.id + ".description", s.description), value: s.value })
+    } else if (s.type === "string") {
+      rows.push({ kind: "string", id: s.id, label: L(tr, "setting." + s.id, s.label),
+                  description: L(tr, "setting." + s.id + ".description", s.description), value: s.value })
     } else if (s.type === "enum") {
       if (hasChoices(s)) {
         rows.push(choiceRow(s.id, undefined, undefined, L(tr, "setting." + s.id, s.label), s, s.value, tr, tn, fmt))
@@ -357,6 +360,6 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
 function isInteractive(row) {
   return row && (row.kind === "bool" || row.kind === "slider"
               || row.kind === "number" || row.kind === "enum"
-              || row.kind === "time" || row.kind === "monitor"
+              || row.kind === "string" || row.kind === "time" || row.kind === "monitor"
               || row.kind === "dropdown")
 }

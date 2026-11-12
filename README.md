@@ -57,6 +57,7 @@ Covers appearance, layout, bar, input, windows, power, display, and behavior. On
 | Windows | full-width & tiled-fullscreen styles, single-window square |
 | Power & Idle | screen and lock timeouts |
 | Display | night light on/off, schedule (start & end), temperature |
+| Omasnap | editor mode/window/backdrop, autosave, screenshot directory and filename pattern |
 | Behavior | focus, tearing, cursor hiding |
 
 ## Why Omaset

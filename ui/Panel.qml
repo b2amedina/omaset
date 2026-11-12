@@ -791,6 +791,7 @@ Item {
     else if (row.kind === "dropdown") { if (root.activeDropdown && root.activeDropdown.open) root.activeDropdown.open() }
     else if (row.kind === "slider") beginEdit(selectedRow)
     else if (row.kind === "time") beginEdit(selectedRow)
+    else if (row.kind === "string") beginEdit(selectedRow)
   }
 
   function resetCurrent() {
@@ -1440,6 +1441,11 @@ Item {
                         }
                         TimeRow {
                           visible: modelData.kind === "time"
+                          panel: root; row: modelData; rowIndex: index
+                          width: parent.width
+                        }
+                        StringRow {
+                          visible: modelData.kind === "string"
                           panel: root; row: modelData; rowIndex: index
                           width: parent.width
                         }

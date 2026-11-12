@@ -131,3 +131,11 @@ Per-workspace tiling layout, keyed by workspace number.
 A backend is a Lua module that self-registers and implements read/write for the
 settings that name it. See [extending.md](extending.md) for the interface and a
 skeleton.
+
+## `omasnap`
+
+Manages `~/.config/omasnap/omasnap.conf` (INI). Every key is optional; reads
+fall back to the setting's declared default when absent, writes edit the value
+in place (or append a minimal `[section]`/`key = value` override), and a
+one-time `.omaset.bak` snapshot supports `rollback`. No apply step is needed
+because Omasnap reads the file on each invocation.
