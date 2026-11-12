@@ -10,6 +10,8 @@
   widget is present on the right when missing.
 - README documents that the bar widget is enabled automatically with `--enable`
   and how to run the defaults helper.
+- i18n: translated the omasnap settings keys and the new tiled-fullscreen rounding
+  keys across all 50 language catalogs (not just English fallbacks).
 
 
 ## 0.2.3 — 2026-11-10

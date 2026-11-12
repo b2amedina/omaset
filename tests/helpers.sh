@@ -1,6 +1,7 @@
 # Shared helpers for omaset tests. Sourced by each test_*.sh.
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+VERSION="$(jq -r '.version' "$ROOT/manifest.json")"
 OMASET="$ROOT/bin/omaset"
 FIXTURES="$ROOT/tests/fixtures/omarchy"
 

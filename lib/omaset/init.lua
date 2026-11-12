@@ -5,6 +5,7 @@
 -- or parses command-line arguments.
 
 local json = require("omaset.json")
+local util = require("omaset.util")
 local dsl = require("omaset.dsl")
 local discovery = require("omaset.discovery")
 local backends = require("omaset.backends")
@@ -264,6 +265,45 @@ function M.schema()
   return out
 end
 
-M.VERSION = "0.2.3"
+-- Single source of truth for the version is manifest.json. Read it at
+-- runtime so there is only one place to bump. root_from_source() derives the
+-- repo root from this file's own path (same idiom as i18n.lua), so the
+-- lookup works regardless of the current working directory.
+local function root_from_source()
+  local info = debug.getinfo(1, "S")
+  local src = info and info.source or ""
+  if src:sub(1, 1) == "@" then
+    src = src:sub(2)
+  end
+  local root = src:match("^(.*)/lib/omaset/init%.lua$")
+  if root then
+    return root
+  end
+  if src:match("^lib/omaset/init%.lua$") then
+    return "."
+  end
+  local root2 = src:match("^(.+)/lib/omaset/init%.lua$")
+  if root2 then
+    return root2
+  end
+  return nil
+end
+
+local function read_manifest_version()
+  local root = os.getenv("OMASET_ROOT") or root_from_source()
+  if root then
+    local path = root .. "/manifest.json"
+    if util.file_exists(path) then
+      local content = util.read_file(path)
+      local ok, manifest = pcall(json.decode, content)
+      if ok and type(manifest) == "table" and type(manifest.version) == "string" then
+        return manifest.version
+      end
+    end
+  end
+  return "0.0.0"
+end
+
+M.VERSION = read_manifest_version()
 
 return M

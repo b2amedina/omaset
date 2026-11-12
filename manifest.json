@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "b2amedina.omaset",
   "name": "Omaset - Omarchy Settings",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "author": "b2amedina",
   "license": "MIT",
   "description": "Every Omarchy setting in one place: a window for your hands, a CLI for your scripts, an MCP server for your agents. 4.5 ready, in all 50 languages.",
