@@ -115,6 +115,24 @@ declare `default = false` so they still participate in `changed`.
 - **Write** runs `command` with `{value}` substituted.
 - **Reset** runs `reset`, when declared.
 
+## `omarchy-defaults`
+
+Backs the *Defaults* panel (agent, browser, terminal, editor, dictation). It
+extends `omarchy`:
+
+- **Read** runs the `omarchy-default-*` command, which already returns a custom
+  value as it is.
+- **Write** of a declared value runs the command, so Omarchy's install and
+  notification steps run. Any other value is a custom value and is written to
+  the store that command reads: the preference file named by `custom.file`, the
+  xdg-terminal-exec list (`custom.format = "xdg-terminals"`), or
+  `xdg-settings set <custom.xdg>` for the browser.
+- **Validate** accepts any one-line value that does not start with `-`.
+- **Reset** restores the state a fresh Omarchy install is provisioned with: the
+  preference file is removed, or the browser is set to `chromium.desktop` with
+  `xdg-settings`, the same call Omarchy's provisioning makes. Reset never
+  installs a browser.
+
 ## `workspace-layout`
 
 Per-workspace tiling layout, keyed by workspace number.

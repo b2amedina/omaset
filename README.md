@@ -53,7 +53,7 @@ Click the Omaset icon in your bar, or run `omaset ui`.
 
 ## What it manages
 
-Covers appearance, layout, bar, input, windows, power, display, and behavior. One panel per area in the table below. [More backends](docs/backends.md) are added over time.
+Covers appearance, layout, bar, input, windows, power, display, behavior, and default applications. One panel per area in the table below. [More backends](docs/backends.md) are added over time.
 
 | Panel | Examples |
 |---|---|
@@ -65,6 +65,7 @@ Covers appearance, layout, bar, input, windows, power, display, and behavior. On
 | Power & Idle | screen and lock timeouts |
 | Display | night light on/off, schedule (start & end), temperature |
 | Omasnap | editor mode/window/backdrop, autosave, screenshot directory and filename pattern |
+| Defaults | agent, browser, terminal, editor, dictation (as in Omarchy's Setup > Defaults) |
 | Behavior | focus, tearing, cursor hiding |
 
 ## Why Omaset
