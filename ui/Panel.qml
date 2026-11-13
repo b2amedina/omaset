@@ -611,6 +611,8 @@ Item {
         }
         root.lastWrite = Date.now()
         if (o && o.value !== undefined && o.value !== null) setEffective(k, o.value)
+        // The value just replaced becomes a Custom choice; reload so it is listed.
+        if (row.kind === "enum" || row.kind === "dropdown") root.loadSchema()
         root.scheduleChanged()
       })
     } else {
@@ -625,6 +627,7 @@ Item {
         }
         root.lastWrite = Date.now()
         if (o && o.value !== undefined && o.value !== null) setSchemaValue(row.id, o.value)
+        if (row.kind === "enum" || row.kind === "dropdown") root.loadSchema()
         root.scheduleChanged()
       })
     }

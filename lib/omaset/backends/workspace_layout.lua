@@ -13,6 +13,7 @@
 -- RESET deletes the persisted file and restores the default.
 
 local util = require("omaset.util")
+local types = require("omaset.types")
 local registry = require("omaset.backends")
 local features = require("omaset.features")
 
@@ -102,6 +103,11 @@ function M.read_default(setting, key)
     return text
   end
   return "dwindle"
+end
+
+-- An enum must be one of its declared options or a custom value it has held.
+function M.validate(setting, value, key, customs)
+  return types.check_allowed(setting, value, customs)
 end
 
 function M.write(setting, key, value)

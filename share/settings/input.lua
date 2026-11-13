@@ -8,6 +8,8 @@ panel("input", "Input", 0xf11c, function()
       backend = "hypr-lua",
       file = "input",
       path = "input.follow_mouse",
+      min = 0,
+      max = 3,
       options = {
         { value = 0, label = "None" },
         { value = 1, label = "Full" },

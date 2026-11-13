@@ -138,6 +138,10 @@ function M.set(key, value_str)
   if not ok then
     return nil, rerr
   end
+  local allowed, aerr = types.check_allowed(spec, value)
+  if not allowed then
+    return nil, aerr
+  end
   local overrides = read_overrides()
   overrides[key] = value
   local wok, werr = write_overrides(overrides)

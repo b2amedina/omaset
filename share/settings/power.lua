@@ -20,6 +20,9 @@ panel("power", "Power & Idle", 0xf011, function()
       description = "Inactivity before the screensaver starts.",
       backend = "shell-json",
       path = "idle.screensaver",
+      unit = "sec",
+      min = 0,
+      max = 86400,
       options = idle_options,
     })
 
@@ -30,6 +33,9 @@ panel("power", "Power & Idle", 0xf011, function()
       description = "Inactivity before the screen locks.",
       backend = "shell-json",
       path = "idle.lock",
+      unit = "sec",
+      min = 0,
+      max = 86400,
       options = idle_options,
     })
   end)

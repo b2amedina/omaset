@@ -9,6 +9,8 @@ local util = require("omaset.util")
 local dsl = require("omaset.dsl")
 local discovery = require("omaset.discovery")
 local backends = require("omaset.backends")
+local journal = require("omaset.journal")
+local types = require("omaset.types")
 
 local M = {}
 
@@ -209,6 +211,41 @@ function M.monitors(setting)
   return backend.monitors(setting)
 end
 
+-- Custom values of a choice setting (or one of its sub-settings, `sub`): every
+-- value it has held that its declared options do not list. That is the current
+-- value plus each old/new the journal recorded for it, oldest first, without
+-- duplicates. They are listed as Custom choices, so a value that was set by
+-- hand, or was set and then replaced, can be selected again.
+function M.custom_values(setting, sub, current, entries)
+  local spec = setting
+  if sub ~= nil then
+    spec = setting.subsettings and setting.subsettings[sub]
+  end
+  if not spec or not spec.options or #spec.options == 0 then
+    return {}
+  end
+  local known = {}
+  for _, v in ipairs(types.option_values(spec)) do
+    known[tostring(v)] = true
+  end
+  local out, seen = {}, {}
+  local function add(v)
+    if v == nil or v == json.null then return end
+    local k = tostring(v)
+    if known[k] or seen[k] then return end
+    seen[k] = true
+    out[#out + 1] = v
+  end
+  add(current)
+  for _, e in ipairs(entries or {}) do
+    if e.id == setting.id and e.sub == sub and e.key == nil then
+      add(e.old)
+      add(e.new)
+    end
+  end
+  return out
+end
+
 -- Version of the settings schema that `schema` emits, independent of the
 -- engine version (M.VERSION): a consumer that renders the schema checks it and
 -- refuses a version it does not understand, so an engine and a frontend can
@@ -231,6 +268,7 @@ end
 
 function M.schema()
   local out = { schemaVersion = M.SCHEMA_VERSION, panels = {} }
+  local entries = journal.read_all()
   for _, p in ipairs(dsl.panels) do
     local icon = p.icon
     if type(icon) == "number" then icon = utf8_char(icon) end
@@ -250,13 +288,24 @@ function M.schema()
           -- them in the schema: the UI can render them at their real values
           -- instead of flashing the declared default and then jumping.
           local subvalues = {}
+          local subspecs = {}
           for _, k in ipairs(sub_keys(s)) do
-            subvalues[k] = jnull(M.read_value(s, k))
+            local v = M.read_value(s, k)
+            subvalues[k] = jnull(v)
+            local sub = {}
+            for kk, vv in pairs(s.subsettings[k]) do sub[kk] = vv end
+            local customs = M.custom_values(s, k, v, entries)
+            if #customs > 0 then sub.customOptions = json.array(customs) end
+            subspecs[k] = sub
           end
           entry.subvalues = subvalues
+          entry.subsettings = subspecs
         end
       else
-        entry.value = jnull(M.read_value(s))
+        local v = M.read_value(s)
+        entry.value = jnull(v)
+        local customs = M.custom_values(s, nil, v, entries)
+        if #customs > 0 then entry.customOptions = json.array(customs) end
       end
       panel.settings[#panel.settings + 1] = entry
     end

@@ -5,6 +5,13 @@ small read/write/validate interface for one area, and the engine treats them all
 identically. They self-register from `lib/omaset/backends/`, so a settings file
 can point at any of them — or at a new one — without the core changing.
 
+**Validation.** A backend that owns an enum's values implements an optional
+`validate(setting, value, key, customs)` hook. `customs` lists the values the
+setting has held (declared options are checked separately). `hypr-lua`,
+`workspace-layout`, `shell-json`, and `omasnap` use `types.check_allowed`;
+`omarchy` has no hook, so its command decides. Reads never drop a value: an
+enum read returns what the file holds, even if it is not an allowed value.
+
 Every file-writing backend keeps a one-time `<file>.omaset.bak` snapshot before
 its first write, validates after writing, and restores the previous content if
 validation fails. Each edits the value in place where it already lives, and
@@ -102,6 +109,11 @@ Delegates to an existing `omarchy` command instead of editing a file, for
 settings Omarchy already owns a knob for. The passthrough toggles
 (`nightlight`, `window-no-gaps`, `single-window-square`) go through here; they
 declare `default = false` so they still participate in `changed`.
+
+- **Read** runs `status` and coerces its output to the setting's type. An enum
+  value outside the declared options is shown as-is rather than as unset.
+- **Write** runs `command` with `{value}` substituted.
+- **Reset** runs `reset`, when declared.
 
 ## `workspace-layout`
 

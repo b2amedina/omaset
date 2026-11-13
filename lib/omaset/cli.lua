@@ -6,6 +6,7 @@ local json = require("omaset.json")
 local types = require("omaset.types")
 local core = require("omaset")
 local service = require("omaset.service")
+local journal = require("omaset.journal")
 local i18n = require("omaset.i18n")
 
 local grouped = core.grouped
@@ -684,7 +685,14 @@ local function setting_help(setting)
   if setting.keyed then
     lines[#lines + 1] = "  value:   " .. tr("cli.keyedTag", "(keyed)")
   else
-    lines[#lines + 1] = "  value:   " .. tostring(core.read_value(setting))
+    local current = core.read_value(setting)
+    lines[#lines + 1] = "  value:   " .. tostring(current)
+    local customs = core.custom_values(setting, nil, current, journal.read_all())
+    if #customs > 0 then
+      local parts = {}
+      for _, v in ipairs(customs) do parts[#parts + 1] = tostring(v) end
+      lines[#lines + 1] = "  custom:  " .. table.concat(parts, ", ")
+    end
   end
   lines[#lines + 1] = "  default: " .. tostring(core.read_default(setting))
   return table.concat(lines, "\n")

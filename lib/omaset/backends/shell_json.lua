@@ -72,6 +72,11 @@ function M.read_default(setting, key)
   return read_path(default_file(), setting.path, setting)
 end
 
+-- An enum must be one of its declared options or a custom value it has held.
+function M.validate(setting, value, key, customs)
+  return types.check_allowed(setting, value, customs)
+end
+
 local function apply_enabled()
   local v = os.getenv("OMASET_NO_APPLY")
   return not (v == "1" or v == "true" or v == "yes" or v == "on")

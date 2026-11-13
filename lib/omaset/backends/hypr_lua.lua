@@ -9,6 +9,7 @@
 --       when the value is not yet present.
 
 local util = require("omaset.util")
+local types = require("omaset.types")
 local luaedit = require("omaset.luaedit")
 local registry = require("omaset.backends")
 
@@ -138,6 +139,11 @@ local function commit(user_file, prev_content, new_content)
     end
   end
   return true
+end
+
+-- An enum must be one of its declared options or a custom value it has held.
+function M.validate(setting, value, key, customs)
+  return types.check_allowed(setting, value, customs)
 end
 
 function M.write(setting, key, value)

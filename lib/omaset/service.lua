@@ -73,7 +73,7 @@ end
 
 local function value_changed(cur, def)
   if def == nil then
-    return false
+    return cur ~= nil
   end
   if cur == nil then
     return true
@@ -109,27 +109,10 @@ end
 -- replayed.
 local function undo_stale_reason(core, s, entry)
   local key = entry.key or entry.sub
-  local old = entry.old
-  if old == json.null then old = nil end
-  if old == nil then return nil end
-  local spec = s
   if core.grouped(s) and key ~= nil then
-    spec = s.subsettings and s.subsettings[key] or nil
-    if not spec then return "unknown sub-setting '" .. tostring(key) .. "'" end
-  end
-  local t = (spec.type or "string")
-  local choices = types.choice_options(spec)
-  if choices then
-    for _, opt in ipairs(choices) do
-      if opt.value == old then return nil end
+    if not (s.subsettings and s.subsettings[key]) then
+      return "unknown sub-setting '" .. tostring(key) .. "'"
     end
-    return "value '" .. tostring(old) .. "' is no longer a valid option for " .. s.id
-  end
-  if t == "enum" and spec.options then
-    for _, opt in ipairs(spec.options) do
-      if opt == old then return nil end
-    end
-    return "value '" .. tostring(old) .. "' is no longer a valid option for " .. s.id
   end
   return nil
 end
@@ -388,17 +371,32 @@ function M.set(core, args)
   end
 
   local old = core.read_value(s, key)
+  local out = { id = s.id, value = value, ok = true }
+  if key ~= nil then
+    if s.keyed then out.key = key else out.sub = key end
+  end
+  -- Setting a value the setting already holds is a successful no-op, so
+  -- re-selecting the current Custom choice does not rewrite the config.
+  if old ~= nil and tostring(old) == tostring(value) then
+    return out
+  end
+
+  local backend = core.backend_for(s)
+  if backend and backend.validate then
+    local customs = core.custom_values(s, core.grouped(s) and key or nil, old,
+      journal.read_all())
+    local vok, verr = backend.validate(s, value, key, customs)
+    if not vok then
+      return nil, verr
+    end
+  end
+
   local def = core.read_default(s, key)
   local wok, werr = core.write_value(s, key, value)
   if not wok then
     return nil, werr
   end
   record_change(core, "set", s, key, old, def, value)
-
-  local out = { id = s.id, value = value, ok = true }
-  if key ~= nil then
-    if s.keyed then out.key = key else out.sub = key end
-  end
   return out
 end
 
@@ -510,8 +508,11 @@ function M.help(core, args)
       if sub.options then out.subsettings[k].options = json.array(sub.options) end
     end
   else
-    out.value = jnull(core.read_value(s))
+    local current = core.read_value(s)
+    out.value = jnull(current)
     out.default = jnull(core.read_default(s))
+    local customs = core.custom_values(s, nil, current, journal.read_all())
+    if #customs > 0 then out.customOptions = json.array(customs) end
   end
   return out
 end

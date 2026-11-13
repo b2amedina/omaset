@@ -73,6 +73,29 @@ declares its shape and trusts the engine to enforce it:
 A `time` setting may also declare `format` (the display pattern) and `hint`
 (the accepted input forms); both are passed through to `schema` and `help`.
 
+### Validation and custom values
+
+A value is checked in three steps, the same way for the CLI, the agent (MCP),
+and the window:
+
+1. **Type** — `bool`, `int`, `float`, `time`, `string`, or `enum` (a string).
+2. **Range** — `min`/`max` on numbers. Declare them when the setting has real
+   bounds; a number without bounds accepts any number of its type.
+3. **Backend** — the backend's `validate` hook, when it has one. It decides
+   whether the value is allowed. Enums owned by a backend (`hypr-lua`,
+   `shell-json`, `omasnap`, `workspace-layout`) accept their declared options
+   and any custom value the setting has held. Command-backed settings
+   (`omarchy`) defer to the command: it rejects what Omarchy rejects.
+
+Declared `options` name the stock choices. They are not a closed list.
+A value that is in a hand-edited file is a value, so it reads back as it is.
+It appears in `schema`, `help` (as `customOptions`, shown as `custom:` in the
+CLI), and the window as a `Custom · …` choice. The journal keeps the values a
+setting has held, so a value that was replaced stays selectable and can be
+switched back to. Re-selecting the current value is a successful no-op.
+
+Setting a value the backend does not allow fails with the list of choices.
+
 ## Writing a backend
 
 If your setting does not fit an existing [backend](backends.md), a backend is a

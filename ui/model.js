@@ -143,7 +143,7 @@ function valueOf(effective, id, sub, key, fallback) {
 // Split a setting's `options` into parallel label/value arrays, handling both
 // plain strings (label == value) and { value, label } objects. The label is
 // localized against `setting.<id>.option.<value>`.
-function choiceLists(spec, id, tr) {
+function choiceLists(spec, id, tr, tn, fmt) {
   var labels = [], values = []
   var opts = spec.options || []
   for (var i = 0; i < opts.length; i++) {
@@ -157,6 +157,17 @@ function choiceLists(spec, id, tr) {
       labels.push(L(tr, "setting." + id + ".option." + o, String(o)))
       values.push(o)
     }
+  }
+  // Values the setting has held that its options do not list (from the
+  // journal and the current value). Duration formatting only where the
+  // setting declares its unit as seconds.
+  var customs = spec.customOptions || []
+  for (var c = 0; c < customs.length; c++) {
+    var cv = customs[c]
+    var cl = (spec.unit === "sec" && /^\d+(\.\d+)?$/.test(String(cv)))
+      ? customChoiceLabel(cv, tr, tn, fmt) : String(cv)
+    labels.push(L(tr, "ui.custom", "Custom · %1").replace("%1", cl))
+    values.push(cv)
   }
   return { labels: labels, values: values }
 }
@@ -189,7 +200,7 @@ function withCustomChoice(labels, values, value, tr, tn, fmt) {
 }
 
 function choiceRow(id, sub, key, label, spec, value, tr, tn, fmt) {
-  var lists = choiceLists(spec, id, tr)
+  var lists = choiceLists(spec, id, tr, tn, fmt)
   var withCustom = withCustomChoice(lists.labels, lists.values, value, tr, tn, fmt)
   // A short list reads as a segmented row; many discrete choices read better
   // as a dropdown (macOS-style), e.g. idle timeouts.
@@ -210,7 +221,7 @@ function fieldRow(id, sub, key, label, type, spec, effective, timeFormat, tr, tn
   if (type === "enum") {
     // Grouped sub-settings use setting.<group>.<sub>.* keys for the label,
     // but option labels share the top-level setting.<group>.option.* space.
-    var lists = choiceLists(spec, id, tr)
+    var lists = choiceLists(spec, id, tr, tn, fmt)
     var val = valueOf(effective, id, sub, key, spec.default)
     var withCustom = withCustomChoice(lists.labels, lists.values, val, tr, tn, fmt)
     return { kind: "enum", id: id, sub: sub, label: label,
@@ -329,7 +340,7 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
         rows.push(choiceRow(s.id, undefined, undefined, L(tr, "setting." + s.id, s.label), s, s.value, tr, tn, fmt))
       } else {
         // Plain-string enum: localize labels, keep stored tokens as values.
-        var lists2 = choiceLists(s, s.id, tr)
+        var lists2 = choiceLists(s, s.id, tr, tn, fmt)
         var with2 = withCustomChoice(lists2.labels, lists2.values, s.value, tr, tn, fmt)
         rows.push({ kind: "enum", id: s.id, label: L(tr, "setting." + s.id, s.label),
                     description: L(tr, "setting." + s.id + ".description", s.description),

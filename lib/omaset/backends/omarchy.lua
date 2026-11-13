@@ -7,6 +7,8 @@
 --   mode    : "value" (default) or "toggle" (run command only if state differs)
 --   reset   : optional command to restore the default
 --
+-- Validity is the command's: a value it rejects fails the write with its error.
+--
 -- Read/write/reset are skipped under OMASET_NO_APPLY=1 so tests never touch the
 -- live system.
 
@@ -42,8 +44,12 @@ function M.read_default(setting, key)
   return nil
 end
 
+-- The value is shell-quoted, so a hand-edited or custom value cannot break out
+-- of the command.
 local function substitute(command, value)
-  return (command:gsub("{value}", tostring(value)))
+  return (command:gsub("{value}", function()
+    return util.shell_quote(tostring(value))
+  end))
 end
 
 function M.write(setting, key, value)

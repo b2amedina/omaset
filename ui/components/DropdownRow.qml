@@ -121,8 +121,15 @@ BorderSurface {
       fontFamily: root.fontFamily
       onChanged: function(v) {
         if (!root.panel) return
+        // The dropdown emits the option value as a string. Map it back to the
+        // stored value so numeric choices stay numeric and string tokens
+        // (vim, claude, chromium) are not turned into NaN.
+        var vals = root.row.values || []
+        var val = v
+        for (var i = 0; i < vals.length; i++)
+          if (String(vals[i]) === v) { val = vals[i]; break }
         root.panel.cursorTo(root.rowIndex)
-        root.panel.commit(root.row, Number(v))
+        root.panel.commit(root.row, val)
       }
       onHovered: function(h) { if (h && root.panel) root.panel.cursorTo(root.rowIndex) }
     }

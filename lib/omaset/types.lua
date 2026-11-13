@@ -56,6 +56,48 @@ function M.choice_options(setting)
   return nil
 end
 
+-- The stored values a setting's declared options name, plain or labelled.
+function M.option_values(setting)
+  local out = {}
+  for _, o in ipairs(setting.options or {}) do
+    if type(o) == "table" then
+      out[#out + 1] = o.value
+    else
+      out[#out + 1] = o
+    end
+  end
+  return out
+end
+
+-- Whether an enum value is allowed: one of its declared options, or a custom
+-- value the setting has held (`customs`, from the journal and the current
+-- value). Backends with enum values they own call this from their validate hook.
+function M.is_allowed(setting, value, customs)
+  local needle = tostring(value)
+  for _, v in ipairs(M.option_values(setting)) do
+    if tostring(v) == needle then return true end
+  end
+  for _, v in ipairs(customs or {}) do
+    if tostring(v) == needle then return true end
+  end
+  return false
+end
+
+-- Enum membership for a backend that owns its enum's values, and for settings
+-- whose values are closed (preferences). Returns true, or nil plus an error.
+function M.check_allowed(setting, value, customs)
+  if (setting.type or "string") ~= "enum" or M.is_allowed(setting, value, customs) then
+    return true
+  end
+  local labels = {}
+  for _, o in ipairs(setting.options or {}) do
+    labels[#labels + 1] = type(o) == "table" and tostring(o.label) or tostring(o)
+  end
+  return nil, "'" .. tostring(value) .. "' is not an allowed value for "
+    .. tostring(setting.id or setting.key) .. " (choose from: "
+    .. table.concat(labels, ", ") .. ")"
+end
+
 -- Coerce a CLI string into the setting's declared type.
 -- Returns the coerced value, or nil plus an error message.
 function M.coerce(str, setting)
@@ -94,28 +136,21 @@ function M.coerce(str, setting)
     end
     return nil, "expected true/false, got '" .. tostring(str) .. "'"
   elseif t == "enum" then
+    -- Labelled options: accept the stored value, or its label (so the CLI
+    -- takes both "dwindle" and "Tiling"). Any other string is kept as-is: a
+    -- hand-edited value is a value too, and the backend decides whether to
+    -- accept a write of it (see the backend validate hook).
+    local needle = tostring(str)
     local choices = M.choice_options(setting)
     if choices then
-      -- Labelled options: accept the stored value, or its label (so the CLI
-      -- takes both "dwindle" and "Tiling").
-      local needle = tostring(str)
       for _, opt in ipairs(choices) do
         if tostring(opt.value) == needle then return needle end
       end
       for _, opt in ipairs(choices) do
         if tostring(opt.label):lower() == needle:lower() then return tostring(opt.value) end
       end
-      local labels = {}
-      for _, opt in ipairs(choices) do labels[#labels + 1] = tostring(opt.label) end
-      return nil, "'" .. needle .. "' is not a valid option (choose from: " .. table.concat(labels, ", ") .. ")"
     end
-    if setting.options then
-      for _, opt in ipairs(setting.options) do
-        if opt == str then return str end
-      end
-      return nil, "'" .. tostring(str) .. "' is not a valid option (choose from: " .. table.concat(setting.options, ", ") .. ")"
-    end
-    return str
+    return needle
   elseif t == "time" then
     local canonical = M.parse_time(str)
     if not canonical then
@@ -143,28 +178,10 @@ function M.validate(value, setting)
       return nil, "expected a number, got " .. tostring(value)
     end
   elseif t == "enum" then
-    local choices = M.choice_options(setting)
-    if choices then
-      for _, opt in ipairs(choices) do
-        if tostring(opt.value) == tostring(value) then return true end
-      end
-      local labels = {}
-      for _, opt in ipairs(choices) do labels[#labels + 1] = tostring(opt.label) end
-      return nil, "'" .. tostring(value) .. "' is not a valid option (choose from: "
-        .. table.concat(labels, ", ") .. ")"
-    end
-    if setting.options then
-      local ok = false
-      for _, opt in ipairs(setting.options) do
-        if opt == value then
-          ok = true
-          break
-        end
-      end
-      if not ok then
-        return nil, "'" .. tostring(value) .. "' is not a valid option (choose from: "
-          .. table.concat(setting.options, ", ") .. ")"
-      end
+    -- Type only. Whether a string is an allowed value is the backend's call
+    -- (its validate hook), so hand-edited values stay valid.
+    if type(value) ~= "string" then
+      return nil, "expected a string, got " .. tostring(value)
     end
   elseif t == "string" then
     if type(value) ~= "string" then
@@ -213,19 +230,6 @@ function M.check_range(value, setting)
   end
   if setting.max ~= nil and value > setting.max then
     return false, "value " .. value .. " above maximum " .. setting.max
-  end
-  local choices = M.choice_options(setting)
-  if choices then
-    local ok = false
-    local labels = {}
-    for _, opt in ipairs(choices) do
-      labels[#labels + 1] = tostring(opt.value) .. "=" .. tostring(opt.label)
-      if opt.value == value then ok = true end
-    end
-    if not ok then
-      return false, "value " .. value .. " is not one of: "
-        .. table.concat(labels, ", ")
-    end
   end
   return true
 end
