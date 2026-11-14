@@ -72,6 +72,19 @@ omaset help <id>             # type, options, range, default, current value
 Keyed settings (per-workspace) take a key argument, e.g.
 `omaset get workspace_layout 2` / `omaset set workspace_layout 3 scrolling`.
 
+## New in 0.3.0
+
+- **Defaults panel** (`defaults`): agent, browser, terminal, editor, dictation,
+  wrapping Omarchy's `omarchy-default-*` commands.
+- **Browsers panel** (`browsers`): default browser plus browser-router config
+  (browser list, labels, domain routing rules). The hidden `browser_*` settings
+  stay in the schema for CLI/MCP (`tracked=false`), and the
+  `omaset browser list|enable|disable|install|set-label|rule-*` commands manage
+  them.
+- **Omasnap panel** (`screenshot`): screenshot configuration Omarchy does not
+  expose as commands.
+- Custom values are first-class: off-list values read back as-is and appear as
+  `Custom` choices; re-setting the current value is a no-op.
 ## Worked example
 
 An agent asked to "make the gaps a bit bigger and turn on blur":

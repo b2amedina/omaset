@@ -11,17 +11,23 @@
   <img src="media/banner.png" alt="The Omaset wordmark and tagline, above a strip of the Omarchy bar" width="880">
 </p>
 
-Your config files are the source of truth. Omaset puts every setting within reach — of you, and of your agent. Update one value where it lives. Everything else stays as you left it. See what's changed. Take it back.
+Your config files are the source of truth. Omaset lets you manage every Omarchy setting in one place — a window for your hands, a CLI for your scripts, an MCP server for your agent. It doesn’t just toggle values; it surfaces what Omarchy hides and orchestrates how tools work together — like routing sites to browsers. Touch one value where it lives. Everything else stays exactly as you left it. See what changed. Take it back.
 
-**Welcome the agents.** Your agent gets the same settings you do, as tools it can call. It searches for a setting by name, reads what it's set to, changes it. No parsing files, no guessing, no shell incantations — just the same settings, in front of both of you.
+That's not a plugin. That's the Omarchy way, made visible.
 
-**Made for 4.5.** The new desktop is more familiar to people coming from Windows or macOS, used to a settings panel. Omaset does the same for settings — a view for humans, while your agent keeps working directly with the files.
+**Welcome the agents.** Your agent gets the same knobs you do — search, read, change, undo. No parsing files, no guessing, no shell incantations. Just the same settings, in front of both of you.
 
-**Speaks your language.** Every label, description, and option in all 50 Omarchy languages.
+**Made for 4.5.** Omarchy 4.5 feels familiar to anyone coming from Windows or macOS. Omaset does the same for settings: a view for humans, while your agent keeps working straight with the files.
 
-**Checked before it lands.** Every change is validated against the live config, and Omaset puts it back if Hyprland won't load. `changed` shows what's not stock, `history` shows how it got there.
+**Speaks your language.** Every label, description, and option — all 50 Omarchy languages. No second-class citizens.
 
-**No magic numbers.** Your configuration file still says `300` — that's seconds to the computer. Omaset shows you `5 min` — that's how you think about it. Same for times and every other choice. Made readable for humans, not just machines.
+**Checked before it lands.** Every change is validated against the live config; if Hyprland won’t load it, Omaset puts it back. `changed` shows what’s not stock, `history` shows how you got there.
+
+**Goes beyond toggles.** Some panels surface settings Omarchy never exposed as commands — screenshots (Omasnap). Others manage how tools work together — per-URL browser routing (Browsers).
+
+**No magic numbers.** Your file still says `300` — seconds to the computer, `5 min` to you. Same for times and every other choice. Readable for humans, not just machines.
+
+**One engine, three faces.** The window, the CLI, and your agent share one core — add a backend and all three pick it up.
 
 <p align="center">
   <img src="media/window.png" alt="The Omaset settings window" width="800">
@@ -53,27 +59,29 @@ Click the Omaset icon in your bar, or run `omaset ui`.
 
 ## What it manages
 
-Covers appearance, layout, bar, input, windows, power, display, behavior, and default applications. One panel per area in the table below. [More backends](docs/backends.md) are added over time.
+Covers appearance, bar, behavior, browsers, defaults, display, input, layout, omasnap, power, and windows. One panel per area in the table below. [More backends](docs/backends.md) are added over time.
 
 | Panel | Examples |
 |---|---|
 | Appearance | gaps, borders, rounding, blur, shadow, groupbar, corners, transparency |
-| Tiling Layout | default layout, dwindle/scrolling/floating, scrolling width, dock |
 | Bar | position, background |
-| Input | mouse, trackpad, key repeat, numlock |
-| Windows | full-width & tiled-fullscreen styles, single-window square |
-| Power & Idle | screen and lock timeouts |
-| Display | night light on/off, schedule (start & end), temperature |
-| Omasnap | editor mode/window/backdrop, autosave, screenshot directory and filename pattern |
-| Defaults | agent, terminal, editor, dictation (as in Omarchy's Setup > Defaults) |
-| Browsers | default browser, browser-router config (browser list, labels, domain routing rules) |
 | Behavior | focus, tearing, cursor hiding |
+| Browsers | default browser, browser-router config (browser list, labels, domain routing rules) — route URLs to the right browser, prompt when unsure |
+| Defaults | agent, terminal, editor, dictation (as in Omarchy's Setup > Defaults) |
+| Display | night light on/off, schedule (start & end), temperature |
+| Input | mouse, trackpad, key repeat, numlock |
+| Omasnap | editor mode/window/backdrop, autosave, screenshot directory and filename pattern — settings Omarchy doesn't expose as commands |
+| Power & Idle | screen and lock timeouts |
+| Tiling Layout | default layout, dwindle/scrolling/floating, scrolling width, dock |
+| Windows | full-width & tiled-fullscreen styles, single-window square |
+
 
 ## Why Omaset
 
 - **One place to see it all.** Every panel, searchable.
 - **Three ways in, same settings.** Agent, window, command line.
 - **Checked before it lands.** Validation, then applied in place — nothing rewritten wholesale.
+- **Goes beyond toggles.** Some panels surface settings Omarchy never exposed as commands (screenshots); others manage how tools work together (per-URL browser routing).
 - **Styled to match.** Colors and shapes come from your theme.
 
 <p align="center">
@@ -148,7 +156,7 @@ One small core. A set of backends that all share a common interface, so the engi
 - **The window** — keyboard-first, uses Omarchy styling.
 - **The command line** — `omaset get`, `set`, `changed`, `undo`.
 
-Add a setting or a backend, and all three pick it up. That's the whole design.
+Add a setting or a backend, and the window, the CLI, and your agent all pick it up — new areas land without touching the core. That's the whole design.
 
 ## Next steps
 

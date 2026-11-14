@@ -5,7 +5,8 @@
   "version": "0.3.0",
   "author": "b2amedina",
   "license": "MIT",
-  "description": "Every Omarchy setting in one place: a window for your hands, a CLI for your scripts, an MCP server for your agents. 4.5 ready, in all 50 languages.",
+  "description": "Settings shouldn’t be a treasure hunt through dotfiles. Omaset lets you manage every Omarchy setting in one place — a window for your hands, a CLI for your scripts, an MCP server for your agent. It doesn’t just toggle values; it manages how things work together: routing sites to browsers and more. One engine, three faces. That's the Omarchy way, made visible.",
+
   "kinds": ["panel", "bar-widget"],
   "entryPoints": {
     "panel": "ui/Panel.qml",

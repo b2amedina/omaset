@@ -35,6 +35,11 @@
 - After any selection, keyboard focus returns to the row so j/k/h/l keep
   navigating, and a dropdown can no longer leave the key catcher blocked when
   its row is rebuilt mid-selection.
+- Marketplace listing refreshed: the description now leads with the treasure-hunt
+  hook and the "Omarchy way, made visible" line; the README top section is
+  rewritten in DHH voice and frames Omaset as surfacing what Omarchy hides and
+  orchestrating how tools work together; preview.png is recaptured from the
+  settings window.
 
 
 ## 0.2.3 — 2026-11-10
