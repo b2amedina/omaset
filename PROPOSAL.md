@@ -112,7 +112,7 @@ Every label, description, and option in all 50 Omarchy languages. Right-to-left 
 
 ## Demo
 
-`media/omaset-0.3.0-demo.mp4` (attach to the issue when submitting) — 36s: intro → Browsers → Screenshot → Power & Idle → Changed → CLI → help → value prop.
+https://raw.githubusercontent.com/b2amedina/omaset/master/media/omaset-0.3.0-demo.mp4 — 36s: intro → Browsers → Screenshot → Power & Idle → Changed → CLI → help → value prop. (GitHub may not inline-play MP4; download or open in a new tab.)
 
 ## Links
 
