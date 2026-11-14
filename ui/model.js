@@ -210,7 +210,7 @@ function choiceRow(id, sub, key, label, spec, value, tr, tn, fmt) {
            description: L(tr, "setting." + id + ".description", spec.description),
            segmented: kind === "enum",
            options: withCustom.labels, values: withCustom.values, value: value,
-           component: spec.component }
+           component: spec.component, disabled: spec.disabled === true }
 }
 
 function fieldRow(id, sub, key, label, type, spec, effective, timeFormat, tr, tn, fmt) {
@@ -304,7 +304,7 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
         // Monitor-grouped: pick a monitor, then show its workspaces 1..10
         // (labelled by slot; the stored key is the global id).
         var sel = (selectedMonitor && selectedMonitor[s.id]) || mons[0].name
-        rows.push({ kind: "monitor", id: s.id, monitors: mons, selected: sel, component: s.component })
+        rows.push({ kind: "monitor", id: s.id, monitors: mons, selected: sel, component: s.component, disabled: s.disabled === true })
         var mon = null
         for (var m = 0; m < mons.length; m++)
           if (mons[m].name === sel) { mon = mons[m]; break }
@@ -318,7 +318,7 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
             label: workspaceLabel(w + 1),
             options: ch.labels, values: ch.values, segmented: true,
             value: val,
-            component: s.component
+            component: s.component, disabled: s.disabled === true
           })
         }
       } else {
@@ -332,7 +332,7 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
             label: workspaceLabel(key),
             options: ch.labels, values: ch.values, segmented: true,
             value: val,
-            component: s.component
+            component: s.component, disabled: s.disabled === true
           })
         }
       }
@@ -342,11 +342,11 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
     if (s.type === "bool") {
       rows.push({ kind: "bool", id: s.id, label: L(tr, "setting." + s.id, s.label),
                   description: L(tr, "setting." + s.id + ".description", s.description), value: s.value,
-                  component: s.component })
+                  component: s.component, disabled: s.disabled === true })
     } else if (s.type === "string") {
       rows.push({ kind: "string", id: s.id, label: L(tr, "setting." + s.id, s.label),
                   description: L(tr, "setting." + s.id + ".description", s.description), value: s.value,
-                  component: s.component })
+                  component: s.component, disabled: s.disabled === true })
     } else if (s.type === "enum") {
       // filterByEnabled: only show options whose browser_<id>_label is installed.
       var spec = s
@@ -394,12 +394,12 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
         rows.push({ kind: "enum", id: s.id, label: L(tr, "setting." + s.id, s.label),
                     description: L(tr, "setting." + s.id + ".description", s.description),
                     options: with2.labels, values: with2.values, segmented: true, value: s.value,
-                    component: s.component })
+                    component: s.component, disabled: s.disabled === true })
       }
     } else if (s.type === "time") {
       rows.push({ kind: "time", id: s.id, label: L(tr, "setting." + s.id, s.label),
                   description: L(tr, "setting." + s.id + ".description", s.description), timeFormat: timeFmt, value: s.value,
-                  component: s.component })
+                  component: s.component, disabled: s.disabled === true })
     } else if ((s.type === "int" || s.type === "float") && hasChoices(s)) {
       rows.push(choiceRow(s.id, undefined, undefined, L(tr, "setting." + s.id, s.label), s, s.value, tr, tn, fmt))
     } else if (s.type === "int" || s.type === "float") {
@@ -412,7 +412,8 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
         description: L(tr, "setting." + s.id + ".description", s.description),
         min: min, max: max,
         integer: s.type === "int",
-        step: s.type === "int" ? (range > 200 ? 5 : 1) : 0.01
+        step: s.type === "int" ? (range > 200 ? 5 : 1) : 0.01,
+        disabled: s.disabled === true
       })
     }
   }
@@ -420,7 +421,7 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
 }
 
 function isInteractive(row) {
-  return row && (row.kind === "bool" || row.kind === "slider"
+  return row && !row.disabled && (row.kind === "bool" || row.kind === "slider"
               || row.kind === "number" || row.kind === "enum"
               || row.kind === "string" || row.kind === "time" || row.kind === "monitor"
               || row.kind === "dropdown")

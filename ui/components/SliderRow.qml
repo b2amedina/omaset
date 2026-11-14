@@ -142,6 +142,7 @@ BorderSurface {
           root.panel.cursorTo(root.rowIndex)
           var out = root.row.integer ? Math.round(v) : Math.round(v * 1000) / 1000
           root.panel.commit(root.row, out)
+          root.panel.restoreFocus()
         }
       }
 

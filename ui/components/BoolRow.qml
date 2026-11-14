@@ -94,6 +94,7 @@ BorderSurface {
       if (!root.panel) return
       root.panel.cursorTo(root.rowIndex)
       root.panel.commit(root.row, !root.row.value)
+      root.panel.restoreFocus()
     }
   }
 }

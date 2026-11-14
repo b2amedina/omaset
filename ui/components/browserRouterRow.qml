@@ -61,6 +61,7 @@ Item {
   function focusCount() { return root.browserCount() + root.ruleCount() + 1 }
 
   function moveVertical(dy) {
+    if (root.disabled) return false
     var total = root.focusCount()
     if (total === 0) return false
     if (root.focusIndex < 0) {
@@ -77,6 +78,7 @@ Item {
   // h / l: within a browser row, focus its label; within a rule row or the
   // add form, cycle the browser.
   function moveHorizontal(dx) {
+    if (root.disabled) return
     var i = root.focusIndex
     if (i < 0) return
     if (i < root.browserCount()) {
@@ -96,10 +98,11 @@ Item {
     }
   }
 
-  function enter() { root.focusIndex = 0 }
+  function enter() { if (root.disabled) return; root.focusIndex = 0 }
   function leave() { root.focusIndex = -1; root.textEditing = false }
 
   function activateFocus() {
+    if (root.disabled) return
     var i = root.focusIndex
     if (i < 0) return
     // While editing a text field, Enter/Space belongs to the field; never
@@ -139,6 +142,13 @@ Item {
 
   onFocusIndexChanged: {
     if (root.active) root.ensureFocusVisible()
+  }
+
+  // When the default browser is switched away from the router while the
+  // component is being navigated, drop the internal sub-row cursor so the
+  // section is fully inert rather than showing a stale highlight.
+  onDisabledChanged: {
+    if (root.disabled) root.leave()
   }
 
   // ---- data ---------------------------------------------------------
@@ -328,7 +338,7 @@ Item {
     z: -1
     onClicked: {
       if (root.panel) root.panel.cursorTo(root.rowIndex)
-      if (root.focusIndex < 0) root.focusIndex = 0
+      if (!root.disabled && root.focusIndex < 0) root.focusIndex = 0
     }
   }
 
@@ -400,7 +410,7 @@ Item {
             onClicked: {
               if (root.panel && root.panel.editingRow === root.rowIndex) root.panel.endEdit()
               if (root.panel) root.panel.cursorTo(root.rowIndex)
-              root.focusIndex = index
+              if (!root.disabled) root.focusIndex = index
             }
           }
 
@@ -431,7 +441,7 @@ Item {
               MouseArea {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
-                onClicked: { if (root.panel && root.panel.editingRow === root.rowIndex) root.panel.endEdit(); if (root.panel) root.panel.cursorTo(root.rowIndex); root.focusIndex = index; if (!root.disabled) root.toggleBrowser(modelData.id, modelData.enabled) }
+                onClicked: { if (root.panel && root.panel.editingRow === root.rowIndex) root.panel.endEdit(); if (root.panel) root.panel.cursorTo(root.rowIndex); if (!root.disabled) { root.focusIndex = index; root.toggleBrowser(modelData.id, modelData.enabled) } }
               }
             }
 
@@ -532,7 +542,6 @@ Item {
       visible: !root.loading
       width: parent.width
       height: Style.space(28)
-      opacity: root.disabled ? 0.4 : 1.0
 
       BorderSurface {
         anchors.fill: parent
@@ -587,7 +596,7 @@ Item {
           background: root.panel ? root.panel.background : Commons.Color.background
           accent: root.accent
           fontFamily: root.fontFamily
-          onChanged: function(v) { root.newBrowser = v }
+          onChanged: function(v) { root.newBrowser = v; if (root.panel) root.panel.restoreFocus() }
         }
 
         Button {
@@ -611,7 +620,6 @@ Item {
       visible: !root.loading
       width: parent.width
       spacing: Style.spacing.sm
-      opacity: root.disabled ? 0.4 : 1.0
 
       Repeater {
         id: rulesRepeater
@@ -636,7 +644,7 @@ Item {
             onClicked: {
               if (root.panel && root.panel.editingRow === root.rowIndex) root.panel.endEdit()
               if (root.panel) root.panel.cursorTo(root.rowIndex)
-              root.focusIndex = root.browserCount() + 1 + index
+              if (!root.disabled) root.focusIndex = root.browserCount() + 1 + index
             }
           }
 
@@ -685,7 +693,7 @@ Item {
               background: root.panel ? root.panel.background : Commons.Color.background
               accent: root.accent
               fontFamily: root.fontFamily
-              onChanged: function(v) { if (root.panel) root.panel.cursorTo(root.rowIndex); root.focusIndex = root.browserCount() + 1 + index; root.editRule(modelData.domain, modelData.domain, v) }
+              onChanged: function(v) { if (root.panel) root.panel.cursorTo(root.rowIndex); if (!root.disabled) { root.focusIndex = root.browserCount() + 1 + index; root.editRule(modelData.domain, modelData.domain, v) }; if (root.panel) root.panel.restoreFocus() }
             }
 
             Button {
@@ -697,7 +705,7 @@ Item {
               background: root.panel ? root.panel.background : Commons.Color.background
               accent: root.accent
               fontFamily: root.fontFamily
-              onClicked: { if (root.panel) root.panel.cursorTo(root.rowIndex); root.focusIndex = root.browserCount() + 1 + index; if (!root.disabled) root.removeDomain(modelData.domain) }
+              onClicked: { if (root.panel) root.panel.cursorTo(root.rowIndex); if (!root.disabled) { root.focusIndex = root.browserCount() + 1 + index; root.removeDomain(modelData.domain) } }
             }
           }
         }

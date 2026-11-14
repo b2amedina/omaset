@@ -121,6 +121,11 @@ BorderSurface {
       fontFamily: root.fontFamily
       onChanged: function(v) {
         if (!root.panel) return
+        // Close the popup before committing. The commit rebuilds rows, which
+        // can recreate this row before the Popup's own close() runs; closing
+        // first clears panel.dropdownOpen (via onPopupOpenChanged) while this
+        // row is still alive, so the key catcher is not left blocked.
+        dropdown.close()
         // The dropdown emits the option value as a string. Map it back to the
         // stored value so numeric choices stay numeric and string tokens
         // (vim, claude, chromium) are not turned into NaN.
@@ -130,6 +135,7 @@ BorderSurface {
           if (String(vals[i]) === v) { val = vals[i]; break }
         root.panel.cursorTo(root.rowIndex)
         root.panel.commit(root.row, val)
+        root.panel.restoreFocus()
       }
       onHovered: function(h) { if (h && root.panel) root.panel.cursorTo(root.rowIndex) }
     }

@@ -93,6 +93,7 @@ BorderSurface {
         if (!root.panel) return
         root.panel.cursorTo(root.rowIndex)
         root.panel.selectMonitor(root.row.id, String(v))
+        root.panel.restoreFocus()
       }
     }
   }

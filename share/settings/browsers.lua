@@ -40,6 +40,7 @@ panel("browsers", "Browsers", 0xf0ac, nil, true, function()
       backend = "browser",
       component = "browserRouter",
       tracked = false,
+      disabledWhen = { setting = "default_browser", equals = "browser-router.desktop" },
     })
 
     -- Hidden settings (CLI/MCP access; the component renders them in the UI).

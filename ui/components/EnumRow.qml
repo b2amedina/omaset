@@ -112,6 +112,7 @@ BorderSurface {
           if (i >= 0) val = root.row.values[i]
         }
         root.panel.commit(root.row, val)
+        root.panel.restoreFocus()
       }
     }
   }

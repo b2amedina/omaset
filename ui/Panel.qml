@@ -567,6 +567,11 @@ Item {
       function(key, fallback) { return root.tr.t(key, fallback) },
       function(key, count, fallback) { return root.tr.tn(key, count, fallback) },
       function(value) { return root.formatNumber(value) })
+    // A rebuild recreates the row delegates, so any dropdown popup owned by a
+    // row is gone. Clear the open flag here — the owning row's
+    // onPopupOpenChanged may not fire again if the row was destroyed while the
+    // popup was open, which would otherwise leave the key catcher blocked.
+    root.dropdownOpen = false
     clampRow()
     applyPendingSelect()
   }
@@ -577,10 +582,43 @@ Item {
   }
 
   // ---- writes ----------------------------------------------------------
+  // Recompute every setting's `disabled` from its `disabledWhen` rule against
+  // the current (possibly optimistically-updated) values in the schema. The
+  // backend computes `disabled` at schema-build time, so after a local write
+  // the dependent rows must be re-evaluated here too, or they stay interactive
+  // for the round-trip latency of the next `schema` call.
+  function refreshDisabled() {
+    if (!root.schema || !root.schema.panels) return
+    var panels = root.schema.panels
+    function valueOfSetting(id) {
+      for (var pi = 0; pi < panels.length; pi++) {
+        var ss = panels[pi].settings || []
+        for (var j = 0; j < ss.length; j++)
+          if (ss[j] && ss[j].id === id) return ss[j].value
+      }
+      return null
+    }
+    for (var pi = 0; pi < panels.length; pi++) {
+      var settings = panels[pi].settings || []
+      for (var i = 0; i < settings.length; i++) {
+        var s = settings[i]
+        if (!s || !s.disabledWhen) continue
+        var val = valueOfSetting(s.disabledWhen.setting)
+        var d = false
+        if (s.disabledWhen.equals !== undefined && s.disabledWhen.equals !== null)
+          d = (String(val) !== String(s.disabledWhen.equals))
+        else if (s.disabledWhen.notEquals !== undefined && s.disabledWhen.notEquals !== null)
+          d = (String(val) === String(s.disabledWhen.notEquals))
+        s.disabled = d
+      }
+    }
+  }
+
   function setEffective(key, v) {
     var n = cloneObj(effective)
     n[key] = v
     root.effective = n
+    refreshDisabled()
     rebuildRows()
   }
 
@@ -588,6 +626,7 @@ Item {
     var p = activePanel()
     if (p) for (var i = 0; i < p.settings.length; i++)
       if (p.settings[i].id === id) p.settings[i].value = v
+    refreshDisabled()
     rebuildRows()
   }
 
@@ -705,6 +744,14 @@ Item {
   function endEdit() {
     if (editingRow < 0) return
     editingRow = -1
+    Qt.callLater(function() { if (keyCatcher) keyCatcher.forceActiveFocus() })
+  }
+
+  // Return Qt focus to the key catcher after a selection commits (a dropdown
+  // popup closes, a segment is picked, a toggle is clicked, a slider releases),
+  // so j/k/h/l keep driving the panel cursor instead of being trapped in the
+  // just-used control.
+  function restoreFocus() {
     Qt.callLater(function() { if (keyCatcher) keyCatcher.forceActiveFocus() })
   }
 
