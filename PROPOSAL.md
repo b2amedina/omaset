@@ -4,7 +4,7 @@
 **Marketplace verify issue:** https://github.com/omacom/omarchy-plugin-marketplace/issues/14562  
 **Current master commit:** `440e51589aa1299b7665353cef4f64047672481a`  
 **X posts:** (add permalinks here)  
-**Demo video:** `media/omaset-0.3.0-demo.mp4` (attach to the issue when submitting)
+**Demo video:** https://raw.githubusercontent.com/b2amedina/omaset/master/media/omaset-0.3.0-demo.mp4 (36s walkthrough)
 
 ---
 
