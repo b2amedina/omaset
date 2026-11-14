@@ -26,6 +26,13 @@ local function omarchy()
 end
 
 local function is_declared(setting, value)
+  -- Values named in custom_values use the underlying store, not the omarchy
+  -- command, even though they appear among the declared options.
+  for _, cv in ipairs(setting.custom_values or {}) do
+    if tostring(cv) == tostring(value) then
+      return false
+    end
+  end
   for _, v in ipairs(types.option_values(setting)) do
     if tostring(v) == tostring(value) then
       return true
@@ -43,8 +50,9 @@ end
 local function write_custom(setting, value)
   local c = setting.custom
   if c.xdg then
+    local desktop = c.desktop or value
     local out, code = util.run_capture("env -u BROWSER XDG_CURRENT_DESKTOP= xdg-settings set "
-      .. c.xdg .. " " .. util.shell_quote(value))
+      .. c.xdg .. " " .. util.shell_quote(desktop))
     if code ~= 0 then
       return nil, "could not set " .. setting.id .. ": " .. (out or "")
     end

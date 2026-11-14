@@ -105,7 +105,7 @@ custom_options_of() {
 capture_out schema
 SCHEMA="$OUT"
 assert_eq "$(echo "$SCHEMA" | jq -r '[.panels[] | select(.id=="defaults") | .settings[].id] | sort | join(",")')" \
-  "default_agent,default_browser,default_dictation,default_editor,default_terminal" "defaults panel lists the five settings"
+  "default_agent,default_dictation,default_editor,default_terminal" "defaults panel lists the four settings"
 assert_eq "$(echo "$SCHEMA" | jq -r '[.panels[] | select(.id=="defaults") | .settings[] | .section] | unique | join(",")')" \
   "Default applications" "defaults settings share one section"
 

@@ -267,6 +267,13 @@ function M.search(core, args)
         add(hits, olabel, 50)
         add(hits, i18n.t_lang(lang, "setting." .. s.id .. ".option." .. tostring(value), olabel), 50)
       end
+      -- Keyed settings: match against their keys too (e.g. browser-router
+      -- rule domains), so a domain search finds its rule.
+      if s.keyed then
+        for _, k in ipairs(core.keys(s) or {}) do
+          add(hits, k, 60)
+        end
+      end
       if s.subsettings then
         for sub, spec in pairs(s.subsettings) do
           add(hits, spec.label, 70)
@@ -453,7 +460,11 @@ function M.changed(core)
   local out = {}
   for _, p in ipairs(core.panels()) do
     for _, s in ipairs(p.settings) do
-      if s.keyed then
+      -- Settings marked `tracked = false` are not base Omarchy state (e.g.
+      -- the browser-router config omaset owns), so they never show as changed.
+      if s.tracked == false then
+        -- skip
+      elseif s.keyed then
         for _, k in ipairs(core.keys(s) or {}) do
           local cur = core.read_value(s, k)
           local def = core.read_default(s, k)
@@ -1005,6 +1016,142 @@ local OPS = {
     inputSchema = { type = "object", properties = {} },
     run = function(core)
       return M.hyprsunset_apply(core)
+    end,
+  },
+  {
+    name = "browser_list",
+    description = "List configured browsers, rules, and fallback.",
+    inputSchema = { type = "object", properties = {} },
+    run = function(core)
+      local browser = require("omaset.browser")
+      return browser.read()
+    end,
+  },
+  {
+    name = "browser_enable",
+    description = "Enable a browser for routing.",
+    inputSchema = { type = "object", properties = { id = { type = "string" } }, required = { "id" } },
+    run = function(core, args)
+      local browser = require("omaset.browser")
+      local cfg, err = browser.read()
+      if not cfg then return nil, err end
+      local ok, werr = browser.enable(cfg, args.id)
+      if not ok then return nil, werr end
+      local wok, werr2 = browser.write(cfg)
+      if not wok then return nil, werr2 end
+      return { ok = true, id = args.id }
+    end,
+  },
+  {
+    name = "browser_install",
+    description = "Install a browser (Omarchy's floating terminal) and enable it.",
+    inputSchema = { type = "object", properties = { id = { type = "string" } }, required = { "id" } },
+    run = function(core, args)
+      local browser = require("omaset.browser")
+      local iok, ierr = browser.install(args.id)
+      if not iok then return nil, ierr end
+      local cfg, err = browser.read()
+      if not cfg then return nil, err end
+      local ok, werr = browser.enable(cfg, args.id)
+      if not ok then return nil, werr end
+      local wok, werr2 = browser.write(cfg)
+      if not wok then return nil, werr2 end
+      return { ok = true, id = args.id }
+    end,
+  },
+  {
+    name = "browser_disable",
+    description = "Disable a browser (keeps its rules; hides it from the router).",
+    inputSchema = { type = "object", properties = { id = { type = "string" } }, required = { "id" } },
+    run = function(core, args)
+      local browser = require("omaset.browser")
+      local cfg, err = browser.read()
+      if not cfg then return nil, err end
+      local ok, werr = browser.disable(cfg, args.id)
+      if not ok then return nil, werr end
+      local wok, werr2 = browser.write(cfg)
+      if not wok then return nil, werr2 end
+      return { ok = true, id = args.id }
+    end,
+  },
+  {
+    name = "browser_set_label",
+    description = "Set or clear a browser's display label.",
+    inputSchema = { type = "object", properties = { id = { type = "string" }, label = { type = "string" } }, required = { "id" } },
+    run = function(core, args)
+      local browser = require("omaset.browser")
+      local cfg, err = browser.read()
+      if not cfg then return nil, err end
+      browser.set_label(cfg, args.id, args.label)
+      local wok, werr = browser.write(cfg)
+      if not wok then return nil, werr end
+      return { ok = true, id = args.id, label = args.label }
+    end,
+  },
+  {
+    name = "browser_rule_add",
+    description = "Add domains to a browser's routing rules.",
+    inputSchema = { type = "object", properties = { browser = { type = "string" }, domains = { type = "array", items = { type = "string" } } }, required = { "browser", "domains" } },
+    run = function(core, args)
+      local browser = require("omaset.browser")
+      local cfg, err = browser.read()
+      if not cfg then return nil, err end
+      local ok, werr = browser.add_rule(cfg, args.browser, args.domains)
+      if not ok then return nil, werr end
+      local wok, werr2 = browser.write(cfg)
+      if not wok then return nil, werr2 end
+      return { ok = true, browser = args.browser, domains = args.domains }
+    end,
+  },
+  {
+    name = "browser_rule_remove",
+    description = "Remove domains from routing rules.",
+    inputSchema = { type = "object", properties = { domains = { type = "array", items = { type = "string" } } }, required = { "domains" } },
+    run = function(core, args)
+      local browser = require("omaset.browser")
+      local cfg, err = browser.read()
+      if not cfg then return nil, err end
+      browser.remove_rule(cfg, args.domains)
+      local wok, werr = browser.write(cfg)
+      if not wok then return nil, werr end
+      return { ok = true, domains = args.domains }
+    end,
+  },
+  {
+    name = "browser_rule_edit",
+    description = "Edit a rule: rename a domain or move it to a different browser.",
+    inputSchema = { type = "object", properties = { domain = { type = "string" }, newDomain = { type = "string" }, browser = { type = "string" } }, required = { "domain" } },
+    run = function(core, args)
+      local browser = require("omaset.browser")
+      local cfg, err = browser.read()
+      if not cfg then return nil, err end
+      local ok, werr = browser.edit_rule(cfg, args.domain, args.newDomain, args.browser)
+      if not ok then return nil, werr end
+      local wok, werr2 = browser.write(cfg)
+      if not wok then return nil, werr2 end
+      return { ok = true }
+    end,
+  },
+  {
+    name = "browser_status",
+    description = "List all known browsers with installed, enabled, and label status.",
+    inputSchema = { type = "object", properties = {} },
+    run = function(core)
+      local browser = require("omaset.browser")
+      local cfg, err = browser.read()
+      if not cfg then return nil, err end
+      local out = {}
+      for _, id in ipairs(browser.known_ids()) do
+        out[#out + 1] = {
+          id = id,
+          name = browser.name_for(id),
+          command = browser.command_for(id),
+          installed = browser.is_installed(id),
+          enabled = browser.is_enabled(cfg, id),
+          label = browser.display_name(cfg, id),
+        }
+      end
+      return { browsers = out }
     end,
   },
 }

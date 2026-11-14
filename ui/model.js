@@ -209,7 +209,8 @@ function choiceRow(id, sub, key, label, spec, value, tr, tn, fmt) {
   return { kind: kind, id: id, sub: sub, label: label,
            description: L(tr, "setting." + id + ".description", spec.description),
            segmented: kind === "enum",
-           options: withCustom.labels, values: withCustom.values, value: value }
+           options: withCustom.labels, values: withCustom.values, value: value,
+           component: spec.component }
 }
 
 function fieldRow(id, sub, key, label, type, spec, effective, timeFormat, tr, tn, fmt) {
@@ -217,7 +218,8 @@ function fieldRow(id, sub, key, label, type, spec, effective, timeFormat, tr, tn
   if (type === "bool")
     return { kind: "bool", id: id, sub: sub, label: label,
              description: desc,
-             value: valueOf(effective, id, sub, key, spec.default) }
+             value: valueOf(effective, id, sub, key, spec.default),
+             component: spec.component }
   if (type === "enum") {
     // Grouped sub-settings use setting.<group>.<sub>.* keys for the label,
     // but option labels share the top-level setting.<group>.option.* space.
@@ -227,12 +229,14 @@ function fieldRow(id, sub, key, label, type, spec, effective, timeFormat, tr, tn
     return { kind: "enum", id: id, sub: sub, label: label,
              description: desc,
              options: withCustom.labels, values: withCustom.values, segmented: true,
-             value: val }
+             value: val,
+             component: spec.component }
   }
   if (type === "time")
     return { kind: "time", id: id, sub: sub, label: label,
              description: desc, timeFormat: timeFormat,
-             value: valueOf(effective, id, sub, key, spec.default) }
+             value: valueOf(effective, id, sub, key, spec.default),
+             component: spec.component }
   if ((type === "int" || type === "float") && hasChoices(spec))
     return choiceRow(id, sub, key, label, spec,
                      valueOf(effective, id, sub, key, spec.default), tr, tn, fmt)
@@ -246,7 +250,8 @@ function fieldRow(id, sub, key, label, type, spec, effective, timeFormat, tr, tn
     value: valueOf(effective, id, sub, key, spec.default),
     min: min, max: max,
     integer: type === "int",
-    step: type === "int" ? (range > 200 ? 5 : 1) : 0.01
+    step: type === "int" ? (range > 200 ? 5 : 1) : 0.01,
+    component: spec.component
   }
 }
 
@@ -263,6 +268,9 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
   for (var i = 0; i < settings.length; i++) {
     var s = settings[i]
     if (!s) continue
+    // Hidden settings are exposed in the schema for CLI/MCP but not rendered
+    // as rows (e.g. a custom component renders them instead).
+    if (s.hidden) continue
 
     var sec = (s.section !== undefined && s.section !== null) ? s.section : ""
     if (sec !== currentSection) {
@@ -284,7 +292,7 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
     }
 
     if (s.keyed) {
-      rows.push({ kind: "keyed", id: s.id, label: L(tr, "setting." + s.id, s.label) })
+      rows.push({ kind: "keyed", id: s.id, label: L(tr, "setting." + s.id, s.label), component: s.component })
       var lists = choiceLists(s, s.id, tr)
       var optLabels = lists.labels
       var optValues = lists.values
@@ -296,7 +304,7 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
         // Monitor-grouped: pick a monitor, then show its workspaces 1..10
         // (labelled by slot; the stored key is the global id).
         var sel = (selectedMonitor && selectedMonitor[s.id]) || mons[0].name
-        rows.push({ kind: "monitor", id: s.id, monitors: mons, selected: sel })
+        rows.push({ kind: "monitor", id: s.id, monitors: mons, selected: sel, component: s.component })
         var mon = null
         for (var m = 0; m < mons.length; m++)
           if (mons[m].name === sel) { mon = mons[m]; break }
@@ -309,7 +317,8 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
             kind: "enum", id: s.id, key: gid, slot: w + 1,
             label: workspaceLabel(w + 1),
             options: ch.labels, values: ch.values, segmented: true,
-            value: val
+            value: val,
+            component: s.component
           })
         }
       } else {
@@ -322,7 +331,8 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
             kind: "enum", id: s.id, key: key,
             label: workspaceLabel(key),
             options: ch.labels, values: ch.values, segmented: true,
-            value: val
+            value: val,
+            component: s.component
           })
         }
       }
@@ -331,24 +341,65 @@ function rowsFor(panel, effective, keyedMap, timeFormat, monitorMap, selectedMon
 
     if (s.type === "bool") {
       rows.push({ kind: "bool", id: s.id, label: L(tr, "setting." + s.id, s.label),
-                  description: L(tr, "setting." + s.id + ".description", s.description), value: s.value })
+                  description: L(tr, "setting." + s.id + ".description", s.description), value: s.value,
+                  component: s.component })
     } else if (s.type === "string") {
       rows.push({ kind: "string", id: s.id, label: L(tr, "setting." + s.id, s.label),
-                  description: L(tr, "setting." + s.id + ".description", s.description), value: s.value })
+                  description: L(tr, "setting." + s.id + ".description", s.description), value: s.value,
+                  component: s.component })
     } else if (s.type === "enum") {
-      if (hasChoices(s)) {
-        rows.push(choiceRow(s.id, undefined, undefined, L(tr, "setting." + s.id, s.label), s, s.value, tr, tn, fmt))
+      // filterByEnabled: only show options whose browser_<id>_label is installed.
+      var spec = s
+      if (s.filterByEnabled) {
+        var installedCount = 0
+        var filteredOpts = []
+        var allOpts = s.options || []
+        for (var fi = 0; fi < allOpts.length; fi++) {
+          var fo = allOpts[fi]
+          var fval = (fo && typeof fo === "object") ? fo.value : fo
+          if (fval === "browser-router.desktop") continue  // added below if 2+ installed
+          // check if this browser is installed
+          var labelSetting = null
+          for (var si = 0; si < settings.length; si++) {
+            if (settings[si] && settings[si].id === "browser_" + fval + "_label") {
+              labelSetting = settings[si]; break
+            }
+          }
+          if (labelSetting && labelSetting.installed) {
+            filteredOpts.push(fo)
+            installedCount++
+          }
+        }
+        // Add browser-router only when 2+ browsers are installed
+        if (installedCount >= 2) {
+          for (var fi2 = 0; fi2 < allOpts.length; fi2++) {
+            var fo2 = allOpts[fi2]
+            var fval2 = (fo2 && typeof fo2 === "object") ? fo2.value : fo2
+            if (fval2 === "browser-router.desktop") {
+              filteredOpts.push(fo2)
+              break
+            }
+          }
+        }
+        spec = {}
+        for (var ck in s) spec[ck] = s[ck]
+        spec.options = filteredOpts
+      }
+      if (hasChoices(spec)) {
+        rows.push(choiceRow(spec.id, undefined, undefined, L(tr, "setting." + spec.id, spec.label), spec, s.value, tr, tn, fmt))
       } else {
         // Plain-string enum: localize labels, keep stored tokens as values.
         var lists2 = choiceLists(s, s.id, tr, tn, fmt)
         var with2 = withCustomChoice(lists2.labels, lists2.values, s.value, tr, tn, fmt)
         rows.push({ kind: "enum", id: s.id, label: L(tr, "setting." + s.id, s.label),
                     description: L(tr, "setting." + s.id + ".description", s.description),
-                    options: with2.labels, values: with2.values, segmented: true, value: s.value })
+                    options: with2.labels, values: with2.values, segmented: true, value: s.value,
+                    component: s.component })
       }
     } else if (s.type === "time") {
       rows.push({ kind: "time", id: s.id, label: L(tr, "setting." + s.id, s.label),
-                  description: L(tr, "setting." + s.id + ".description", s.description), timeFormat: timeFmt, value: s.value })
+                  description: L(tr, "setting." + s.id + ".description", s.description), timeFormat: timeFmt, value: s.value,
+                  component: s.component })
     } else if ((s.type === "int" || s.type === "float") && hasChoices(s)) {
       rows.push(choiceRow(s.id, undefined, undefined, L(tr, "setting." + s.id, s.label), s, s.value, tr, tn, fmt))
     } else if (s.type === "int" || s.type === "float") {

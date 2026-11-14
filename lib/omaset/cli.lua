@@ -492,6 +492,115 @@ local function cmd_mcp(flags, pos)
   mcp.serve(core)
 end
 
+local function cmd_browser(flags, pos)
+  local browser = require("omaset.browser")
+  local sub = pos[1]
+
+  if sub == "list" then
+    local cfg, err = browser.read()
+    if not cfg then die(err or "cannot read browser config") end
+    if flags["--json"] then
+      print(json.encode(cfg))
+      return
+    end
+    print("Enabled browsers:")
+    for _, id in ipairs(cfg.enabled or {}) do
+      local label = (cfg.labels or {})[id]
+      if label and label ~= "" then
+        print("  " .. id .. "  (label: " .. label .. ")")
+      else
+        print("  " .. id)
+      end
+    end
+    if #(cfg.enabled or {}) == 0 then
+      print("  (none)")
+    end
+    print("Rules:")
+    for _, r in ipairs(cfg.rules or {}) do
+      local label = (cfg.labels or {})[r.browser]
+      local display = (label and label ~= "") and label or r.browser
+      print("  " .. (r.domain or "") .. " -> " .. display)
+    end
+    if #(cfg.rules or {}) == 0 then
+      print("  (none)")
+    end
+    print("Fallback: " .. tostring(cfg.fallback or "chooser"))
+    return
+  end
+
+  if sub == "enable" then
+    if not pos[2] then die("usage: omaset browser enable <id>") end
+    local cfg, err = browser.read()
+    if not cfg then die(err or "cannot read browser config") end
+    local ok, werr = browser.enable(cfg, pos[2])
+    if not ok then die(werr) end
+    local wok, werr2 = browser.write(cfg)
+    if not wok then die(werr2) end
+    print(json.encode({ ok = true, id = pos[2] }))
+    return
+  end
+
+  if sub == "disable" then
+    if not pos[2] then die("usage: omaset browser disable <id>") end
+    local cfg, err = browser.read()
+    if not cfg then die(err or "cannot read browser config") end
+    local ok, werr = browser.disable(cfg, pos[2])
+    if not ok then die(werr) end
+    local wok, werr2 = browser.write(cfg)
+    if not wok then die(werr2) end
+    print(json.encode({ ok = true, id = pos[2] }))
+    return
+  end
+
+  if sub == "label" then
+    if not pos[2] then die("usage: omaset browser label <id> <label>") end
+    local cfg, err = browser.read()
+    if not cfg then die(err or "cannot read browser config") end
+    local ok, werr = browser.set_label(cfg, pos[2], pos[3])
+    if not ok then die(werr) end
+    local wok, werr2 = browser.write(cfg)
+    if not wok then die(werr2) end
+    print(json.encode({ ok = true, id = pos[2], label = pos[3] }))
+    return
+  end
+
+  if sub == "rule" then
+    local rsub = pos[2]
+    if rsub == "add" then
+      if not pos[3] then die("usage: omaset browser rule add <browser> <domain>...") end
+      local cfg, err = browser.read()
+      if not cfg then die(err or "cannot read browser config") end
+      local domains = {}
+      for i = 4, #pos do
+        domains[#domains + 1] = pos[i]
+      end
+      local ok, werr = browser.add_rule(cfg, pos[3], domains)
+      if not ok then die(werr) end
+      local wok, werr2 = browser.write(cfg)
+      if not wok then die(werr2) end
+      print(json.encode({ ok = true, browser = pos[3], domains = domains }))
+      return
+    end
+    if rsub == "remove" then
+      local domains = {}
+      for i = 3, #pos do
+        domains[#domains + 1] = pos[i]
+      end
+      if #domains == 0 then die("usage: omaset browser rule remove <domain>...") end
+      local cfg, err = browser.read()
+      if not cfg then die(err or "cannot read browser config") end
+      browser.remove_rule(cfg, domains)
+      local wok, werr = browser.write(cfg)
+      if not wok then die(werr) end
+      print(json.encode({ ok = true, domains = domains }))
+      return
+    end
+    die("unknown browser subcommand: " .. tostring(rsub) .. " (expected list, add, remove, rule)")
+  end
+
+  die("unknown browser subcommand: " .. tostring(sub) .. " (expected list, add, remove, rule)")
+end
+
 local function cmd_rpc()
   require("omaset.rpc").serve(core)
 end
@@ -530,6 +639,7 @@ local function usage_text()
     {
       "MCP & RPC (for frontends)",
       {
+        { "omaset browser", "Manage the browser router (list, add, remove, rule)" },
         { "omaset mcp", "Run the MCP server over stdio for agents" },
         { "omaset mcp install [<agent>...]", "Register the server via the agent's own mcp add" },
         { "omaset mcp doctor", "Report which agents are wired up" },
@@ -893,6 +1003,8 @@ function M.main(arg)
     cmd_hyprsunset_apply(flags, pos)
   elseif cmd == "mcp" then
     cmd_mcp(flags, pos)
+  elseif cmd == "browser" then
+    cmd_browser(flags, pos)
   elseif cmd == "rpc" then
     cmd_rpc()
   else

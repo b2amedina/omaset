@@ -42,7 +42,7 @@ M.sub_keys = sub_keys
 -- each section's settings by id, and order the sections (the nil-section
 -- included) by their alphabetically-first member id. Deterministic, so list /
 -- schema / search / changed / the UI all agree.
-local function sort_panel_settings(settings)
+local function sort_panel_settings(panel, settings)
   local groups = {}
   local order = {}
   for _, s in ipairs(settings) do
@@ -52,6 +52,9 @@ local function sort_panel_settings(settings)
       order[#order + 1] = sec
     end
     groups[sec][#groups[sec] + 1] = s
+  end
+  if panel and panel.keepOrder then
+    return settings
   end
   for _, list in pairs(groups) do
     table.sort(list, function(a, b) return a.id < b.id end)
@@ -101,7 +104,7 @@ function M.load()
     io.stderr:write("omaset: " .. err .. "\n")
   end
   for _, p in ipairs(dsl.panels) do
-    p.settings = sort_panel_settings(p.settings)
+    p.settings = sort_panel_settings(p, p.settings)
   end
   return dsl.panels
 end
@@ -272,7 +275,7 @@ function M.schema()
   for _, p in ipairs(dsl.panels) do
     local icon = p.icon
     if type(icon) == "number" then icon = utf8_char(icon) end
-    local panel = { id = p.id, title = p.title, icon = icon, settings = {} }
+    local panel = { id = p.id, title = p.title, icon = icon, description = p.description, settings = {} }
     for _, s in ipairs(p.settings) do
       local entry = {}
       for k, v in pairs(s) do
@@ -306,6 +309,26 @@ function M.schema()
         entry.value = jnull(v)
         local customs = M.custom_values(s, nil, v, entries)
         if #customs > 0 then entry.customOptions = json.array(customs) end
+      end
+      -- Compute installed status for browser label settings.
+      local bid = s.id:match("^browser_(.+)_label$")
+      if bid then
+        local browser_mod = require("omaset.browser")
+        entry.installed = browser_mod.is_installed(bid)
+      end
+      -- Evaluate disabledWhen: a generic condition on another setting's value.
+      if s.disabledWhen then
+        local ref = M.find_setting(s.disabledWhen.setting)
+        if ref then
+          local val = M.read_value(ref)
+          local disabled = false
+          if s.disabledWhen.equals ~= nil then
+            disabled = (val ~= s.disabledWhen.equals)
+          elseif s.disabledWhen.notEquals ~= nil then
+            disabled = (val == s.disabledWhen.notEquals)
+          end
+          entry.disabled = disabled
+        end
       end
       panel.settings[#panel.settings + 1] = entry
     end

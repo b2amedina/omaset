@@ -138,10 +138,20 @@ Item {
   // Transient write/read error shown in the footer (e.g. a backend command
   // that timed out). Cleared by noticeTimer a few seconds after it is set.
   property string notice: ""
+  // A custom row component with a pending "install browser" prompt. The key
+  // handler intercepts y/n while this is set (see Keys.onPressed below).
+  property var pendingInstall: null
+  property var browserComponent: null
   property Timer noticeTimer: Timer {
     interval: 5000
     onTriggered: root.notice = ""
   }
+  // Custom row components call the RPC service through this, since `rpc` is
+  // an id (not a property) and is not reachable from a child component.
+  function callService(method, params, cb) {
+    rpc.call(method, params, cb)
+  }
+
   function notifyError(msg) {
     root.notice = String(msg || "error")
     root.noticeTimer.restart()
@@ -713,14 +723,32 @@ Item {
     if (idx.length === 0) return
     var pos = idx.indexOf(selectedRow)
     if (pos < 0) pos = dy > 0 ? -1 : 0
+    // A custom component owns vertical movement within its internal rows.
+    var row = currentRow()
+    var leftComponent = false
+    if (row && row.component && root.browserComponent) {
+      if (root.browserComponent.moveVertical(dy)) return
+      root.browserComponent.leave()
+      leftComponent = true
+    }
     var np = Math.max(0, Math.min(idx.length - 1, pos + dy))
     selectedRow = idx[np]
+    // Moving the cursor onto a custom component enters it.
+    if (!leftComponent) {
+      var nrow = rows[selectedRow]
+      if (nrow && nrow.component && root.browserComponent)
+        root.browserComponent.enter()
+    }
   }
 
   function moveH(dx) {
     if (searchMode) return
     if (focusPane === "sidebar") return
     var row = currentRow()
+    if (row && row.component && root.browserComponent) {
+      root.browserComponent.moveHorizontal(dx)
+      return
+    }
     if (row && row.kind === "slider") { stepSlider(row, dx); return }
     if (row && (row.kind === "enum" || row.kind === "dropdown")) { cycleEnum(row, dx); return }
     if (row && row.kind === "monitor") { cycleMonitor(row, dx); return }
@@ -788,6 +816,11 @@ Item {
     }
     var row = currentRow()
     if (!row) return
+    if (row.component && root.browserComponent) {
+      if (root.browserComponent.active) root.browserComponent.activateFocus()
+      else root.browserComponent.enter()
+      return
+    }
     if (row.kind === "bool") commit(row, !row.value)
     else if (row.kind === "enum") cycleEnum(row, 1)
     else if (row.kind === "monitor") cycleMonitor(row, 1)
@@ -799,6 +832,11 @@ Item {
 
   function resetCurrent() {
     if (searchMode) return
+    var row = currentRow()
+    if (row && row.component && root.browserComponent) {
+      root.browserComponent.removeFocus()
+      return
+    }
     resetRow(currentRow())
   }
 
@@ -1182,6 +1220,30 @@ Item {
         }
         if (root.editingRow >= 0) return
         if (root.prefEditing >= 0) return
+        if (root.pendingInstall) {
+          if (event.text === "y" || event.text === "Y") {
+            var pc = root.pendingInstall
+            if (typeof pc.installBrowser === "function")
+              pc.installBrowser(pc.pendingInstallId)
+            event.accepted = true; return
+          }
+          if (event.text === "n" || event.text === "N"
+              || event.key === Qt.Key_Escape) {
+            var pc2 = root.pendingInstall
+            if (typeof pc2.cancelInstall === "function") pc2.cancelInstall()
+            event.accepted = true; return
+          }
+          event.accepted = true; return
+        }
+        // Esc inside an active custom component (e.g. browser router) exits
+        // its internal navigation instead of closing the window.
+        if (root.browserComponent && root.browserComponent.active) {
+          if (event.key === Qt.Key_Escape) {
+            root.browserComponent.leave()
+            event.accepted = true
+            return
+          }
+        }
         if (root.searchMode) {
           if (event.key === Qt.Key_Escape) { root.exitSearch(); event.accepted = true; return }
           if (event.key === Qt.Key_Backspace) {
@@ -1231,7 +1293,7 @@ Item {
         PanelKeyCatcher {
           id: keyCatcher
           anchors.fill: parent
-          blocked: root.schemaError !== "" || root.searchMode || root.changedMode || root.prefsMode || root.helpMode || root.editingRow >= 0 || root.prefEditing >= 0 || root.dropdownOpen
+          blocked: root.schemaError !== "" || root.searchMode || root.changedMode || root.prefsMode || root.helpMode || root.editingRow >= 0 || root.prefEditing >= 0 || root.dropdownOpen || !!root.pendingInstall
 
         onMoveRequested: function(dx, dy) {
           if (dy !== 0) root.moveV(dy)
@@ -1370,9 +1432,26 @@ Item {
                 }
               }
 
+              // Panel-level description (muted text below the title).
+              Text {
+                id: panelDescription
+                width: parent.width - Style.spacing.panelPadding * 2
+                anchors.left: parent.left
+                anchors.leftMargin: Style.spacing.panelPadding
+                visible: !root.searchMode && !root.changedMode && !root.prefsMode && !root.helpMode
+                         && root.activePanel() && !!root.activePanel().description
+                textFormat: Text.PlainText
+                text: (root.activePanel() && root.activePanel().description) ? root.activePanel().description : ""
+                color: Qt.darker(root.foreground, 1.5)
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                wrapMode: Text.WordWrap
+                bottomPadding: Style.spacing.sm
+              }
+
               Item {
                 width: parent.width
-                height: parent.height - Style.space(44)
+                height: parent.height - Style.space(44) - (panelDescription.visible ? panelDescription.implicitHeight + Style.spacing.sm : 0)
 
                 ScrollView {
                   id: scrollArea
@@ -1405,6 +1484,8 @@ Item {
                         required property int index
                         width: rowsColumn.width
                         spacing: Style.space(6)
+                        opacity: (modelData && modelData.disabled) ? 0.4 : 1.0
+                        enabled: !(modelData && modelData.disabled === true)
 
                         PanelSectionHeader {
                           visible: modelData.kind === "group" || modelData.kind === "keyed" || modelData.kind === "section"
@@ -1418,39 +1499,53 @@ Item {
                         }
 
                         BoolRow {
-                          visible: modelData.kind === "bool"
+                          visible: modelData.kind === "bool" && !modelData.hidden
                           panel: root; row: modelData; rowIndex: index
                           width: parent.width
                         }
                         SliderRow {
-                          visible: modelData.kind === "slider"
+                          visible: modelData.kind === "slider" && !modelData.hidden
                           panel: root; row: modelData; rowIndex: index
                           width: parent.width
                         }
                         EnumRow {
-                          visible: modelData.kind === "enum"
+                          visible: modelData.kind === "enum" && !modelData.hidden
                           panel: root; row: modelData; rowIndex: index
                           width: parent.width
                         }
                         DropdownRow {
-                          visible: modelData.kind === "dropdown"
+                          visible: modelData.kind === "dropdown" && !modelData.hidden
                           panel: root; row: modelData; rowIndex: index
                           width: parent.width
                         }
                         MonitorRow {
-                          visible: modelData.kind === "monitor"
+                          visible: modelData.kind === "monitor" && !modelData.hidden
                           panel: root; row: modelData; rowIndex: index
                           width: parent.width
                         }
                         TimeRow {
-                          visible: modelData.kind === "time"
+                          visible: modelData.kind === "time" && !modelData.hidden
                           panel: root; row: modelData; rowIndex: index
                           width: parent.width
                         }
                         StringRow {
-                          visible: modelData.kind === "string"
+                          visible: modelData.kind === "string" && !modelData.hidden && !modelData.component
                           panel: root; row: modelData; rowIndex: index
                           width: parent.width
+                        }
+                        Loader {
+                          visible: !!modelData.component
+                          width: parent.width
+                          height: item ? item.implicitHeight : 0
+                          source: modelData.component ? "components/" + modelData.component + "Row.qml" : ""
+                          onLoaded: {
+                            if (item) {
+                              item.panel = root
+                              item.row = modelData
+                              item.rowIndex = index
+                              if (typeof item.reload === "function") Qt.callLater(item.reload)
+                            }
+                          }
                         }
                       }
                     }

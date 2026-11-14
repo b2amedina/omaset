@@ -45,29 +45,6 @@ panel("defaults", "Defaults", 0xf005, function()
     })
 
     setting({
-      id = "default_browser",
-      type = "enum",
-      label = "Default browser",
-      description = "Browser for links and Omarchy's Browser action.",
-      backend = "omarchy-defaults",
-      mode = "value",
-      default = "chromium",
-      command = "omarchy-default-browser {value}",
-      status = "omarchy-default-browser 2>/dev/null",
-      reset = "env -u BROWSER XDG_CURRENT_DESKTOP= xdg-settings set default-web-browser chromium.desktop",
-      custom = { xdg = "default-web-browser" },
-      options = {
-        { value = "chromium", label = "Chromium" },
-        { value = "chrome", label = "Chrome" },
-        { value = "brave", label = "Brave" },
-        { value = "brave-origin", label = "Brave Origin" },
-        { value = "edge", label = "Edge" },
-        { value = "firefox", label = "Firefox" },
-        { value = "zen", label = "Zen" },
-      },
-    })
-
-    setting({
       id = "default_dictation",
       type = "enum",
       label = "Default dictation",

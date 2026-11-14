@@ -65,7 +65,8 @@ Covers appearance, layout, bar, input, windows, power, display, behavior, and de
 | Power & Idle | screen and lock timeouts |
 | Display | night light on/off, schedule (start & end), temperature |
 | Omasnap | editor mode/window/backdrop, autosave, screenshot directory and filename pattern |
-| Defaults | agent, browser, terminal, editor, dictation (as in Omarchy's Setup > Defaults) |
+| Defaults | agent, terminal, editor, dictation (as in Omarchy's Setup > Defaults) |
+| Browsers | default browser, browser-router config (browser list, labels, domain routing rules) |
 | Behavior | focus, tearing, cursor hiding |
 
 ## Why Omaset

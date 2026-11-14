@@ -133,6 +133,20 @@ extends `omarchy`:
   `xdg-settings`, the same call Omarchy's provisioning makes. Reset never
   installs a browser.
 
+## `browser`
+
+Backs the *Browsers* panel's hidden settings (`browser_<id>_enabled`,
+`browser_<id>_label`, `browser_rules`). omaset owns the
+`~/.config/browser-router/config.json` file (enabled list, labels, rules,
+fallback); the `browser-router` wrapper script only reads it.
+
+- **Read** returns the enabled flag, the display label (nil when unset), or
+  the browser id a domain routes to.
+- **Write** enables/disables a browser, sets/clears a label, or
+  adds/removes/renames a domain rule. Disabling keeps the browser's rules.
+- **Keys** lists the configured rule domains.
+- **Validate** checks the value is one of the known browser ids.
+
 ## `workspace-layout`
 
 Per-workspace tiling layout, keyed by workspace number.

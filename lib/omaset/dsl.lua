@@ -4,14 +4,17 @@ local M = {}
 
 M.panels = {}
 
-local function panel(id, title, icon, fn)
-  -- The icon is optional; a third argument that is a function is the body
-  -- (older settings files wrote panel(id, title, fn)).
+local function panel(id, title, icon, desc, keepOrder, fn)
+  -- The icon, description, keepOrder flag, and body are all optional.
   if type(icon) == "function" then
-    fn = icon
-    icon = nil
+    fn = icon; icon = nil; desc = nil; keepOrder = nil
+  elseif type(desc) == "function" then
+    fn = desc; desc = nil; keepOrder = nil
+  elseif type(keepOrder) == "function" then
+    fn = keepOrder; keepOrder = nil
   end
-  local p = { id = id, title = title, icon = icon, settings = {} }
+  local p = { id = id, title = title, icon = icon, description = desc,
+              keepOrder = keepOrder == true, settings = {} }
   M.panels[#M.panels + 1] = p
   local prev = M._current
   M._current = p
@@ -66,6 +69,10 @@ function M.environment()
     section = section,
     setting = setting,
     feature = require("omaset.features"),
+    ipairs = ipairs,
+    pairs = pairs,
+    string = string,
+    table = table,
   }
 end
 

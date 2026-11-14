@@ -31,6 +31,14 @@ ln -s ~/.config/omarchy/plugins/b2amedina.omaset/bin/omaset ~/.local/bin/omaset
 | `omaset mcp doctor` | report which agents are wired up |
 | `omaset rpc` | run the JSON-RPC server the settings window uses |
 | `omaset ui` | open the settings window |
+| `omaset browser list` | show enabled browsers, routing rules, and fallback |
+| `omaset browser enable <id>` | enable a browser for routing |
+| `omaset browser disable <id>` | disable a browser (keeps its rules) |
+| `omaset browser install <id>` | install a browser and enable it |
+| `omaset browser set-label <id> <label>` | set or clear a browser's display label |
+| `omaset browser rule-add <browser> <domain...>` | add domains to a browser's rules |
+| `omaset browser rule-remove <domain...>` | remove domains from routing rules |
+| `omaset browser rule-edit <domain> <new-domain> <browser>` | rename or move a rule |
 
 Every command prints JSON; add `--json` where a command defaults to human text,
 or `--plain` to get just the bare value / `ok` (handy in scripts and prompts).
