@@ -298,7 +298,7 @@ Item {
   readonly property string newBrowserLabel: {
     for (var i = 0; i < root.browserOptions.length; i++)
       if (root.browserOptions[i].value === root.newBrowser) return root.browserOptions[i].label
-    return root.newBrowser === "" ? "browser" : root.newBrowser
+    return root.newBrowser === "" ? (root.panel ? root.panel.tr.t("ui.browserRouter.browser", "browser") : "browser") : root.newBrowser
   }
 
   readonly property var flatRules: {
@@ -443,7 +443,7 @@ Item {
               spacing: Style.spacing.xs
               Text {
                 textFormat: Text.PlainText
-                text: modelData.name + (modelData.installed ? "" : " (not installed)")
+                text: modelData.name + (modelData.installed ? "" : (root.panel ? root.panel.tr.t("ui.browserRouter.notInstalled", " (not installed)") : " (not installed)"))
                 color: root.fg
                 font.family: root.fontFamily
                 font.pixelSize: Style.font.body
@@ -469,7 +469,7 @@ Item {
               anchors.verticalCenter: parent.verticalCenter
               activeFocusOnPress: true
               text: (modelData.enabled && modelData.label && modelData.label !== modelData.name) ? modelData.label : ""
-              placeholderText: modelData.enabled ? "(none)" : "disabled"
+              placeholderText: modelData.enabled ? (root.panel ? root.panel.tr.t("ui.browserRouter.labelNone", "(none)") : "(none)") : (root.panel ? root.panel.tr.t("ui.browserRouter.labelDisabled", "disabled") : "disabled")
               foreground: root.fg
               accent: root.accent
               font.family: root.fontFamily
@@ -555,7 +555,7 @@ Item {
           text: root.newDomain
           onTextChanged: root.newDomain = text
           onAccepted: root.addRule()
-          placeholderText: "domain"
+          placeholderText: root.panel ? root.panel.tr.t("ui.browserRouter.domainPlaceholder", "domain") : "domain"
           foreground: root.fg
           accent: root.accent
           font.family: root.fontFamily
@@ -593,7 +593,7 @@ Item {
         Button {
           id: addBtn
           height: Style.space(28)
-          text: "+ Add"
+          text: root.panel ? root.panel.tr.t("ui.browserRouter.add", "+ Add") : "+ Add"
           bordered: true
           // Text uses the background color so it stays legible on the accent
           // fill across themes (accent and foreground can be identical).
