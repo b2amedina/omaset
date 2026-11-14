@@ -12,6 +12,29 @@
   and how to run the defaults helper.
 - i18n: translated the omasnap settings keys and the new tiled-fullscreen rounding
   keys across all 50 language catalogs (not just English fallbacks).
+- Custom values are first-class: an enum accepts any string and validation is
+  the backend's job. Reads never drop a value — an unrecognized value reads
+  back as stored and is offered as a "Custom" choice, so it can be selected
+  again. Re-setting the current value is a no-op, and undo no longer skips a
+  value merely because it isn't a declared option.
+- New Defaults panel wraps Omarchy's default-application commands (agent,
+  browser, terminal, editor, dictation). Declared values go through the
+  omarchy-default-* command; custom values are written to the store that
+  command reads. Reset restores the provisioned state — browser reset sets
+  chromium.desktop via xdg-settings and never installs.
+- New Browsers panel: the default browser plus a browser-router config panel
+  (browser list, labels, domain routing rules), translated across all 50
+  language catalogs. omaset owns the JSON config and browser-router is a thin
+  wrapper; rules key on the stable browser id and show the label (or name) in
+  the UI. Search matches rule domains, and the hidden browser_* settings stay
+  in the schema for CLI/MCP (tracked=false).
+- The browser-router section is editable only while "Browser router" is the
+  default browser; otherwise it is dimmed and keyboard navigation skips it.
+  Disabled rows are generic (schema disabledWhen drives row interactivity
+  app-wide) and re-evaluate immediately when the default changes.
+- After any selection, keyboard focus returns to the row so j/k/h/l keep
+  navigating, and a dropdown can no longer leave the key catcher blocked when
+  its row is rebuilt mid-selection.
 
 
 ## 0.2.3 — 2026-11-10
