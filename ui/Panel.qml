@@ -446,7 +446,7 @@ Item {
   }
 
   property Timer changedTimer: Timer {
-    interval: 500
+    interval: 100
     repeat: false
     onTriggered: root.refreshChanged()
   }
@@ -563,6 +563,10 @@ Item {
 
   // ---- row model -------------------------------------------------------
   function rebuildRows() {
+    // Preserve the viewport across a rebuild: recreating the delegates can
+    // reset contentY to 0, which makes the panel "jump" after a toggle.
+    var flick = scrollArea ? scrollArea.contentItem : null
+    var savedY = (flick && flick.contentY !== undefined) ? flick.contentY : 0
     root.rows = Model.rowsFor(activePanel(), effective, keyed, root.timeFormat, root.keyedMonitors, root.selectedMonitor,
       function(key, fallback) { return root.tr.t(key, fallback) },
       function(key, count, fallback) { return root.tr.tn(key, count, fallback) },
@@ -574,6 +578,13 @@ Item {
     root.dropdownOpen = false
     clampRow()
     applyPendingSelect()
+    if (flick) {
+      Qt.callLater(function() {
+        if (!flick || flick.contentY === undefined) return
+        var maxY = Math.max(0, flick.contentHeight - flick.height)
+        flick.contentY = Math.max(0, Math.min(savedY, maxY))
+      })
+    }
   }
 
   // Panel icon glyph, declared in the panel's settings file (no hardcoded map).
@@ -1167,12 +1178,15 @@ Item {
       if (!item || !scrollArea) return
       var flick = scrollArea.contentItem
       if (!flick || flick.contentY === undefined) return
+      if (!item.height || item.height <= 0) return
       var pt = item.mapToItem(flick.contentItem || flick, 0, 0)
       var top = pt.y
       var bottom = top + (item.height || 0)
       var viewTop = flick.contentY
       var viewBottom = viewTop + flick.height
       var margin = 12
+      // Already in view: leave the viewport alone.
+      if (top >= viewTop + margin && bottom <= viewBottom - margin) return
       if (top < viewTop + margin) flick.contentY = Math.max(0, top - margin)
       else if (bottom > viewBottom - margin) flick.contentY = bottom + margin - flick.height
     })
