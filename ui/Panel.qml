@@ -1159,16 +1159,23 @@ Item {
   // ---- scroll ----------------------------------------------------------
   function ensureRowVisible(item) {
     if (!item || !scrollArea) return
-    var flick = scrollArea.contentItem
-    if (!flick || flick.contentY === undefined) return
-    var pt = item.mapToItem(flick.contentItem || flick, 0, 0)
-    var top = pt.y
-    var bottom = top + (item.height || 0)
-    var viewTop = flick.contentY
-    var viewBottom = viewTop + flick.height
-    var margin = 12
-    if (top < viewTop + margin) flick.contentY = Math.max(0, top - margin)
-    else if (bottom > viewBottom - margin) flick.contentY = bottom + margin - flick.height
+    // Defer the geometry read: during a row rebuild (e.g. after a commit or a
+    // schema reload) the delegate's y/height are not final yet, so measuring
+    // synchronously can read 0 and scroll the view to the top. Measuring on
+    // the next pass keeps the cursor's row in view instead.
+    Qt.callLater(function() {
+      if (!item || !scrollArea) return
+      var flick = scrollArea.contentItem
+      if (!flick || flick.contentY === undefined) return
+      var pt = item.mapToItem(flick.contentItem || flick, 0, 0)
+      var top = pt.y
+      var bottom = top + (item.height || 0)
+      var viewTop = flick.contentY
+      var viewBottom = viewTop + flick.height
+      var margin = 12
+      if (top < viewTop + margin) flick.contentY = Math.max(0, top - margin)
+      else if (bottom > viewBottom - margin) flick.contentY = bottom + margin - flick.height
+    })
   }
 
   // Scroll helper used by the slider shields: the stock PanelSlider's

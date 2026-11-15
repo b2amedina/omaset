@@ -59,7 +59,7 @@ Click the Omaset icon in your bar, or run `omaset ui`.
 
 ## What it manages
 
-Covers appearance, bar, behavior, browsers, defaults, display, input, layout, omasnap, power, and windows. One panel per area in the table below. [More backends](docs/backends.md) are added over time.
+Covers appearance, bar, behavior, browsers, defaults, display, dock, input, layout, omasnap, power, and windows. One panel per area in the table below. [More backends](docs/backends.md) are added over time.
 
 | Panel | Examples |
 |---|---|
@@ -68,11 +68,12 @@ Covers appearance, bar, behavior, browsers, defaults, display, input, layout, om
 | Behavior | focus, tearing, cursor hiding |
 | Browsers | default browser, browser-router config (browser list, labels, domain routing rules) — route URLs to the right browser, prompt when unsure |
 | Defaults | agent, terminal, editor, dictation (as in Omarchy's Setup > Defaults) |
+| Dock | position, auto-hide |
 | Display | night light on/off, schedule (start & end), temperature |
 | Input | mouse, trackpad, key repeat, numlock |
 | Omasnap | editor mode/window/backdrop, autosave, screenshot directory and filename pattern — settings Omarchy doesn't expose as commands |
 | Power & Idle | screen and lock timeouts |
-| Tiling Layout | default layout, dwindle/scrolling/floating, scrolling width, dock |
+| Tiling Layout | default layout, dwindle/scrolling/floating, scrolling width |
 | Windows | full-width & tiled-fullscreen styles, single-window square |
 
 

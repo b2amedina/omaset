@@ -122,36 +122,4 @@ panel("layout", "Tiling Layout", 0xf009, function()
     end)
   end
 
-  -- Floating workspaces are arranged by the mode; the dock shows there.
-  if feature.workspace_modes() then
-    section("Dock", "dock", function()
-      setting({
-        id = "dock_position",
-        type = "enum",
-        label = "Dock position",
-        description = "Which edge of the screen the dock sits on.",
-        backend = "omarchy",
-        mode = "value",
-        default = "bottom",
-        command = "omarchy dock position {value}",
-        status = "omarchy dock position",
-        reset = "omarchy dock position bottom",
-        options = { "top", "bottom", "left", "right" },
-      })
-
-      setting({
-        id = "dock_autohide",
-        type = "enum",
-        label = "Dock autohide",
-        description = "Hide the dock until the pointer reaches its edge.",
-        backend = "omarchy",
-        mode = "value",
-        default = "off",
-        command = "omarchy dock autohide {value}",
-        status = "omarchy dock autohide",
-        reset = "omarchy dock autohide off",
-        options = { "on", "off" },
-      })
-    end)
-  end
 end)
